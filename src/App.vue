@@ -3,35 +3,34 @@ import { computed, ref } from 'vue'
 import StatusCard from './components/StatusCard.vue'
 import ReminderCard from './components/ReminderCard.vue'
 import DeviceCard from './components/DeviceCard.vue'
+import { copy, type Language, type SceneId, type StatKey } from './i18n'
 
 const scenes = [
   {
     id: 'calm',
-    title: 'Soft Morning',
-    subtitle: 'The pet looks steady and ready for a gentle day.',
     accent: '#7ed9b5',
     glow: 'rgba(126, 217, 181, 0.28)',
-    moodLine: 'Everything is calm. A few kind interactions keep the day light.',
   },
   {
     id: 'reset',
-    title: 'Tiny Reset',
-    subtitle: 'A short pause, a sip of water, and a warm check-in.',
     accent: '#ffd37a',
     glow: 'rgba(255, 211, 122, 0.28)',
-    moodLine: 'A short reset helps the pet recover energy and mood.',
   },
   {
     id: 'hug',
-    title: 'Need a Hug',
-    subtitle: 'The pet wants more warmth, companionship, and care.',
     accent: '#ff9bb5',
     glow: 'rgba(255, 155, 181, 0.28)',
-    moodLine: 'A gentle reminder and one soft message can make a difference.',
   },
 ] as const
 
-const activeScene = ref<(typeof scenes)[number]['id']>('calm')
+const activeScene = ref<SceneId>('calm')
+const language = ref<Language>('zh')
+
+const setLanguage = (nextLanguage: Language) => {
+  language.value = nextLanguage
+}
+
+const t = computed(() => copy[language.value])
 
 const baseStats = {
   health: 86,
@@ -41,8 +40,6 @@ const baseStats = {
   intimacy: 81,
   cleanliness: 90,
 }
-
-type StatKey = keyof typeof baseStats
 
 type StatItem = {
   key: StatKey
@@ -58,66 +55,6 @@ const sceneAdjustments: Record<(typeof activeScene.value), Record<StatKey, numbe
   hug: { health: -2, mood: -8, hunger: -3, energy: -7, intimacy: 4, cleanliness: -2 },
 }
 
-const reminders = [
-  {
-    title: 'Water break',
-    subtitle: 'A soft nudge after 2 hours of screen time.',
-    tone: 'sun',
-    badge: 'Gentle',
-  },
-  {
-    title: 'Stretch together',
-    subtitle: 'Use a small routine to reduce tension and refill energy.',
-    tone: 'mint',
-    badge: '5 min',
-  },
-  {
-    title: 'Night check-in',
-    subtitle: 'Wrap the day with a calm message and pet status sync.',
-    tone: 'peach',
-    badge: 'Today',
-  },
-] as const
-
-const devices = [
-  {
-    name: 'Mobile App',
-    status: 'Online',
-    detail: 'Last sync 2 min ago',
-    accent: '#7ed9b5',
-  },
-  {
-    name: 'Desktop Pet',
-    status: 'Ready',
-    detail: 'Mood card mirrored locally',
-    accent: '#ffd37a',
-  },
-  {
-    name: 'Hardware Display',
-    status: 'Mock state',
-    detail: '48 x 48 cozy tile preview',
-    accent: '#ff9bb5',
-  },
-] as const
-
-const statLabels = {
-  health: 'Health',
-  mood: 'Mood',
-  hunger: 'Hunger',
-  energy: 'Energy',
-  intimacy: 'Intimacy',
-  cleanliness: 'Cleanliness',
-} as const
-
-const statHints = {
-  health: 'Stable and responsive',
-  mood: 'Friendly, slightly playful',
-  hunger: 'Time for a small snack',
-  energy: 'Enough for light interaction',
-  intimacy: 'Warm and familiar',
-  cleanliness: 'Still looks tidy',
-} as const
-
 const statColors = {
   health: 'var(--mint)',
   mood: 'var(--sun)',
@@ -129,20 +66,53 @@ const statColors = {
 
 const stats = computed<StatItem[]>(() => {
   const adjustment = sceneAdjustments[activeScene.value]
+  const statText = t.value.stats
   return Object.entries(baseStats).map(([key, value]) => {
     const statKey = key as StatKey
     const nextValue = Math.min(100, Math.max(0, value + adjustment[statKey]))
     return {
       key: statKey,
-      label: statLabels[statKey],
-      hint: statHints[statKey],
+      label: statText[statKey].label,
+      hint: statText[statKey].hint,
       color: statColors[statKey],
       value: nextValue,
     }
   })
 })
 
-const currentScene = computed(() => scenes.find((scene) => scene.id === activeScene.value) ?? scenes[0])
+const currentScene = computed(() => {
+  const selectedScene = scenes.find((scene) => scene.id === activeScene.value) ?? scenes[0]
+  const sceneText = t.value.scenes[selectedScene.id]
+  return {
+    ...selectedScene,
+    title: sceneText.title,
+    subtitle: sceneText.subtitle,
+    moodLine: sceneText.moodLine,
+  }
+})
+
+const localizedScenes = computed(() =>
+  scenes.map((scene) => ({
+    ...scene,
+    ...t.value.scenes[scene.id],
+  })),
+)
+
+const reminders = computed(() => {
+  const tones = ['sun', 'mint', 'peach'] as const
+  return t.value.reminders.items.map((item, index) => ({
+    ...item,
+    tone: tones[index],
+  }))
+})
+
+const devices = computed(() => {
+  const accents = ['#7ed9b5', '#ffd37a', '#ff9bb5'] as const
+  return t.value.hardware.devices.map((device, index) => ({
+    ...device,
+    accent: accents[index],
+  }))
+})
 
 const growthProgress = computed(() => {
   const moodValue = stats.value.find((item: StatItem) => item.key === 'mood')?.value ?? 0
@@ -159,15 +129,35 @@ const growthProgress = computed(() => {
     <main class="app-card">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Koko Box prototype</p>
-          <h1>Gentle care, calm presence, and a pet that feels alive.</h1>
+          <p class="eyebrow">{{ t.meta.appName }}</p>
+          <h1>{{ t.meta.headerTitle }}</h1>
         </div>
-        <div class="topbar__badge">Local UI only</div>
+        <div class="topbar__controls">
+          <div class="language-switch" :aria-label="t.meta.languageLabel" role="group">
+            <button
+              class="language-switch__button"
+              :class="{ 'language-switch__button--active': language === 'zh' }"
+              type="button"
+              @click="setLanguage('zh')"
+            >
+              {{ t.meta.langChinese }}
+            </button>
+            <button
+              class="language-switch__button"
+              :class="{ 'language-switch__button--active': language === 'en' }"
+              type="button"
+              @click="setLanguage('en')"
+            >
+              {{ t.meta.langEnglish }}
+            </button>
+          </div>
+          <div class="topbar__badge">{{ t.meta.localBadge }}</div>
+        </div>
       </header>
 
       <section class="scene-strip">
         <button
-          v-for="scene in scenes"
+          v-for="scene in localizedScenes"
           :key="scene.id"
           class="scene-pill"
           :class="{ 'scene-pill--active': scene.id === activeScene }"
@@ -195,35 +185,35 @@ const growthProgress = computed(() => {
             </div>
           </div>
           <div class="hero-copy">
-            <p class="eyebrow">Today’s mood</p>
+            <p class="eyebrow">{{ t.hero.eyebrow }}</p>
             <h2>{{ currentScene.title }}</h2>
             <p>{{ currentScene.moodLine }}</p>
           </div>
           <div class="hero-actions">
-            <button class="primary-action">Say hello</button>
-            <button class="secondary-action">Open reminder</button>
+            <button class="primary-action">{{ t.hero.actionHello }}</button>
+            <button class="secondary-action">{{ t.hero.actionReminder }}</button>
           </div>
         </article>
 
         <aside class="summary-card">
-          <p class="eyebrow">Quick status</p>
+          <p class="eyebrow">{{ t.summary.eyebrow }}</p>
           <div class="summary-card__metric">
             <span>{{ growthProgress }}%</span>
-            <strong>Growth progress</strong>
-            <small>Steady care keeps the pet moving forward.</small>
+            <strong>{{ t.summary.growthTitle }}</strong>
+            <small>{{ t.summary.growthHint }}</small>
           </div>
           <div class="summary-card__list">
             <div>
-              <span>Cross-device sync</span>
-              <strong>Simulated</strong>
+              <span>{{ t.summary.syncLabel }}</span>
+              <strong>{{ t.summary.syncValue }}</strong>
             </div>
             <div>
-              <span>Reminder system</span>
-              <strong>Ready for UI</strong>
+              <span>{{ t.summary.reminderLabel }}</span>
+              <strong>{{ t.summary.reminderValue }}</strong>
             </div>
             <div>
-              <span>AI chat</span>
-              <strong>Preview only</strong>
+              <span>{{ t.summary.aiLabel }}</span>
+              <strong>{{ t.summary.aiValue }}</strong>
             </div>
           </div>
         </aside>
@@ -233,10 +223,10 @@ const growthProgress = computed(() => {
         <div class="content-grid__left">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Pet attributes</p>
-              <h3>Simple status cards for the core care loop.</h3>
+              <p class="eyebrow">{{ t.petAttributes.eyebrow }}</p>
+              <h3>{{ t.petAttributes.title }}</h3>
             </div>
-            <span class="section-head__note">Health, mood, hunger, energy, intimacy, cleanliness</span>
+            <span class="section-head__note">{{ t.petAttributes.note }}</span>
           </div>
 
           <div class="stats-grid">
@@ -252,17 +242,15 @@ const growthProgress = computed(() => {
 
           <article class="growth-panel">
             <div>
-              <p class="eyebrow">Growth & care system</p>
-              <h3>Small actions feed into a soft progress arc.</h3>
-              <p>
-                The UI can show how care, rest, reminders, and companionship gradually shape the pet’s mood.
-              </p>
+              <p class="eyebrow">{{ t.growth.eyebrow }}</p>
+              <h3>{{ t.growth.title }}</h3>
+              <p>{{ t.growth.description }}</p>
             </div>
             <div class="growth-panel__meter">
               <div class="growth-panel__ring" :style="{ '--ring-progress': growthProgress }">
                 <span>{{ growthProgress }}%</span>
               </div>
-              <small>Prototype progress</small>
+              <small>{{ t.growth.progress }}</small>
             </div>
           </article>
         </div>
@@ -271,14 +259,14 @@ const growthProgress = computed(() => {
           <div class="panel-block">
             <div class="section-head section-head--compact">
               <div>
-                <p class="eyebrow">Gentle reminders</p>
-                <h3>Soft nudges that do not feel intrusive.</h3>
+                <p class="eyebrow">{{ t.reminders.eyebrow }}</p>
+                <h3>{{ t.reminders.title }}</h3>
               </div>
             </div>
             <div class="reminder-list">
               <ReminderCard
                 v-for="item in reminders"
-                :key="item.title"
+                :key="`${item.title}-${item.badge}`"
                 :title="item.title"
                 :subtitle="item.subtitle"
                 :tone="item.tone"
@@ -290,8 +278,8 @@ const growthProgress = computed(() => {
           <div class="panel-block">
             <div class="section-head section-head--compact">
               <div>
-                <p class="eyebrow">Hardware display</p>
-                <h3>Small-screen preview for the device tile.</h3>
+                <p class="eyebrow">{{ t.hardware.eyebrow }}</p>
+                <h3>{{ t.hardware.title }}</h3>
               </div>
             </div>
             <div class="device-list">
@@ -309,21 +297,21 @@ const growthProgress = computed(() => {
           <article class="chat-panel">
             <div class="section-head section-head--compact">
               <div>
-                <p class="eyebrow">Lightweight AI chat</p>
-                <h3>Placeholder for a warm, supportive assistant.</h3>
+                <p class="eyebrow">{{ t.chat.eyebrow }}</p>
+                <h3>{{ t.chat.title }}</h3>
               </div>
             </div>
             <div class="chat-panel__bubble chat-panel__bubble--assistant">
-              <strong>Koko</strong>
-              <p>Try one short check-in: “How are you feeling right now?”</p>
+              <strong>{{ t.chat.assistantName }}</strong>
+              <p>{{ t.chat.assistantText }}</p>
             </div>
             <div class="chat-panel__bubble chat-panel__bubble--user">
-              <strong>You</strong>
-              <p>Sometimes I feel tense after a long day.</p>
+              <strong>{{ t.chat.userName }}</strong>
+              <p>{{ t.chat.userText }}</p>
             </div>
             <div class="chat-panel__input">
-              <span>Write a kind message...</span>
-              <button>Send</button>
+              <span>{{ t.chat.inputPlaceholder }}</span>
+              <button>{{ t.chat.send }}</button>
             </div>
           </article>
         </div>

@@ -110,6 +110,38 @@ button {
   font-size: clamp(2rem, 3vw, 3.5rem);
 }
 
+.topbar__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.language-switch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.language-switch__button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.language-switch__button--active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(84, 102, 149, 0.18);
+}
+
 .eyebrow {
   margin: 0 0 10px;
   color: var(--muted);
@@ -665,6 +697,11 @@ button {
   .topbar,
   .growth-panel,
   .section-head {
+
+  .topbar__controls {
+    width: 100%;
+    justify-content: space-between;
+  }
     flex-direction: column;
     align-items: flex-start;
   }
