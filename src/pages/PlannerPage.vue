@@ -5,55 +5,55 @@ const { t } = useLanguage()
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.planner.eyebrow }}</p>
-        <h2>{{ t.planner.title }}</h2>
-      </div>
-      <p>{{ t.planner.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.planner.eyebrow }}</view>
+        <view>{{ t.planner.title }}</view>
+      </view>
+      <view>{{ t.planner.subtitle }}</view>
+    </view>
 
-    <div class="page-grid-2">
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.planner.createLabel }}</p>
-        <h3>{{ t.planner.createTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.planner.createItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+    <view class="page-grid-2">
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.planner.createLabel }}</view>
+        <view>{{ t.planner.createTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.planner.createItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.planner.categoryLabel }}</p>
-        <h3>{{ t.planner.categoryTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.planner.categoryItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.planner.categoryLabel }}</view>
+        <view>{{ t.planner.categoryTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.planner.categoryItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.planner.petReminderLabel }}</p>
-        <h3>{{ t.planner.petReminderTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.planner.petReminderItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.planner.petReminderLabel }}</view>
+        <view>{{ t.planner.petReminderTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.planner.petReminderItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.planner.rewardLabel }}</p>
-        <h3>{{ t.planner.rewardTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.planner.rewardItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.planner.rewardLabel }}</view>
+        <view>{{ t.planner.rewardTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.planner.rewardItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <p class="eyebrow">{{ t.planner.unfinishedLabel }}</p>
-        <h3>{{ t.planner.unfinishedTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.planner.unfinishedItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
-    </div>
-  </div>
+      <view class="panel-block panel-block--full">
+        <view class="eyebrow">{{ t.planner.unfinishedLabel }}</view>
+        <view>{{ t.planner.unfinishedTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.planner.unfinishedItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

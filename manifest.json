@@ -1,0 +1,14 @@
+{
+  "name": "koko-box-ui-prototype",
+  "appid": "wx90ec72eb27dedd5b",
+  "description": "Koko Box UI prototype",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "wx90ec72eb27dedd5b",
+    "setting": {
+      "urlCheck": false
+    }
+  }
+}

@@ -8,20 +8,20 @@ const accents = ['#7ed9b5', '#ffd37a', '#ff9bb5'] as const
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.hardwarePage.eyebrow }}</p>
-        <h2>{{ t.hardwarePage.title }}</h2>
-      </div>
-      <p>{{ t.hardwarePage.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.hardwarePage.eyebrow }}</view>
+        <view>{{ t.hardwarePage.title }}</view>
+      </view>
+      <view>{{ t.hardwarePage.subtitle }}</view>
+    </view>
 
-    <div class="page-grid-2">
-      <section class="panel-block panel-block--full">
-        <p class="eyebrow">{{ t.hardwarePage.statusLabel }}</p>
-        <h3>{{ t.hardwarePage.statusTitle }}</h3>
-        <div class="device-list">
+    <view class="page-grid-2">
+      <view class="panel-block panel-block--full">
+        <view class="eyebrow">{{ t.hardwarePage.statusLabel }}</view>
+        <view>{{ t.hardwarePage.statusTitle }}</view>
+        <view class="device-list">
           <DeviceCard
             v-for="(device, index) in t.hardwarePage.devices"
             :key="device.name"
@@ -30,24 +30,24 @@ const accents = ['#7ed9b5', '#ffd37a', '#ff9bb5'] as const
             :detail="device.detail"
             :accent="accents[index % accents.length]"
           />
-        </div>
-      </section>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.hardwarePage.bindFlowLabel }}</p>
-        <h3>{{ t.hardwarePage.bindFlowTitle }}</h3>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.hardwarePage.bindFlowLabel }}</view>
+        <view>{{ t.hardwarePage.bindFlowTitle }}</view>
         <ol class="ordered-list">
-          <li v-for="step in t.hardwarePage.bindSteps" :key="step">{{ step }}</li>
+          <view v-for="step in t.hardwarePage.bindSteps" :key="step">{{ step }}</view>
         </ol>
-      </section>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.hardwarePage.syncLabel }}</p>
-        <h3>{{ t.hardwarePage.syncTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.hardwarePage.syncStates" :key="item">{{ item }}</li>
-        </ul>
-      </section>
-    </div>
-  </div>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.hardwarePage.syncLabel }}</view>
+        <view>{{ t.hardwarePage.syncTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.hardwarePage.syncStates" :key="item">{{ item }}</view>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

@@ -1,0 +1,20 @@
+{
+  "description": "Project configuration for WeChat Mini Program",
+  "packOptions": {
+    "ignore": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "minifyWXML": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "trial",
+  "appid": "wx90ec72eb27dedd5b",
+  "miniprogramRoot": "unpackage/dist/build/mp-weixin/",
+  "projectname": "koko-box-ui-prototype",
+  "condition": {}
+}

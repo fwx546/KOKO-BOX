@@ -5,54 +5,54 @@ const { t } = useLanguage()
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.care.eyebrow }}</p>
-        <h2>{{ t.care.title }}</h2>
-      </div>
-      <p>{{ t.care.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.care.eyebrow }}</view>
+        <view>{{ t.care.title }}</view>
+      </view>
+      <view>{{ t.care.subtitle }}</view>
+    </view>
 
-    <div class="page-grid-2">
-      <section class="panel-block">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.care.dailyCareLabel }}</p>
-            <h3>{{ t.care.dailyCareTitle }}</h3>
-          </div>
-        </div>
-        <ul class="bullet-list">
-          <li v-for="item in t.care.dailyCareItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+    <view class="page-grid-2">
+      <view class="panel-block">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.care.dailyCareLabel }}</view>
+            <view>{{ t.care.dailyCareTitle }}</view>
+          </view>
+        </view>
+        <view class="bullet-list">
+          <view v-for="item in t.care.dailyCareItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.care.growthDressupLabel }}</p>
-            <h3>{{ t.care.growthDressupTitle }}</h3>
-          </div>
-        </div>
-        <ul class="bullet-list">
-          <li v-for="item in t.care.growthDressupItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.care.growthDressupLabel }}</view>
+            <view>{{ t.care.growthDressupTitle }}</view>
+          </view>
+        </view>
+        <view class="bullet-list">
+          <view v-for="item in t.care.growthDressupItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.care.lifeArchiveLabel }}</p>
-            <h3>{{ t.care.lifeArchiveTitle }}</h3>
-          </div>
-        </div>
-        <div class="archive-grid">
-          <article v-for="item in t.care.lifeArchiveItems" :key="item.title" class="archive-item">
+      <view class="panel-block panel-block--full">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.care.lifeArchiveLabel }}</view>
+            <view>{{ t.care.lifeArchiveTitle }}</view>
+          </view>
+        </view>
+        <view class="archive-grid">
+          <view v-for="item in t.care.lifeArchiveItems" :key="item.title" class="archive-item">
             <h4>{{ item.title }}</h4>
-            <p>{{ item.description }}</p>
-          </article>
-        </div>
-      </section>
-    </div>
-  </div>
+            <view>{{ item.description }}</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

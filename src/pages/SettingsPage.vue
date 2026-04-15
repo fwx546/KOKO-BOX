@@ -5,40 +5,39 @@ const { t, language, setLanguage } = useLanguage()
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.settings.eyebrow }}</p>
-        <h2>{{ t.settings.title }}</h2>
-      </div>
-      <p>{{ t.settings.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.settings.eyebrow }}</view>
+        <view>{{ t.settings.title }}</view>
+      </view>
+      <view>{{ t.settings.subtitle }}</view>
+    </view>
 
-    <div class="page-grid-2">
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.settings.preferenceLabel }}</p>
-        <h3>{{ t.settings.preferenceTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.settings.preferenceItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+    <view class="page-grid-2">
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.settings.preferenceLabel }}</view>
+        <view>{{ t.settings.preferenceTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.settings.preferenceItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <p class="eyebrow">{{ t.settings.privacyLabel }}</p>
-        <h3>{{ t.settings.privacyTitle }}</h3>
-        <ul class="bullet-list">
-          <li v-for="item in t.settings.privacyItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="eyebrow">{{ t.settings.privacyLabel }}</view>
+        <view>{{ t.settings.privacyTitle }}</view>
+        <view class="bullet-list">
+          <view v-for="item in t.settings.privacyItems" :key="item">{{ item }}</view>
+        </view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <p class="eyebrow">{{ t.settings.languageLabel }}</p>
-        <h3>{{ t.settings.languageTitle }}</h3>
-        <div class="language-switch" role="group" :aria-label="t.settings.languageLabel">
+      <view class="panel-block panel-block--full">
+        <view class="eyebrow">{{ t.settings.languageLabel }}</view>
+        <view>{{ t.settings.languageTitle }}</view>
+        <view class="language-switch">
           <button
             class="language-switch__button"
             :class="{ 'language-switch__button--active': language === 'zh' }"
-            type="button"
             @click="setLanguage('zh')"
           >
             {{ t.app.langChinese }}
@@ -46,13 +45,12 @@ const { t, language, setLanguage } = useLanguage()
           <button
             class="language-switch__button"
             :class="{ 'language-switch__button--active': language === 'en' }"
-            type="button"
             @click="setLanguage('en')"
           >
             {{ t.app.langEnglish }}
           </button>
-        </div>
-      </section>
-    </div>
-  </div>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

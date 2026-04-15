@@ -5,37 +5,37 @@ const { t } = useLanguage()
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.statsPage.eyebrow }}</p>
-        <h2>{{ t.statsPage.title }}</h2>
-      </div>
-      <p>{{ t.statsPage.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.statsPage.eyebrow }}</view>
+        <view>{{ t.statsPage.title }}</view>
+      </view>
+      <view>{{ t.statsPage.subtitle }}</view>
+    </view>
 
-    <div class="page-grid-2">
-      <section class="panel-block" v-for="card in t.statsPage.overviewCards" :key="card.title">
-        <p class="eyebrow">{{ card.label }}</p>
-        <h3>{{ card.title }}</h3>
-        <p>{{ card.value }}</p>
-        <small>{{ card.hint }}</small>
-      </section>
+    <view class="page-grid-2">
+      <view class="panel-block" v-for="card in t.statsPage.overviewCards" :key="card.title">
+        <view class="eyebrow">{{ card.label }}</view>
+        <view>{{ card.title }}</view>
+        <view>{{ card.value }}</view>
+        <view>{{ card.hint }}</view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.statsPage.trendLabel }}</p>
-            <h3>{{ t.statsPage.trendTitle }}</h3>
-          </div>
-          <div class="pill-row">
+      <view class="panel-block panel-block--full">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.statsPage.trendLabel }}</view>
+            <view>{{ t.statsPage.trendTitle }}</view>
+          </view>
+          <view class="pill-row">
             <button class="quick-action-button" v-for="range in t.statsPage.ranges" :key="range">{{ range }}</button>
-          </div>
-        </div>
-        <div class="chart-placeholder">
-          <span>{{ t.statsPage.chartPlaceholder }}</span>
-        </div>
-      </section>
-    </div>
-  </div>
+          </view>
+        </view>
+        <view class="chart-placeholder">
+          <view>{{ t.statsPage.chartPlaceholder }}</view>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

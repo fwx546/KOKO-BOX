@@ -8,12 +8,12 @@ const props = defineProps<{
 </script>
 
 <template>
-  <article class="device-card">
-    <div class="device-card__dot" :style="{ background: props.accent }"></div>
-    <div>
-      <p class="device-card__name">{{ props.name }}</p>
-      <p class="device-card__status">{{ props.status }}</p>
-      <p class="device-card__detail">{{ props.detail }}</p>
-    </div>
-  </article>
+  <view class="device-card">
+    <view class="device-card__dot" :style="{ background: props.accent }"></view>
+    <view>
+      <view class="device-card__name">{{ props.name }}</view>
+      <view class="device-card__status">{{ props.status }}</view>
+      <view class="device-card__detail">{{ props.detail }}</view>
+    </view>
+  </view>
 </template>

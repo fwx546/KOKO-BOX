@@ -1,0 +1,11 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "Koko Box",
+    "navigationBarBackgroundColor": "#fff7e8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff7e8"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

@@ -1,42 +1,55 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
 import { useLanguage } from './composables/useLanguage'
+import HomePage from './pages/HomePage.vue'
+import CarePage from './pages/CarePage.vue'
+import ChatPage from './pages/ChatPage.vue'
+import PlannerPage from './pages/PlannerPage.vue'
+import StatsPage from './pages/StatsPage.vue'
+import HardwarePage from './pages/HardwarePage.vue'
+import ProfilePage from './pages/ProfilePage.vue'
+import SettingsPage from './pages/SettingsPage.vue'
 
-const route = useRoute()
 const { t, language, setLanguage } = useLanguage()
 
+type PageId = 'home' | 'care' | 'chat' | 'planner' | 'stats' | 'hardware' | 'profile' | 'settings'
+
+const currentPage = ref<PageId>('home')
+
 const navItems = computed(() => [
-  { path: '/home', label: t.value.nav.home },
-  { path: '/care', label: t.value.nav.care },
-  { path: '/chat', label: t.value.nav.chat },
-  { path: '/planner', label: t.value.nav.planner },
-  { path: '/stats', label: t.value.nav.stats },
-  { path: '/hardware', label: t.value.nav.hardware },
-  { path: '/profile', label: t.value.nav.profile },
-  { path: '/settings', label: t.value.nav.settings },
+  { id: 'home' as const, label: t.value.nav.home },
+  { id: 'care' as const, label: t.value.nav.care },
+  { id: 'chat' as const, label: t.value.nav.chat },
+  { id: 'planner' as const, label: t.value.nav.planner },
+  { id: 'stats' as const, label: t.value.nav.stats },
+  { id: 'hardware' as const, label: t.value.nav.hardware },
+  { id: 'profile' as const, label: t.value.nav.profile },
+  { id: 'settings' as const, label: t.value.nav.settings },
 ])
 
-const currentPageLabel = computed(() => navItems.value.find((item) => item.path === route.path)?.label ?? t.value.nav.home)
+const currentPageLabel = computed(() => navItems.value.find((item) => item.id === currentPage.value)?.label ?? t.value.nav.home)
+
+const openPage = (pageId: PageId) => {
+  currentPage.value = pageId
+}
 </script>
 
 <template>
-  <div class="page-shell">
-    <span class="page-glow page-glow--left"></span>
-    <span class="page-glow page-glow--right"></span>
+  <view class="page-shell">
+    <view class="page-glow page-glow--left"></view>
+    <view class="page-glow page-glow--right"></view>
 
-    <main class="app-card">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">{{ t.app.appName }}</p>
-          <h1>{{ t.app.headerTitle }}</h1>
-        </div>
-        <div class="topbar__controls">
-          <div class="language-switch" :aria-label="t.app.languageLabel" role="group">
+    <view class="app-card">
+      <view class="topbar">
+        <view>
+          <view class="eyebrow">{{ t.app.appName }}</view>
+          <view class="h1-like">{{ t.app.headerTitle }}</view>
+        </view>
+        <view class="topbar__controls">
+          <view class="language-switch">
             <button
               class="language-switch__button"
               :class="{ 'language-switch__button--active': language === 'zh' }"
-              type="button"
               @click="setLanguage('zh')"
             >
               {{ t.app.langChinese }}
@@ -44,32 +57,38 @@ const currentPageLabel = computed(() => navItems.value.find((item) => item.path 
             <button
               class="language-switch__button"
               :class="{ 'language-switch__button--active': language === 'en' }"
-              type="button"
               @click="setLanguage('en')"
             >
               {{ t.app.langEnglish }}
             </button>
-          </div>
-          <div class="topbar__badge">{{ t.app.localBadge }}</div>
-        </div>
-      </header>
+          </view>
+          <view class="topbar__badge">{{ t.app.localBadge }}</view>
+        </view>
+      </view>
 
-      <nav class="nav-row" :aria-label="t.app.mainNavigationLabel">
-        <RouterLink
+      <view class="nav-row">
+        <button
           v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
+          :key="item.id"
           class="nav-link"
-          :class="{ 'nav-link--active': route.path === item.path }"
+          :class="{ 'nav-link--active': currentPage === item.id }"
+          @click="openPage(item.id)"
         >
           {{ item.label }}
-        </RouterLink>
-      </nav>
+        </button>
+      </view>
 
-      <div class="view-container">
-        <p class="current-page-label">{{ currentPageLabel }}</p>
-        <RouterView />
-      </div>
-    </main>
-  </div>
+      <view class="view-container">
+        <view class="current-page-label">{{ currentPageLabel }}</view>
+        <HomePage v-if="currentPage === 'home'" />
+        <CarePage v-else-if="currentPage === 'care'" />
+        <ChatPage v-else-if="currentPage === 'chat'" />
+        <PlannerPage v-else-if="currentPage === 'planner'" />
+        <StatsPage v-else-if="currentPage === 'stats'" />
+        <HardwarePage v-else-if="currentPage === 'hardware'" />
+        <ProfilePage v-else-if="currentPage === 'profile'" />
+        <SettingsPage v-else-if="currentPage === 'settings'" />
+      </view>
+    </view>
+  </view>
 </template>

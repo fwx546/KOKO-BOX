@@ -87,37 +87,37 @@ const reminders = computed(() => {
 </script>
 
 <template>
-  <div class="page-view">
-    <header class="page-head">
-      <div>
-        <p class="eyebrow">{{ t.home.eyebrow }}</p>
-        <h2>{{ t.home.title }}</h2>
-      </div>
-      <p>{{ t.home.subtitle }}</p>
-    </header>
+  <view class="page-view">
+    <view class="page-head">
+      <view>
+        <view class="eyebrow">{{ t.home.eyebrow }}</view>
+        <view>{{ t.home.title }}</view>
+      </view>
+      <view>{{ t.home.subtitle }}</view>
+    </view>
 
-    <div class="page-home-grid">
-      <article class="hero-card" :style="{ '--hero-accent': currentScene.accent, '--hero-glow': currentScene.glow }">
-        <div class="hero-card__orb hero-card__orb--one"></div>
-        <div class="hero-card__orb hero-card__orb--two"></div>
+    <view class="page-home-grid">
+      <view class="hero-card" :style="{ '--hero-accent': currentScene.accent, '--hero-glow': currentScene.glow }">
+        <view class="hero-card__orb hero-card__orb--one"></view>
+        <view class="hero-card__orb hero-card__orb--two"></view>
 
-        <div class="pet-figure">
-          <div class="pet-figure__ear pet-figure__ear--left"></div>
-          <div class="pet-figure__ear pet-figure__ear--right"></div>
-          <div class="pet-figure__face">
-            <span class="pet-figure__eye"></span>
-            <span class="pet-figure__eye"></span>
-            <span class="pet-figure__mouth"></span>
-          </div>
-        </div>
+        <view class="pet-figure">
+          <view class="pet-figure__ear pet-figure__ear--left"></view>
+          <view class="pet-figure__ear pet-figure__ear--right"></view>
+          <view class="pet-figure__face">
+            <view class="pet-figure__eye"></view>
+            <view class="pet-figure__eye"></view>
+            <view class="pet-figure__mouth"></view>
+          </view>
+        </view>
 
-        <div class="hero-copy">
-          <p class="eyebrow">{{ t.home.petDisplayLabel }}</p>
-          <h3>{{ currentScene.title }}</h3>
-          <p>{{ currentScene.moodLine }}</p>
-        </div>
+        <view class="hero-copy">
+          <view class="eyebrow">{{ t.home.petDisplayLabel }}</view>
+          <view>{{ currentScene.title }}</view>
+          <view>{{ currentScene.moodLine }}</view>
+        </view>
 
-        <div class="scene-strip scene-strip--compact">
+        <view class="scene-strip scene-strip--compact">
           <button
             v-for="scene in localizedScenes"
             :key="scene.id"
@@ -125,53 +125,53 @@ const reminders = computed(() => {
             :class="{ 'scene-pill--active': scene.id === activeScene }"
             @click="activeScene = scene.id"
           >
-            <span class="scene-pill__dot" :style="{ background: scene.accent, boxShadow: `0 0 0 10px ${scene.glow}` }"></span>
-            <span>
-              <strong>{{ scene.title }}</strong>
-              <small>{{ scene.subtitle }}</small>
-            </span>
+            <view class="scene-pill__dot" :style="{ background: scene.accent, boxShadow: `0 0 0 10px ${scene.glow}` }"></view>
+            <view>
+              <view>{{ scene.title }}</view>
+              <view>{{ scene.subtitle }}</view>
+            </view>
           </button>
-        </div>
-      </article>
+        </view>
+      </view>
 
-      <article class="summary-card">
-        <p class="eyebrow">{{ t.home.statusOverviewLabel }}</p>
-        <div class="summary-card__metric">
-          <span>{{ growthProgress }}%</span>
-          <strong>{{ t.home.growthTitle }}</strong>
-          <small>{{ t.home.growthHint }}</small>
-        </div>
-        <div class="summary-card__list">
-          <div v-for="item in t.home.statusSummary" :key="item.label">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-          </div>
-        </div>
-      </article>
+      <view class="summary-card">
+        <view class="eyebrow">{{ t.home.statusOverviewLabel }}</view>
+        <view class="summary-card__metric">
+          <view>{{ growthProgress }}%</view>
+          <view>{{ t.home.growthTitle }}</view>
+          <view>{{ t.home.growthHint }}</view>
+        </view>
+        <view class="summary-card__list">
+          <view v-for="item in t.home.statusSummary" :key="item.label">
+            <view>{{ item.label }}</view>
+            <view>{{ item.value }}</view>
+          </view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.home.todayTodoLabel }}</p>
-            <h3>{{ t.home.todoTitle }}</h3>
-          </div>
-        </div>
-        <ul class="simple-list">
-          <li v-for="todo in t.home.todayTodos" :key="todo.title">
-            <span>{{ todo.title }}</span>
-            <strong>{{ todo.time }}</strong>
-          </li>
-        </ul>
-      </section>
+      <view class="panel-block">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.home.todayTodoLabel }}</view>
+            <view>{{ t.home.todoTitle }}</view>
+          </view>
+        </view>
+        <view class="simple-list">
+          <view v-for="todo in t.home.todayTodos" :key="todo.title">
+            <view>{{ todo.title }}</view>
+            <view>{{ todo.time }}</view>
+          </view>
+        </view>
+      </view>
 
-      <section class="panel-block">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.home.recentReminderLabel }}</p>
-            <h3>{{ t.home.recentReminderTitle }}</h3>
-          </div>
-        </div>
-        <div class="reminder-list">
+      <view class="panel-block">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.home.recentReminderLabel }}</view>
+            <view>{{ t.home.recentReminderTitle }}</view>
+          </view>
+        </view>
+        <view class="reminder-list">
           <ReminderCard
             v-for="item in reminders"
             :key="`${item.title}-${item.badge}`"
@@ -180,29 +180,29 @@ const reminders = computed(() => {
             :tone="item.tone"
             :badge="item.badge"
           />
-        </div>
-      </section>
+        </view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.home.quickActionLabel }}</p>
-            <h3>{{ t.home.quickActionTitle }}</h3>
-          </div>
-        </div>
-        <div class="quick-action-grid">
+      <view class="panel-block panel-block--full">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.home.quickActionLabel }}</view>
+            <view>{{ t.home.quickActionTitle }}</view>
+          </view>
+        </view>
+        <view class="quick-action-grid">
           <button v-for="action in t.home.quickActions" :key="action" class="quick-action-button">{{ action }}</button>
-        </div>
-      </section>
+        </view>
+      </view>
 
-      <section class="panel-block panel-block--full">
-        <div class="section-head section-head--compact">
-          <div>
-            <p class="eyebrow">{{ t.home.attributeLabel }}</p>
-            <h3>{{ t.home.attributeTitle }}</h3>
-          </div>
-        </div>
-        <div class="stats-grid">
+      <view class="panel-block panel-block--full">
+        <view class="section-head section-head--compact">
+          <view>
+            <view class="eyebrow">{{ t.home.attributeLabel }}</view>
+            <view>{{ t.home.attributeTitle }}</view>
+          </view>
+        </view>
+        <view class="stats-grid">
           <StatusCard
             v-for="item in stats"
             :key="item.key"
@@ -211,8 +211,8 @@ const reminders = computed(() => {
             :hint="item.hint"
             :color="item.color"
           />
-        </div>
-      </section>
-    </div>
-  </div>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>

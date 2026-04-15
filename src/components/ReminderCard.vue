@@ -14,11 +14,11 @@ const toneClasses = {
 </script>
 
 <template>
-  <article class="reminder-card" :class="toneClasses[props.tone]">
-    <div class="reminder-card__badge">{{ props.badge }}</div>
-    <div>
-      <h3 class="reminder-card__title">{{ props.title }}</h3>
-      <p class="reminder-card__subtitle">{{ props.subtitle }}</p>
-    </div>
-  </article>
+  <view class="reminder-card" :class="toneClasses[props.tone]">
+    <view class="reminder-card__badge">{{ props.badge }}</view>
+    <view>
+      <view class="reminder-card__title">{{ props.title }}</view>
+      <view class="reminder-card__subtitle">{{ props.subtitle }}</view>
+    </view>
+  </view>
 </template>
