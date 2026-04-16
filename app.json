@@ -18,23 +18,33 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "首页"
+        "text": "Rest",
+        "iconPath": "static/tab/tab-rest.png",
+        "selectedIconPath": "static/tab/tab-rest-active.png"
       },
       {
         "pagePath": "pages/care/index",
-        "text": "养成"
+        "text": "Grow",
+        "iconPath": "static/tab/tab-grow.png",
+        "selectedIconPath": "static/tab/tab-grow-active.png"
       },
       {
         "pagePath": "pages/chat/index",
-        "text": "聊天"
+        "text": "Talk",
+        "iconPath": "static/tab/tab-talk.png",
+        "selectedIconPath": "static/tab/tab-talk-active.png"
       },
       {
         "pagePath": "pages/stats/index",
-        "text": "统计"
+        "text": "Track",
+        "iconPath": "static/tab/tab-track.png",
+        "selectedIconPath": "static/tab/tab-track-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "Profile",
+        "iconPath": "static/tab/tab-profile.png",
+        "selectedIconPath": "static/tab/tab-profile-active.png"
       }
     ]
   },

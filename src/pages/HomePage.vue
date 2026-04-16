@@ -62,6 +62,9 @@ const reminders = computed(() => {
     tone: tones[index % tones.length],
   }))
 })
+
+const topTodos = computed(() => t.value.home.todayTodos.slice(0, 2))
+const topReminders = computed(() => reminders.value.slice(0, 2))
 </script>
 
 <template>
@@ -74,32 +77,12 @@ const reminders = computed(() => {
       <view>{{ t.home.subtitle }}</view>
     </view>
 
-    <view class="page-home-grid">
-      <view class="hero-card">
-        <view class="pet-figure">
-          <view class="pet-figure__ear pet-figure__ear--left"></view>
-          <view class="pet-figure__ear pet-figure__ear--right"></view>
-          <view class="pet-figure__face">
-            <view class="pet-figure__eye"></view>
-            <view class="pet-figure__eye"></view>
-            <view class="pet-figure__mouth"></view>
-          </view>
-        </view>
-
-        <view class="hero-copy">
-          <view class="eyebrow">{{ t.home.petDisplayLabel }}</view>
-          <view>{{ currentScene.title }}</view>
-          <view>{{ currentScene.moodLine }}</view>
-        </view>
-      </view>
-
-      <view class="summary-card">
+    <view class="page-grid-2">
+      <view class="panel-block">
         <view class="eyebrow">{{ t.home.statusOverviewLabel }}</view>
-        <view class="summary-card__metric">
-          <view>{{ growthProgress }}%</view>
-          <view>{{ t.home.growthTitle }}</view>
-          <view>{{ t.home.growthHint }}</view>
-        </view>
+        <view class="compact-kpi">{{ growthProgress }}%</view>
+        <view>{{ currentScene.title }}</view>
+        <view class="muted-line">{{ currentScene.moodLine }}</view>
         <view class="summary-card__list">
           <view v-for="item in t.home.statusSummary" :key="item.label">
             <view>{{ item.label }}</view>
@@ -109,14 +92,10 @@ const reminders = computed(() => {
       </view>
 
       <view class="panel-block">
-        <view class="section-head section-head--compact">
-          <view>
-            <view class="eyebrow">{{ t.home.todayTodoLabel }}</view>
-            <view>{{ t.home.todoTitle }}</view>
-          </view>
-        </view>
+        <view class="eyebrow">{{ t.home.todayTodoLabel }}</view>
+        <view>{{ t.home.todoTitle }}</view>
         <view class="simple-list">
-          <view v-for="todo in t.home.todayTodos" :key="todo.title">
+          <view v-for="todo in topTodos" :key="todo.title">
             <view>{{ todo.title }}</view>
             <view>{{ todo.time }}</view>
           </view>
@@ -124,15 +103,11 @@ const reminders = computed(() => {
       </view>
 
       <view class="panel-block">
-        <view class="section-head section-head--compact">
-          <view>
-            <view class="eyebrow">{{ t.home.recentReminderLabel }}</view>
-            <view>{{ t.home.recentReminderTitle }}</view>
-          </view>
-        </view>
+        <view class="eyebrow">{{ t.home.recentReminderLabel }}</view>
+        <view>{{ t.home.recentReminderTitle }}</view>
         <view class="reminder-list">
           <ReminderCard
-            v-for="item in reminders"
+            v-for="item in topReminders"
             :key="`${item.title}-${item.badge}`"
             :title="item.title"
             :subtitle="item.subtitle"
@@ -143,12 +118,8 @@ const reminders = computed(() => {
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="section-head section-head--compact">
-          <view>
-            <view class="eyebrow">{{ t.home.attributeLabel }}</view>
-            <view>{{ t.home.attributeTitle }}</view>
-          </view>
-        </view>
+        <view class="eyebrow">{{ t.home.attributeLabel }}</view>
+        <view>{{ t.home.attributeTitle }}</view>
         <view class="stats-grid">
           <StatusCard
             v-for="item in stats"

@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage'
 
 const { t } = useLanguage()
+
+const coreCards = computed(() => t.value.statsPage.overviewCards.slice(0, 3))
 </script>
 
 <template>
@@ -15,22 +18,18 @@ const { t } = useLanguage()
     </view>
 
     <view class="page-grid-2">
-      <view class="panel-block" v-for="card in t.statsPage.overviewCards" :key="card.title">
+      <view class="panel-block" v-for="card in coreCards" :key="card.title">
         <view class="eyebrow">{{ card.label }}</view>
         <view>{{ card.title }}</view>
-        <view>{{ card.value }}</view>
-        <view>{{ card.hint }}</view>
+        <view class="compact-kpi">{{ card.value }}</view>
+        <view class="muted-line">{{ card.hint }}</view>
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="section-head section-head--compact">
-          <view>
-            <view class="eyebrow">{{ t.statsPage.trendLabel }}</view>
-            <view>{{ t.statsPage.trendTitle }}</view>
-          </view>
-          <view class="pill-row">
-            <button class="quick-action-button" v-for="range in t.statsPage.ranges" :key="range">{{ range }}</button>
-          </view>
+        <view class="eyebrow">{{ t.statsPage.trendLabel }}</view>
+        <view>{{ t.statsPage.trendTitle }}</view>
+        <view class="pill-row">
+          <button class="quick-action-button" v-for="range in t.statsPage.ranges.slice(0, 2)" :key="range">{{ range }}</button>
         </view>
         <view class="chart-placeholder">
           <view>{{ t.statsPage.chartPlaceholder }}</view>

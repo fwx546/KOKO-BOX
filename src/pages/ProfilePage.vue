@@ -4,7 +4,7 @@ import { useLanguage } from '../composables/useLanguage'
 
 const { t } = useLanguage()
 
-const summaryCards = computed(() => t.value.profile.archiveCards.slice(0, 2))
+const summaryCards = computed(() => t.value.profile.archiveCards.slice(0, 1))
 
 const openPlanner = () => {
   uni.navigateTo({ url: '/pages/planner/index' })
@@ -37,8 +37,8 @@ const openSettings = () => {
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="eyebrow">快捷入口</view>
-        <view>更多功能</view>
+        <view class="eyebrow">Core Modules</view>
+        <view>Open feature pages</view>
         <view class="profile-shortcuts">
           <button class="profile-shortcut-button" @click="openPlanner">{{ t.nav.planner }}</button>
           <button class="profile-shortcut-button" @click="openHardware">{{ t.nav.hardware }}</button>

@@ -9,7 +9,7 @@
     "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni dev -p mp-weixin --outDir unpackage/dist/dev/mp-weixin",
     "build": "npm run build:h5",
     "build:h5": "cross-env UNI_INPUT_DIR=. uni build -p h5 --outDir unpackage/dist/build/h5",
-    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin --outDir unpackage/dist/build/mp-weixin",
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin --outDir unpackage/dist/build/mp-weixin && node scripts/copy-tab-icons.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
