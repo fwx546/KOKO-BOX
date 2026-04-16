@@ -48,6 +48,20 @@
       }
     ]
   },
+  "usingComponents": {
+    "page-scaffold": "/src/components/PageScaffold",
+    "status-card": "/src/components/StatusCard",
+    "reminder-card": "/src/components/ReminderCard",
+    "device-card": "/src/components/DeviceCard",
+    "home-page": "/src/pages/HomePage",
+    "care-page": "/src/pages/CarePage",
+    "chat-page": "/src/pages/ChatPage",
+    "stats-page": "/src/pages/StatsPage",
+    "profile-page": "/src/pages/ProfilePage",
+    "planner-page": "/src/pages/PlannerPage",
+    "hardware-page": "/src/pages/HardwarePage",
+    "settings-page": "/src/pages/SettingsPage"
+  },
   "window": {
     "navigationBarTitleText": "Koko Box",
     "navigationBarBackgroundColor": "#fff7e8",
