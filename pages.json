@@ -1,12 +1,88 @@
 {
   "pages": [
     {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/care/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/stats/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/planner/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/hardware/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "Koko Box"
       }
     }
   ],
+  "tabBar": {
+    "color": "#66708e",
+    "selectedColor": "#253047",
+    "backgroundColor": "#fff7e8",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/care/index",
+        "text": "养成"
+      },
+      {
+        "pagePath": "pages/chat/index",
+        "text": "聊天"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "text": "统计"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "Koko Box",

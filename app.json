@@ -1,5 +1,43 @@
 {
-  "pages": ["pages/index/index"],
+  "pages": [
+    "pages/home/index",
+    "pages/care/index",
+    "pages/chat/index",
+    "pages/stats/index",
+    "pages/profile/index",
+    "pages/planner/index",
+    "pages/hardware/index",
+    "pages/settings/index",
+    "pages/index/index"
+  ],
+  "tabBar": {
+    "color": "#66708e",
+    "selectedColor": "#253047",
+    "backgroundColor": "#fff7e8",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/care/index",
+        "text": "养成"
+      },
+      {
+        "pagePath": "pages/chat/index",
+        "text": "聊天"
+      },
+      {
+        "pagePath": "pages/stats/index",
+        "text": "统计"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
   "window": {
     "navigationBarTitleText": "Koko Box",
     "navigationBarBackgroundColor": "#fff7e8",

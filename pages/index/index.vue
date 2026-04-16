@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import RootShell from '../../src/App.vue'
+import { onLoad } from '@dcloudio/uni-app'
+
+onLoad(() => {
+  uni.switchTab({
+    url: '/pages/home/index',
+  })
+})
 </script>
 
 <template>
-  <RootShell />
+  <view></view>
 </template>

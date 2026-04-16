@@ -1,7 +1,22 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage'
 
 const { t } = useLanguage()
+
+const summaryCards = computed(() => t.value.profile.archiveCards.slice(0, 2))
+
+const openPlanner = () => {
+  uni.navigateTo({ url: '/pages/planner/index' })
+}
+
+const openHardware = () => {
+  uni.navigateTo({ url: '/pages/hardware/index' })
+}
+
+const openSettings = () => {
+  uni.navigateTo({ url: '/pages/settings/index' })
+}
 </script>
 
 <template>
@@ -15,20 +30,19 @@ const { t } = useLanguage()
     </view>
 
     <view class="page-grid-2">
-      <view class="panel-block" v-for="item in t.profile.archiveCards" :key="item.title">
+      <view class="panel-block" v-for="item in summaryCards" :key="item.title">
         <view class="eyebrow">{{ item.label }}</view>
         <view>{{ item.title }}</view>
         <view>{{ item.description }}</view>
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="eyebrow">{{ t.profile.milestoneLabel }}</view>
-        <view>{{ t.profile.milestoneTitle }}</view>
-        <view class="archive-grid">
-          <view class="archive-item" v-for="entry in t.profile.milestones" :key="entry.title">
-            <h4>{{ entry.title }}</h4>
-            <view>{{ entry.description }}</view>
-          </view>
+        <view class="eyebrow">快捷入口</view>
+        <view>更多功能</view>
+        <view class="profile-shortcuts">
+          <button class="profile-shortcut-button" @click="openPlanner">{{ t.nav.planner }}</button>
+          <button class="profile-shortcut-button" @click="openHardware">{{ t.nav.hardware }}</button>
+          <button class="profile-shortcut-button" @click="openSettings">{{ t.nav.settings }}</button>
         </view>
       </view>
     </view>
