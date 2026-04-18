@@ -759,6 +759,85 @@ button {
   color: var(--text);
 }
 
+.profile-shortcut-button[disabled] {
+  opacity: 0.62;
+}
+
+.auth-card__body {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.auth-card__avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 24px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(255, 211, 122, 0.74), rgba(126, 217, 181, 0.72));
+  color: #253047;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.auth-card__avatar image {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-card__main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.auth-card__name {
+  font-size: 1.12rem;
+  font-weight: 800;
+}
+
+.auth-card__pet,
+.auth-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-card__pet {
+  margin-top: 6px;
+}
+
+.auth-card__pet > view {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(247, 249, 255, 0.94);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.auth-card__actions {
+  margin-top: 12px;
+}
+
+.auth-card__nickname {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(89, 102, 145, 0.14);
+  background: rgba(247, 249, 255, 0.9);
+  color: var(--text);
+}
+
+.auth-card__error {
+  margin-top: 6px;
+  color: #b5473f;
+  line-height: 1.5;
+}
+
 @keyframes float {
   0%,
   100% {
@@ -790,8 +869,13 @@ button {
 
   .stats-grid,
   .archive-grid,
-  .profile-shortcuts {
+  .profile-shortcuts,
+  .auth-card__actions {
     grid-template-columns: 1fr;
+  }
+
+  .auth-card__body {
+    align-items: flex-start;
   }
 
   .chat-panel__bubble--user {
