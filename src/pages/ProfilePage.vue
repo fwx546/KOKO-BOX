@@ -1,34 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useLanguage } from '../composables/useLanguage'
+import { computed, onMounted } from 'vue'
 import { isWechatCloudConfigured } from '../config/cloud'
 import { useAuth } from '../composables/useAuth'
 
-const { t } = useLanguage()
 const { user, pet, loading, error, isMockSession, isLoggedIn, login, syncUserProfile } = useAuth()
 
-const summaryCards = computed(() => t.value.profile.archiveCards.slice(0, 1))
-const loginStatusText = computed(() => {
+const displayName = computed(() => user.value?.nickName || 'Koko Friend')
+const accountStatus = computed(() => {
   if (loading.value) {
-    return 'Logging in...'
+    return 'Connecting...'
   }
 
   if (isLoggedIn.value) {
-    return isMockSession.value ? 'H5 mock session' : 'WeChat cloud session active'
+    return isMockSession.value ? 'Preview mode' : 'WeChat connected'
   }
 
-  return isWechatCloudConfigured() ? 'Not logged in' : 'Cloud env not configured, using H5-safe mock mode'
+  return isWechatCloudConfigured() ? 'Tap retry to connect' : 'Preview mode'
 })
-
-const petStats = computed(() => {
-  if (!pet.value) {
-    return []
+const companionName = computed(() => pet.value?.name || 'Koko')
+const companionStage = computed(() => pet.value?.stage || 'growing')
+const shouldShowRetry = computed(() => Boolean(error.value) || (!loading.value && !isLoggedIn.value))
+const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
+const statRows = computed(() => {
+  const currentPet = pet.value ?? {
+    mood: 82,
+    health: 88,
+    intimacy: 55,
   }
 
   return [
-    { label: 'Mood', value: pet.value.mood },
-    { label: 'Health', value: pet.value.health },
-    { label: 'Intimacy', value: pet.value.intimacy },
+    { label: 'Mood', value: currentPet.mood },
+    { label: 'Health', value: currentPet.health },
+    { label: 'Bond', value: currentPet.intimacy },
   ]
 })
 
@@ -48,85 +51,106 @@ const handleLogin = () => {
   void login()
 }
 
-const handleChooseAvatar = (event: { detail?: { avatarUrl?: string } }) => {
-  void syncUserProfile({
-    avatarUrl: event.detail?.avatarUrl,
-  })
-}
-
 const handleNicknameBlur = (event: { detail?: { value?: string } }) => {
   const nickName = event.detail?.value?.trim()
 
-  if (nickName) {
+  if (nickName && nickName !== user.value?.nickName) {
     void syncUserProfile({ nickName })
   }
 }
 
-void login()
+onMounted(() => {
+  void login()
+})
 </script>
 
 <template>
-  <view class="page-view">
-    <view class="page-head">
-      <view>
-        <view class="eyebrow">{{ t.profile.eyebrow }}</view>
-        <view>{{ t.profile.title }}</view>
-      </view>
-      <view>{{ t.profile.subtitle }}</view>
-    </view>
-
-    <view class="page-grid-2">
-      <view class="panel-block panel-block--full auth-card">
-        <view class="eyebrow">WeChat Login</view>
-        <view>Account status</view>
-        <view class="auth-card__body">
-          <view class="auth-card__avatar">
-            <image v-if="user?.avatarUrl" :src="user.avatarUrl" mode="aspectFill" />
-            <view v-else>K</view>
-          </view>
-          <view class="auth-card__main">
-            <view class="auth-card__name">{{ user?.nickName || 'Koko Friend' }}</view>
-            <view class="muted-line">{{ loginStatusText }}</view>
-            <view v-if="pet" class="auth-card__pet">
-              <view>{{ pet.name }} · {{ pet.stage }}</view>
-              <view v-for="item in petStats" :key="item.label">{{ item.label }} {{ item.value }}</view>
-            </view>
-            <view v-if="error" class="auth-card__error">{{ error }}</view>
-          </view>
+  <view class="profile-page">
+    <view class="profile-hero-card">
+      <view class="profile-hero-top">
+        <view class="profile-avatar">
+          <image v-if="user?.avatarUrl" :src="user.avatarUrl" mode="aspectFill" />
+          <view v-else>{{ profileInitial }}</view>
         </view>
 
-        <view class="auth-card__actions">
-          <button class="profile-shortcut-button" :disabled="loading" @click="handleLogin">
-            {{ loading ? 'Logging in...' : '微信自动登录' }}
-          </button>
-          <button class="profile-shortcut-button" open-type="chooseAvatar" @chooseavatar="handleChooseAvatar">
-            同步头像
-          </button>
+        <view class="profile-identity">
           <input
-            class="auth-card__nickname"
-            type="nickname"
-            :value="user?.nickName || ''"
-            placeholder="同步微信昵称"
+            class="profile-name-input"
+            type="text"
+            :value="displayName"
+            placeholder="Your nickname"
             @blur="handleNicknameBlur"
           />
+          <view class="profile-account-row">
+            <view class="profile-status-dot" />
+            <view>{{ accountStatus }}</view>
+          </view>
+        </view>
+
+        <button
+          v-if="shouldShowRetry"
+          class="profile-retry-button"
+          :disabled="loading"
+          @click="handleLogin"
+        >
+          {{ loading ? 'Wait' : 'Retry' }}
+        </button>
+      </view>
+
+      <view class="profile-companion-card">
+        <view>
+          <view class="profile-section-label">Companion</view>
+          <view class="profile-companion-title">{{ companionName }}</view>
+          <view class="profile-companion-subtitle">{{ companionStage }} stage</view>
+        </view>
+        <view class="profile-pet-mark">K</view>
+      </view>
+
+      <view class="profile-stat-grid">
+        <view v-for="item in statRows" :key="item.label" class="profile-stat-item">
+          <view class="profile-stat-head">
+            <view>{{ item.label }}</view>
+            <view>{{ item.value }}</view>
+          </view>
+          <view class="profile-stat-track">
+            <view class="profile-stat-fill" :style="{ width: `${item.value}%` }" />
+          </view>
         </view>
       </view>
 
-      <view class="panel-block" v-for="item in summaryCards" :key="item.title">
-        <view class="eyebrow">{{ item.label }}</view>
-        <view>{{ item.title }}</view>
-        <view>{{ item.description }}</view>
+      <view v-if="error" class="profile-error-card">
+        <view>Connection issue</view>
+        <view>{{ error }}</view>
       </view>
+    </view>
 
-      <view class="panel-block panel-block--full">
-        <view class="eyebrow">Core Modules</view>
-        <view>Open feature pages</view>
-        <view class="profile-shortcuts">
-          <button class="profile-shortcut-button" @click="openPlanner">{{ t.nav.planner }}</button>
-          <button class="profile-shortcut-button" @click="openHardware">{{ t.nav.hardware }}</button>
-          <button class="profile-shortcut-button" @click="openSettings">{{ t.nav.settings }}</button>
+    <view class="profile-menu-card">
+      <button class="profile-menu-row" @click="openPlanner">
+        <view class="profile-menu-icon profile-menu-icon--sun">P</view>
+        <view>
+          <view>Plans</view>
+          <view>Daily tasks and gentle reminders</view>
         </view>
-      </view>
+        <view class="profile-menu-arrow">></view>
+      </button>
+
+      <button class="profile-menu-row" @click="openHardware">
+        <view class="profile-menu-icon profile-menu-icon--mint">H</view>
+        <view>
+          <view>Hardware</view>
+          <view>Bind device and sync status</view>
+        </view>
+        <view class="profile-menu-arrow">></view>
+      </button>
+
+      <button class="profile-menu-row" @click="openSettings">
+        <view class="profile-menu-icon profile-menu-icon--sky">S</view>
+        <view>
+          <view>Settings</view>
+          <view>Privacy, language, and preferences</view>
+        </view>
+        <view class="profile-menu-arrow">></view>
+      </button>
     </view>
   </view>
 </template>

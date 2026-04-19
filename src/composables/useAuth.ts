@@ -61,7 +61,7 @@ const callWechatCloudFunction = async <T>(name: string, data?: Record<string, un
   const wxApi = (globalThis as { wx?: { cloud?: { callFunction?: (options: unknown) => Promise<{ result: T }> } } }).wx
 
   if (!wxApi?.cloud?.callFunction) {
-    throw new Error('当前环境不支持微信云开发调用')
+    throw new Error('WeChat cloud is not available in this environment.')
   }
 
   const response = await wxApi.cloud.callFunction({
@@ -80,6 +80,10 @@ const useMockLogin = () => {
 }
 
 const login = async () => {
+  if (loading.value) {
+    return
+  }
+
   loading.value = true
   error.value = ''
 
@@ -94,7 +98,7 @@ const login = async () => {
     pet.value = result.pet
     isMockSession.value = Boolean(result.isMock)
   } catch (caughtError) {
-    error.value = caughtError instanceof Error ? caughtError.message : '微信自动登录失败，请稍后重试'
+    error.value = caughtError instanceof Error ? caughtError.message : 'WeChat auto login failed. Please try again.'
   } finally {
     loading.value = false
   }
@@ -125,7 +129,7 @@ const syncUserProfile = async (profile: { nickName?: string; avatarUrl?: string 
     user.value = result.user
     pet.value = result.pet
   } catch (caughtError) {
-    error.value = caughtError instanceof Error ? caughtError.message : '同步用户资料失败，请稍后重试'
+    error.value = caughtError instanceof Error ? caughtError.message : 'Profile sync failed. Please try again.'
   } finally {
     loading.value = false
   }
