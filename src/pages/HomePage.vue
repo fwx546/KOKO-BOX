@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import StatusCard from '../components/StatusCard.vue'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
@@ -8,6 +8,11 @@ import type { StatKey } from '../i18n'
 const { t } = useLanguage()
 const { pet, carePet } = useKokoState()
 const showGrowthPopup = ref(false)
+const petImageSrc = ref('')
+
+onMounted(() => {
+  petImageSrc.value = ['/static', 'pet', '1.png'].join('/')
+})
 
 const growthSteps = [
   '蛋期',
@@ -65,7 +70,7 @@ const openPage = (url: string) => {
       <view class="hero-card panel-block--full home-pet-card">
         <view class="hero-layout hero-layout--centered">
           <view class="pet-image-frame">
-            <image class="home-pet-image" src="/static/pet/home-pet-cutout.png" mode="widthFix" />
+            <image class="home-pet-image" :src="petImageSrc" mode="widthFix" />
           </view>
 
           <view class="hero-copy hero-copy--centered">
