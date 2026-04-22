@@ -1380,20 +1380,22 @@ button {
 }
 
 .login-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 20px 8px 8px;
   display: grid;
   gap: 18px;
 }
 
-.login-hero,
-.login-panel {
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 12px 32px rgba(61, 82, 132, 0.06);
+.login-header {
+  display: grid;
+  gap: 8px;
 }
 
-.login-hero {
-  padding: 22px;
+.login-shell {
+  padding: 6px 0 0;
+  display: grid;
+  gap: 14px;
 }
 
 .login-kicker {
@@ -1405,111 +1407,62 @@ button {
 }
 
 .login-title {
-  max-width: 13em;
-  margin-top: 8px;
+  max-width: 11em;
   color: var(--text);
-  font-size: 1.72rem;
-  line-height: 1.22;
+  font-size: 1.9rem;
+  line-height: 1.14;
   font-weight: 800;
 }
 
 .login-copy {
-  max-width: 34em;
-  margin-top: 12px;
-  color: var(--muted);
-  line-height: 1.65;
-}
-
-.login-badge-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 14px;
-}
-
-.login-badge {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: #f3f6fb;
-  color: #5f6e8f;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.login-panel {
-  padding: 20px;
-}
-
-.login-panel-head {
-  margin-bottom: 14px;
-}
-
-.login-panel-title {
-  font-size: 1.02rem;
-  font-weight: 800;
-}
-
-.login-panel-copy {
-  margin-top: 4px;
+  max-width: 28em;
   color: var(--muted);
   line-height: 1.55;
 }
 
-.login-choice-grid {
+.login-mode-switch {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #eef3f9;
 }
 
-.login-choice-card {
-  width: 100%;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(126, 138, 168, 0.14);
-  background: #f8fafc;
-  color: var(--text);
-  text-align: left;
-}
-
-.login-choice-card--active {
-  border-color: rgba(74, 95, 143, 0.2);
-  background: linear-gradient(180deg, #ffffff 0%, #f5f8fd 100%);
-  box-shadow: 0 10px 20px rgba(61, 82, 132, 0.06);
-}
-
-.login-choice-title {
-  font-size: 1rem;
-  font-weight: 900;
-}
-
-.login-choice-copy {
-  margin-top: 4px;
+.login-mode-button {
+  min-height: 40px;
+  border-radius: 999px;
+  background: transparent;
   color: var(--muted);
-  line-height: 1.45;
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
-.login-profile-card,
-.login-custom-card,
-.login-error-card {
-  margin-top: 14px;
-  padding: 16px;
-  border-radius: 22px;
-  border: 1px solid rgba(126, 138, 168, 0.14);
-  background: #f8fafc;
+.login-mode-button--active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(61, 82, 132, 0.08);
 }
 
-.login-profile-card {
+.login-form-row {
   display: flex;
   align-items: center;
   gap: 14px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(126, 138, 168, 0.12);
+}
+
+.login-form-row--single {
+  display: block;
 }
 
 .login-avatar-button {
-  width: 84px;
-  height: 84px;
+  width: 64px;
+  height: 64px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 24px;
+  border-radius: 22px;
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -1528,52 +1481,43 @@ button {
 }
 
 .login-avatar-placeholder {
-  font-size: 0.92rem;
-  font-weight: 900;
+  font-size: 0.74rem;
+  font-weight: 800;
 }
 
-.login-profile-fields {
+.login-inline-fields {
   flex: 1;
   min-width: 0;
 }
 
-.login-field-label {
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
 .login-name-input {
   width: 100%;
-  min-height: 42px;
-  margin-top: 4px;
+  min-height: 44px;
+  margin-top: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
-  font-size: 1.08rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
-.login-name-input--custom {
-  margin-top: 8px;
+.login-helper-text {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
-.login-helper-text {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.8rem;
+.login-inline-error {
+  color: #b5473f;
+  font-size: 0.82rem;
   line-height: 1.45;
 }
 
-.login-error-card {
-  color: #b5473f;
-  line-height: 1.5;
-}
-
 .login-submit-button {
-  margin-top: 16px;
-  min-height: 48px;
+  margin-top: 4px;
+  min-height: 50px;
   border-radius: 999px;
   background: #23314f;
   color: #ffffff;
@@ -1583,12 +1527,4 @@ button {
 
 .login-submit-button[disabled] {
   opacity: 0.62;
-}
-
-.login-footnote {
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.5;
-  text-align: center;
 }

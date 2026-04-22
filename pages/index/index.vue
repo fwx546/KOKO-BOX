@@ -79,64 +79,51 @@ onShow(() => {
 <template>
   <PageScaffold>
     <view class="login-page">
-      <view class="login-hero">
+      <view class="login-header">
         <view class="login-kicker">Koko Box</view>
-        <view class="login-title">A soft start for your companion space.</view>
-        <view class="login-copy">Sign in with WeChat, then decide whether to keep your WeChat profile or start with your own nickname.</view>
-        <view class="login-badge-row">
-          <view class="login-badge">Bright UI</view>
-          <view class="login-badge">English only</view>
-        </view>
+        <view class="login-title">Sign in and start gently.</view>
+        <view class="login-copy">Use your WeChat profile or begin with a custom nickname.</view>
       </view>
 
-      <view class="login-panel">
-        <view class="login-panel-head">
-          <view class="login-panel-title">Choose your setup</view>
-          <view class="login-panel-copy">You can change your profile details later in Settings.</view>
-        </view>
-
-        <view class="login-choice-grid">
+      <view class="login-shell">
+        <view class="login-mode-switch">
           <button
-            class="login-choice-card"
-            :class="{ 'login-choice-card--active': useWechatProfile }"
+            class="login-mode-button"
+            :class="{ 'login-mode-button--active': useWechatProfile }"
             @click="useWechatProfile = true"
           >
-            <view class="login-choice-title">Use my WeChat profile</view>
-            <view class="login-choice-copy">Keep the WeChat avatar and nickname you confirm here.</view>
+            WeChat profile
           </button>
-
           <button
-            class="login-choice-card"
-            :class="{ 'login-choice-card--active': !useWechatProfile }"
+            class="login-mode-button"
+            :class="{ 'login-mode-button--active': !useWechatProfile }"
             @click="useWechatProfile = false"
           >
-            <view class="login-choice-title">Create a custom nickname</view>
-            <view class="login-choice-copy">Start with your own name and update the avatar later.</view>
+            Custom nickname
           </button>
         </view>
 
-        <view v-if="useWechatProfile" class="login-profile-card">
+        <view v-if="useWechatProfile" class="login-form-row">
           <button class="login-avatar-button" open-type="chooseAvatar" @chooseavatar="handleChooseAvatar">
             <image v-if="avatarFilePath" class="login-avatar-image" :src="avatarFilePath" mode="aspectFill" />
             <view v-else class="login-avatar-placeholder">Avatar</view>
           </button>
 
-          <view class="login-profile-fields">
+          <view class="login-inline-fields">
             <input
               class="login-name-input"
               type="nickname"
               :value="wechatNickname"
-              placeholder="Tap to confirm your WeChat nickname"
+              placeholder="Confirm your WeChat nickname"
               @blur="handleWechatNicknameBlur"
             />
-            <view class="login-helper-text">Your avatar and nickname are only synced after you explicitly confirm them.</view>
+            <view class="login-helper-text">Only the details you confirm here will be saved.</view>
           </view>
         </view>
 
-        <view v-else class="login-custom-card">
-          <view class="login-field-label">Your nickname</view>
+        <view v-else class="login-form-row login-form-row--single">
           <input
-            class="login-name-input login-name-input--custom"
+            class="login-name-input"
             type="text"
             maxlength="20"
             :value="customNickname"
@@ -145,16 +132,13 @@ onShow(() => {
           />
         </view>
 
-        <view v-if="error" class="login-error-card">
-          <view>Something interrupted sign-in</view>
-          <view>{{ error }}</view>
+        <view v-if="error" class="login-inline-error">
+          {{ error }}
         </view>
 
         <button class="login-submit-button" :disabled="!canContinue" @click="submitLogin">
           {{ loading ? 'Signing in...' : 'Continue with WeChat' }}
         </button>
-
-        <view class="login-footnote">After the first sign-in, Koko Box will open straight to Home.</view>
       </view>
     </view>
   </PageScaffold>
