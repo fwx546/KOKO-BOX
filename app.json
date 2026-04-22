@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/index/index",
     "pages/home/index",
     "pages/care/index",
     "pages/chat/index",
@@ -7,8 +8,7 @@
     "pages/profile/index",
     "pages/planner/index",
     "pages/hardware/index",
-    "pages/settings/index",
-    "pages/index/index"
+    "pages/settings/index"
   ],
   "tabBar": {
     "color": "#66708e",

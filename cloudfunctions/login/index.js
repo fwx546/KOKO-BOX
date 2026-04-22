@@ -73,7 +73,7 @@ exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext()
 
   if (!OPENID) {
-    throw new Error('无法获取微信用户身份，请确认云开发环境已正确开启')
+    throw new Error('Unable to identify the current WeChat user. Please confirm CloudBase is enabled correctly.')
   }
 
   const profile = pickProfile(event.profile)
@@ -102,6 +102,10 @@ exports.main = async (event = {}) => {
       if (profile.avatarUrl !== undefined) {
         data.avatarUrl = profile.avatarUrl
       }
+    }
+
+    if (typeof event.onboardingDone === 'boolean') {
+      data.onboardingDone = event.onboardingDone
     }
 
     await users.doc(user._id).update({ data })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLanguage } from '../composables/useLanguage'
 
-const { t, language, setLanguage } = useLanguage()
+const { t } = useLanguage()
 </script>
 
 <template>
@@ -33,22 +33,9 @@ const { t, language, setLanguage } = useLanguage()
 
       <view class="panel-block panel-block--full">
         <view class="eyebrow">{{ t.settings.languageLabel }}</view>
-        <view>{{ t.settings.languageTitle }}</view>
-        <view class="language-switch">
-          <button
-            class="language-switch__button"
-            :class="{ 'language-switch__button--active': language === 'zh' }"
-            @click="setLanguage('zh')"
-          >
-            {{ t.app.langChinese }}
-          </button>
-          <button
-            class="language-switch__button"
-            :class="{ 'language-switch__button--active': language === 'en' }"
-            @click="setLanguage('en')"
-          >
-            {{ t.app.langEnglish }}
-          </button>
+        <view>English only for now</view>
+        <view class="bullet-list">
+          <view>Full language switching will be added in a later iteration.</view>
         </view>
       </view>
     </view>

@@ -1,6 +1,12 @@
 {
   "pages": [
     {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
       "path": "pages/home/index",
       "style": {
         "navigationBarTitleText": "Koko Box"
@@ -44,12 +50,6 @@
     },
     {
       "path": "pages/settings/index",
-      "style": {
-        "navigationBarTitleText": "Koko Box"
-      }
-    },
-    {
-      "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "Koko Box"
       }

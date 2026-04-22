@@ -17,5 +17,6 @@
   "miniprogramRoot": "unpackage/dist/mp-weixin/",
   "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "koko-box-ui-prototype",
-  "condition": {}
+  "condition": {},
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }
