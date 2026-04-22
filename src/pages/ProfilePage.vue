@@ -29,6 +29,10 @@ const openPage = (url: string) => {
   uni.navigateTo({ url })
 }
 
+const openTabPage = (url: string) => {
+  uni.switchTab({ url })
+}
+
 const handleLogin = () => {
   void login()
 }
@@ -84,7 +88,6 @@ onMounted(() => {
           <view class="profile-profile-tip">Tap the avatar or nickname field to import your WeChat profile.</view>
         </view>
 
-<<<<<<< HEAD
         <button v-if="shouldShowRetry" class="profile-retry-button" :disabled="loading" @click="handleLogin">
           {{ loading ? '请稍候' : '重试连接' }}
         </button>
@@ -153,7 +156,7 @@ onMounted(() => {
     </view>
 
     <view class="profile-menu-card">
-      <button class="profile-menu-row" @click="openPage('/pages/planner/index')">
+      <button class="profile-menu-row" @click="openTabPage('/pages/planner/index')">
         <view class="profile-menu-icon profile-menu-icon--sun">P</view>
         <view>
           <view>计划</view>

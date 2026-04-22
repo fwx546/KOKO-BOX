@@ -37,6 +37,18 @@
       }
     },
     {
+      "path": "pages/archive/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
+      "path": "pages/town/index",
+      "style": {
+        "navigationBarTitleText": "Koko Box"
+      }
+    },
+    {
       "path": "pages/planner/index",
       "style": {
         "navigationBarTitleText": "Koko Box"
@@ -68,22 +80,16 @@
         "selectedIconPath": "static/tab/tab-rest-active.png"
       },
       {
-        "pagePath": "pages/care/index",
-        "text": "养成",
+        "pagePath": "pages/planner/index",
+        "text": "待办",
         "iconPath": "static/tab/tab-grow.png",
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },
       {
-        "pagePath": "pages/chat/index",
-        "text": "聊天",
+        "pagePath": "pages/care/index",
+        "text": "互动",
         "iconPath": "static/tab/tab-talk.png",
         "selectedIconPath": "static/tab/tab-talk-active.png"
-      },
-      {
-        "pagePath": "pages/stats/index",
-        "text": "统计",
-        "iconPath": "static/tab/tab-track.png",
-        "selectedIconPath": "static/tab/tab-track-active.png"
       },
       {
         "pagePath": "pages/profile/index",

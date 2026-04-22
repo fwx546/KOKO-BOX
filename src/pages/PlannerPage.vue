@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import ReminderCard from '../components/ReminderCard.vue'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 import type { RewardType, TaskCategory, TaskRepeatType } from '../types/koko'
 
 const { t } = useLanguage()
-const { tasks, createTask, setTaskStatus } = useKokoState()
+const { tasks, recentReminders, createTask, setTaskStatus } = useKokoState()
 
 const taskTitle = ref('')
 const taskTime = ref('09:00')
@@ -65,16 +66,52 @@ const createNewTask = () => {
   <view class="page-view">
     <view class="page-head">
       <view>
-        <view class="eyebrow">{{ t.planner.eyebrow }}</view>
-        <view>{{ t.planner.title }}</view>
+        <view class="eyebrow">时间安排</view>
+        <view>今日代办</view>
       </view>
-      <view>{{ t.planner.subtitle }}</view>
+      <view>优先处理今天最重要的事项，并关注最近提醒。</view>
     </view>
 
     <view class="page-grid-2">
       <view class="panel-block">
-        <view class="eyebrow">{{ t.planner.formLabel }}</view>
-        <view>{{ t.planner.formTitle }}</view>
+        <view class="eyebrow">最近提醒</view>
+        <view>任务与联动提醒</view>
+        <view class="reminder-list">
+          <ReminderCard
+            v-for="item in recentReminders"
+            :key="item.id"
+            :title="item.title"
+            :subtitle="item.subtitle"
+            :badge="item.badge"
+            :tone="item.tone"
+          />
+        </view>
+      </view>
+
+      <view class="panel-block panel-block--full">
+        <view class="eyebrow">今日代办</view>
+        <view>待办列表与进度更新</view>
+        <view class="task-list">
+          <view v-for="task in orderedTasks" :key="task.id" class="task-card">
+            <view class="task-card__head">
+              <view>
+                <view class="task-card__title">{{ task.title }}</view>
+                <view class="task-card__meta">{{ task.time }} · {{ task.category }} · {{ task.rewardType }}</view>
+              </view>
+              <view class="task-card__status">{{ task.status }}</view>
+            </view>
+            <view class="pill-row">
+              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'completed')">完成</button>
+              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'delayed')">延期</button>
+              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'skipped')">跳过</button>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="panel-block panel-block--full">
+        <view class="eyebrow">新增代办</view>
+        <view>快速创建今日任务</view>
         <view class="form-stack">
           <input v-model="taskTitle" class="input-field" placeholder="输入任务标题" />
           <input v-model="taskTime" class="input-field" placeholder="时间，例如 18:30" />
@@ -121,37 +158,6 @@ const createNewTask = () => {
             </view>
           </view>
           <button class="quick-action-button" @click="createNewTask">创建任务</button>
-        </view>
-      </view>
-
-      <view class="panel-block">
-        <view class="eyebrow">{{ t.planner.guideLabel }}</view>
-        <view>{{ t.planner.guideTitle }}</view>
-        <view class="ordered-list">
-          <view>创建一条新的任务，让它出现在首页待办摘要。</view>
-          <view>在硬件页触发“到点提醒”，演示跨端联动提示。</view>
-          <view>回到这里标记完成，观察宠物心情和亲密度提升。</view>
-        </view>
-      </view>
-
-      <view class="panel-block panel-block--full">
-        <view class="eyebrow">{{ t.planner.listLabel }}</view>
-        <view>{{ t.planner.listTitle }}</view>
-        <view class="task-list">
-          <view v-for="task in orderedTasks" :key="task.id" class="task-card">
-            <view class="task-card__head">
-              <view>
-                <view class="task-card__title">{{ task.title }}</view>
-                <view class="task-card__meta">{{ task.time }} · {{ task.category }} · {{ task.rewardType }}</view>
-              </view>
-              <view class="task-card__status">{{ task.status }}</view>
-            </view>
-            <view class="pill-row">
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'completed')">完成</button>
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'delayed')">延期</button>
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'skipped')">跳过</button>
-            </view>
-          </view>
         </view>
       </view>
     </view>

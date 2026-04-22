@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import ReminderCard from '../components/ReminderCard.vue'
+import { computed, ref } from 'vue'
 import StatusCard from '../components/StatusCard.vue'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 import type { StatKey } from '../i18n'
 
 const { t } = useLanguage()
-const { pet, pendingTasks, recentReminders, carePet, syncEvents, settings } = useKokoState()
+const { pet, carePet } = useKokoState()
+const showGrowthPopup = ref(false)
+
+const growthSteps = [
+  '蛋期',
+  '幼体',
+  '成长期',
+  '成熟期',
+  '守护期',
+]
 
 const statColors: Record<StatKey, string> = {
   health: 'var(--mint)',
@@ -38,39 +46,6 @@ const statEntries = computed(() => {
   }))
 })
 
-const currentScene = computed(() => {
-  const map = {
-    normal: {
-      title: '今天状态平稳',
-      line: '情绪和精力都处于适合推进任务的区间。',
-    },
-    hungry: {
-      title: '有点饿了',
-      line: '先补一顿主食，后续互动会更积极。',
-    },
-    tired: {
-      title: '需要休息',
-      line: '把可可送回窝里休息，精力会更快恢复。',
-    },
-    low: {
-      title: '情绪偏低',
-      line: '适合先聊天安抚，再做一件很小的事。',
-    },
-    sick: {
-      title: '状态脆弱',
-      line: '建议优先治疗和清洁，避免持续下滑。',
-    },
-    resting: {
-      title: '正在休息',
-      line: '此时动作频率降低，更适合低打扰陪伴。',
-    },
-  }
-
-  return map[pet.value.state]
-})
-
-const latestSync = computed(() => syncEvents.value[0]?.summary || '还没有新的联动事件。')
-
 const openPage = (url: string) => {
   uni.navigateTo({ url })
 }
@@ -80,96 +55,31 @@ const openPage = (url: string) => {
   <view class="page-view">
     <view class="page-head">
       <view>
-        <view class="eyebrow">{{ t.home.eyebrow }}</view>
-        <view>{{ t.home.title }}</view>
+        <view class="eyebrow">宠物主界面</view>
+        <view>首页</view>
       </view>
-      <view>{{ t.home.subtitle }}</view>
+      <view>今天继续和团子一起成长吧。</view>
     </view>
 
-    <view class="page-grid-2">
-      <view class="hero-card panel-block--full">
-        <view class="hero-layout">
-          <view class="pet-figure">
-            <view class="pet-figure__ear pet-figure__ear--left" />
-            <view class="pet-figure__ear pet-figure__ear--right" />
-            <view class="pet-figure__face">
-              <view class="pet-figure__eye" />
-              <view class="pet-figure__eye" />
-              <view class="pet-figure__mouth" />
-            </view>
+    <view class="page-grid-2 page-home-stack">
+      <view class="hero-card panel-block--full home-pet-card">
+        <view class="hero-layout hero-layout--centered">
+          <view class="pet-image-frame">
+            <image class="home-pet-image" src="/static/pet/home-pet-cutout.png" mode="widthFix" />
           </view>
 
-          <view class="hero-copy">
-            <view class="eyebrow">{{ t.home.heroTitle }}</view>
+          <view class="hero-copy hero-copy--centered">
+            <view class="eyebrow">我的宠物</view>
             <view>{{ pet.name }} · {{ pet.stage }} · {{ pet.state }}</view>
-            <view>{{ currentScene.title }}</view>
-            <view class="muted-line">{{ currentScene.line }}</view>
-            <view class="summary-card__list">
-              <view>
-                <view>主线定位</view>
-                <view>{{ settings.demoMode ? 'Demo 模式已开启' : '真实交互模式' }}</view>
-              </view>
-              <view>
-                <view>最近联动</view>
-                <view>{{ latestSync }}</view>
-              </view>
-              <view>
-                <view>待办数量</view>
-                <view>{{ pendingTasks.length }} 项</view>
-              </view>
-            </view>
+            <view>圆圆的团子今天软乎乎的，继续陪伴就能慢慢长大。</view>
+            <button class="quick-action-button" @click="showGrowthPopup = true">成长阶段</button>
           </view>
         </view>
       </view>
 
-      <view class="panel-block">
-        <view class="eyebrow">{{ t.home.actionLabel }}</view>
-        <view>{{ t.home.actionTitle }}</view>
-        <view class="quick-action-grid">
-          <button class="quick-action-button" @click="carePet('feedMeal')">喂主食</button>
-          <button class="quick-action-button" @click="carePet('clean')">清洁</button>
-          <button class="quick-action-button" @click="carePet('heal')">治疗</button>
-          <button class="quick-action-button" @click="carePet('play')">互动</button>
-          <button class="quick-action-button" @click="carePet('rest')">回窝休息</button>
-          <button class="quick-action-button quick-action-button--ghost" @click="openPage('/pages/planner/index')">
-            打开计划页
-          </button>
-        </view>
-      </view>
-
-      <view class="panel-block">
-        <view class="eyebrow">{{ t.home.taskLabel }}</view>
-        <view>{{ t.home.taskTitle }}</view>
-        <view class="simple-list">
-          <view v-for="task in pendingTasks.slice(0, 3)" :key="task.id">
-            <view>{{ task.title }}</view>
-            <view>{{ task.time }}</view>
-          </view>
-          <view v-if="!pendingTasks.length">
-            <view>今天没有待办任务</view>
-            <view>可去计划页新增</view>
-          </view>
-        </view>
-      </view>
-
-      <view class="panel-block">
-        <view class="eyebrow">{{ t.home.reminderLabel }}</view>
-        <view>{{ t.home.reminderTitle }}</view>
-        <view class="reminder-list">
-          <ReminderCard
-            v-for="item in recentReminders.slice(0, 3)"
-            :key="item.id"
-            :title="item.title"
-            :subtitle="item.subtitle"
-            :badge="item.badge"
-            :tone="item.tone"
-          />
-        </view>
-      </view>
-
-      <view class="panel-block panel-block--full">
-        <view class="eyebrow">{{ t.home.statusLabel }}</view>
-        <view>{{ t.home.statusTitle }}</view>
+      <view class="panel-block panel-block--full home-attribute-panel">
+        <view class="eyebrow">属性概览</view>
+        <view>健康、心情、饥饿、精力、亲密度、清洁度</view>
         <view class="stats-grid">
           <StatusCard
             v-for="item in statEntries"
@@ -180,6 +90,42 @@ const openPage = (url: string) => {
             :color="item.color"
           />
         </view>
+      </view>
+
+      <view class="panel-block">
+        <view class="eyebrow">宠物照料</view>
+        <view>日常互动</view>
+        <view class="quick-action-grid">
+          <button class="quick-action-button" @click="carePet('feedMeal')">喂食</button>
+          <button class="quick-action-button" @click="carePet('clean')">清洁</button>
+          <button class="quick-action-button" @click="carePet('rest')">打理小窝</button>
+          <button class="quick-action-button" @click="carePet('play')">装扮</button>
+        </view>
+      </view>
+
+      <view class="panel-block">
+        <view class="eyebrow">生命档案</view>
+        <view>记录陪伴轨迹</view>
+        <view class="muted-line">查看领养时间、成长阶段、病史和里程碑记录。</view>
+        <view class="action-stack">
+          <button class="quick-action-button quick-action-button--ghost" @click="openPage('/pages/archive/index')">
+            打开生命档案
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="showGrowthPopup" class="overlay-mask" @click="showGrowthPopup = false">
+      <view class="overlay-card" @click.stop>
+        <view class="eyebrow">成长路线</view>
+        <view>团子成长五阶段</view>
+        <view class="stage-row">
+          <view v-for="(item, index) in growthSteps" :key="item" class="stage-item stage-item--active">
+            <view>{{ index + 1 }}</view>
+            <view>{{ item }}</view>
+          </view>
+        </view>
+        <button class="quick-action-button quick-action-button--ghost" @click="showGrowthPopup = false">关闭</button>
       </view>
     </view>
   </view>
