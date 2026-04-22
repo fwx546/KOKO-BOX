@@ -1,64 +1,32 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { isWechatCloudConfigured } from '../config/cloud'
 import { useAuth } from '../composables/useAuth'
+import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 
-const { user, pet, loading, error, isMockSession, isLoggedIn, login, syncUserProfile, importWechatProfile } = useAuth()
-
-interface WechatPrivacyApi {
-  canIUse?: (schema: string) => boolean
-  getPrivacySetting?: (options: {
-    success?: (result: { needAuthorization?: boolean }) => void
-    fail?: () => void
-  }) => void
-  requirePrivacyAuthorize?: (options?: {
-    success?: () => void
-    fail?: () => void
-  }) => void
-}
-
-const getWechatApi = () => (globalThis as { wx?: WechatPrivacyApi }).wx
+const { t } = useLanguage()
+const { user, pet: authPet, loading, error, isMockSession, isLoggedIn, login, syncUserProfile } = useAuth()
+const { pet, archive, metrics, weeklyCompletionRate, syncPetFromAuth } = useKokoState()
 
 const displayName = computed(() => user.value?.nickName || 'Koko Friend')
 const accountStatus = computed(() => {
   if (loading.value) {
-    return 'Connecting...'
+    return '连接中...'
   }
 
   if (isLoggedIn.value) {
-    return isMockSession.value ? 'Preview mode' : 'Account connected'
+    return isMockSession.value ? '预览模式' : '微信已连接'
   }
 
-  return isWechatCloudConfigured() ? 'Sign in to sync your profile' : 'Preview mode'
+  return isWechatCloudConfigured() ? '点击重试连接' : '预览模式'
 })
-const companionName = computed(() => pet.value?.name || 'Koko')
-const companionStage = computed(() => pet.value?.stage || 'growing')
+
 const shouldShowRetry = computed(() => Boolean(error.value) || (!loading.value && !isLoggedIn.value))
 const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
-const statRows = computed(() => {
-  const currentPet = pet.value ?? {
-    mood: 82,
-    health: 88,
-    intimacy: 55,
-  }
 
-  return [
-    { label: 'Mood', value: currentPet.mood },
-    { label: 'Health', value: currentPet.health },
-    { label: 'Bond', value: currentPet.intimacy },
-  ]
-})
-
-const openPlanner = () => {
-  uni.navigateTo({ url: '/pages/planner/index' })
-}
-
-const openHardware = () => {
-  uni.navigateTo({ url: '/pages/hardware/index' })
-}
-
-const openSettings = () => {
-  uni.navigateTo({ url: '/pages/settings/index' })
+const openPage = (url: string) => {
+  uni.navigateTo({ url })
 }
 
 const handleLogin = () => {
@@ -73,45 +41,13 @@ const handleNicknameBlur = (event: { detail?: { value?: string } }) => {
   }
 }
 
-const handleChooseAvatar = (event: { detail?: { avatarUrl?: string } }) => {
-  const avatarFilePath = event.detail?.avatarUrl
-
-  if (avatarFilePath) {
-    void importWechatProfile({
-      nickName: user.value?.nickName,
-      avatarFilePath,
-    })
-  }
-}
-
-const handleAvatarTap = () => {
-  // #ifdef MP-WEIXIN
-  const wxApi = getWechatApi()
-
-  if (wxApi?.canIUse && !wxApi.canIUse('button.open-type.chooseAvatar')) {
-    uni.showToast({
-      title: 'Avatar import is not supported here',
-      icon: 'none',
-    })
-    return
-  }
-
-  wxApi?.getPrivacySetting?.({
-    success: (result) => {
-      if (result.needAuthorization) {
-        wxApi.requirePrivacyAuthorize?.({
-          fail: () => {
-            uni.showToast({
-              title: 'Please allow privacy access first',
-              icon: 'none',
-            })
-          },
-        })
-      }
-    },
-  })
-  // #endif
-}
+watch(
+  () => authPet.value,
+  (value) => {
+    syncPetFromAuth(value ?? undefined)
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   void login()
@@ -128,12 +64,7 @@ onMounted(() => {
       </view>
 
       <view class="profile-hero-top">
-        <button
-          class="profile-avatar profile-avatar-button"
-          open-type="chooseAvatar"
-          @click="handleAvatarTap"
-          @chooseavatar="handleChooseAvatar"
-        >
+        <button class="profile-avatar profile-avatar-button" open-type="chooseAvatar">
           <image v-if="user?.avatarUrl" :src="user.avatarUrl" mode="aspectFill" />
           <view v-else>{{ profileInitial }}</view>
         </button>
@@ -143,7 +74,7 @@ onMounted(() => {
             class="profile-name-input"
             type="nickname"
             :value="displayName"
-            placeholder="Tap to use your WeChat nickname"
+            placeholder="你的昵称"
             @blur="handleNicknameBlur"
           />
           <view class="profile-account-row">
@@ -153,67 +84,98 @@ onMounted(() => {
           <view class="profile-profile-tip">Tap the avatar or nickname field to import your WeChat profile.</view>
         </view>
 
-        <button
-          v-if="shouldShowRetry"
-          class="profile-retry-button"
-          :disabled="loading"
-          @click="handleLogin"
-        >
-          {{ loading ? 'Please wait' : 'Retry sign-in' }}
+<<<<<<< HEAD
+        <button v-if="shouldShowRetry" class="profile-retry-button" :disabled="loading" @click="handleLogin">
+          {{ loading ? '请稍候' : '重试连接' }}
         </button>
       </view>
 
       <view class="profile-companion-card">
         <view>
           <view class="profile-section-label">Companion</view>
-          <view class="profile-companion-title">{{ companionName }}</view>
-          <view class="profile-companion-subtitle">{{ companionStage }} stage</view>
+          <view class="profile-companion-title">{{ pet.name }}</view>
+          <view class="profile-companion-subtitle">{{ pet.stage }} · {{ pet.state }}</view>
         </view>
         <view class="profile-pet-mark">KB</view>
       </view>
 
       <view class="profile-stat-grid">
-        <view v-for="item in statRows" :key="item.label" class="profile-stat-item">
+        <view class="profile-stat-item">
           <view class="profile-stat-head">
-            <view>{{ item.label }}</view>
-            <view>{{ item.value }}</view>
+            <view>心情</view>
+            <view>{{ pet.mood }}</view>
           </view>
-          <view class="profile-stat-track">
-            <view class="profile-stat-fill" :style="{ width: `${item.value}%` }" />
+          <view class="profile-stat-track"><view class="profile-stat-fill" :style="{ width: `${pet.mood}%` }" /></view>
+        </view>
+        <view class="profile-stat-item">
+          <view class="profile-stat-head">
+            <view>亲密度</view>
+            <view>{{ pet.intimacy }}</view>
           </view>
+          <view class="profile-stat-track"><view class="profile-stat-fill" :style="{ width: `${pet.intimacy}%` }" /></view>
+        </view>
+        <view class="profile-stat-item">
+          <view class="profile-stat-head">
+            <view>完成率</view>
+            <view>{{ weeklyCompletionRate }}%</view>
+          </view>
+          <view class="profile-stat-track"><view class="profile-stat-fill" :style="{ width: `${weeklyCompletionRate}%` }" /></view>
         </view>
       </view>
 
       <view v-if="error" class="profile-error-card">
-        <view>Connection issue</view>
+        <view>连接异常</view>
         <view>{{ error }}</view>
       </view>
     </view>
 
+    <view class="panel-block">
+      <view class="eyebrow">{{ t.profile.archiveLabel }}</view>
+      <view>{{ t.profile.archiveTitle }}</view>
+      <view class="archive-grid">
+        <view class="archive-item">
+          <view>领养时间</view>
+          <view>{{ archive.adoptedAt }}</view>
+        </view>
+        <view class="archive-item">
+          <view>陪伴时长</view>
+          <view>{{ metrics.companionMinutes }} 分钟</view>
+        </view>
+        <view class="archive-item">
+          <view>最近病史</view>
+          <view>{{ archive.medicalLogs[0]?.note || '暂无' }}</view>
+        </view>
+        <view class="archive-item">
+          <view>最近里程碑</view>
+          <view>{{ archive.milestones[0]?.title || '暂无' }}</view>
+        </view>
+      </view>
+    </view>
+
     <view class="profile-menu-card">
-      <button class="profile-menu-row" @click="openPlanner">
-        <view class="profile-menu-icon profile-menu-icon--sun">PL</view>
+      <button class="profile-menu-row" @click="openPage('/pages/planner/index')">
+        <view class="profile-menu-icon profile-menu-icon--sun">P</view>
         <view>
-          <view>Plans</view>
-          <view>Daily rhythms, task lists, and light reminders</view>
+          <view>计划</view>
+          <view>管理待办和完成奖励</view>
         </view>
         <view class="profile-menu-arrow">-></view>
       </button>
 
-      <button class="profile-menu-row" @click="openHardware">
-        <view class="profile-menu-icon profile-menu-icon--mint">HW</view>
+      <button class="profile-menu-row" @click="openPage('/pages/hardware/index')">
+        <view class="profile-menu-icon profile-menu-icon--mint">H</view>
         <view>
-          <view>Hardware</view>
-          <view>Device pairing and sync overview</view>
+          <view>硬件</view>
+          <view>查看三端联动状态和同步日志</view>
         </view>
         <view class="profile-menu-arrow">-></view>
       </button>
 
-      <button class="profile-menu-row" @click="openSettings">
-        <view class="profile-menu-icon profile-menu-icon--sky">ST</view>
+      <button class="profile-menu-row" @click="openPage('/pages/settings/index')">
+        <view class="profile-menu-icon profile-menu-icon--sky">S</view>
         <view>
-          <view>Settings</view>
-          <view>Privacy, reminders, and account preferences</view>
+          <view>设置</view>
+          <view>切换语言、隐私和 Demo 模式</view>
         </view>
         <view class="profile-menu-arrow">-></view>
       </button>

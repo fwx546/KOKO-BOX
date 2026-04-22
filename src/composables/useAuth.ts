@@ -158,6 +158,7 @@ const login = async () => {
     writeOnboardingState(Boolean(result.user.onboardingDone))
   } catch (caughtError) {
     error.value = caughtError instanceof Error ? caughtError.message : 'WeChat auto login failed. Please try again.'
+    useMockLogin()
   } finally {
     loading.value = false
   }
@@ -194,6 +195,11 @@ const syncUserProfile = async (profile: { nickName?: string; avatarUrl?: string;
     writeOnboardingState(Boolean(result.user.onboardingDone))
   } catch (caughtError) {
     error.value = caughtError instanceof Error ? caughtError.message : 'Profile sync failed. Please try again.'
+    user.value = {
+      ...(user.value ?? mockUser),
+      nickName: profile.nickName?.trim() || user.value?.nickName || mockUser.nickName,
+      avatarUrl: profile.avatarUrl || user.value?.avatarUrl || '',
+    }
   } finally {
     loading.value = false
   }

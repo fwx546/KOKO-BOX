@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "npm run dev:mp-weixin",
     "prepare:mp-weixin-assets": "node scripts/copy-tab-icons.mjs",
-    "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni dev -p mp-weixin --outDir unpackage/dist/mp-weixin",
+    "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni dev -p mp-weixin --outDir unpackage/dist/build/mp-weixin",
+    "dev:mp-weixin:local": "powershell -ExecutionPolicy Bypass -File scripts/dev-mp-weixin.ps1",
     "build": "npm run build:mp-weixin",
-    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin --outDir unpackage/dist/mp-weixin && npm run prepare:mp-weixin-assets"
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin --outDir unpackage/dist/build/mp-weixin && npm run prepare:mp-weixin-assets",
+    "build:mp-weixin:local": "powershell -ExecutionPolicy Bypass -File scripts/build-mp-weixin.ps1"
   },
   "dependencies": {
-    "vue": "^3.5.13"
+    "vue": "3.4.21"
   },
   "devDependencies": {
     "@dcloudio/types": "^3.4.28",

@@ -18,49 +18,35 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "Rest",
+        "text": "首页",
         "iconPath": "static/tab/tab-rest.png",
         "selectedIconPath": "static/tab/tab-rest-active.png"
       },
       {
         "pagePath": "pages/care/index",
-        "text": "Grow",
+        "text": "养成",
         "iconPath": "static/tab/tab-grow.png",
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },
       {
         "pagePath": "pages/chat/index",
-        "text": "Talk",
+        "text": "聊天",
         "iconPath": "static/tab/tab-talk.png",
         "selectedIconPath": "static/tab/tab-talk-active.png"
       },
       {
         "pagePath": "pages/stats/index",
-        "text": "Track",
+        "text": "统计",
         "iconPath": "static/tab/tab-track.png",
         "selectedIconPath": "static/tab/tab-track-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "Profile",
+        "text": "我的",
         "iconPath": "static/tab/tab-profile.png",
         "selectedIconPath": "static/tab/tab-profile-active.png"
       }
     ]
-  },
-  "usingComponents": {
-    "page-scaffold": "/src/components/PageScaffold",
-    "status-card": "/src/components/StatusCard",
-    "reminder-card": "/src/components/ReminderCard",
-    "device-card": "/src/components/DeviceCard",
-    "home-page": "/src/pages/HomePage",
-    "care-page": "/src/pages/CarePage",
-    "chat-page": "/src/pages/ChatPage",
-    "stats-page": "/src/pages/StatsPage",
-    "profile-page": "/src/pages/ProfilePage",
-    "planner-page": "/src/pages/PlannerPage",
-    "hardware-page": "/src/pages/HardwarePage",
-    "settings-page": "/src/pages/SettingsPage"
   },
   "window": {
     "navigationBarTitleText": "Koko Box",

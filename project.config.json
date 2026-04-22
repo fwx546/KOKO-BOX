@@ -1,7 +1,8 @@
 {
   "description": "Project configuration for WeChat Mini Program",
   "packOptions": {
-    "ignore": []
+    "ignore": [],
+    "include": []
   },
   "setting": {
     "urlCheck": false,
@@ -9,14 +10,32 @@
     "enhance": true,
     "postcss": true,
     "minified": true,
-    "minifyWXML": true
+    "minifyWXML": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "compileType": "miniprogram",
   "libVersion": "trial",
   "appid": "wx90ec72eb27dedd5b",
-  "miniprogramRoot": "unpackage/dist/mp-weixin/",
+  "miniprogramRoot": "unpackage/dist/build/mp-weixin/",
   "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "koko-box-ui-prototype",
   "condition": {},
-  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }
