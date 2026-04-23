@@ -28,18 +28,18 @@ const visibleMessages = computed(() =>
   })),
 )
 
-const submit = () => {
+const submit = async () => {
   if (!draft.value.trim()) {
     return
   }
 
-  sendChatMessage(draft.value, selectedEmotion.value)
+  await sendChatMessage(draft.value, selectedEmotion.value)
   draft.value = ''
 }
 
-const sendQuickPrompt = (emotion: (typeof quickEmotions)[number]) => {
+const sendQuickPrompt = async (emotion: (typeof quickEmotions)[number]) => {
   selectedEmotion.value = emotion.value
-  sendChatMessage(emotion.prompt, emotion.value)
+  await sendChatMessage(emotion.prompt, emotion.value)
 }
 </script>
 

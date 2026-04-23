@@ -5,9 +5,11 @@ import type {
   DailySnapshot,
   DeviceStatus,
   EmotionTag,
+  MiniGameResult,
   Pet,
   PetArchive,
   PetStage,
+  PetQuickReply,
   RewardType,
   SyncEvent,
   SyncStatus,
@@ -18,6 +20,7 @@ import type {
   TaskStatus,
   UserSettings,
 } from '../types/koko'
+import { createPetChatReply, createPetQuickReply, defaultPetPersonaPrompt } from '../services/petDialogue'
 
 const STORAGE_KEY = 'koko-box-mini-state-v1'
 const CHAT_SESSION_ID = 'main-session'
@@ -208,6 +211,7 @@ interface PersistedState {
   archive: PetArchive
   snapshots: DailySnapshot[]
   metrics: AppMetrics
+  petPersonaPrompt?: string
 }
 
 const pet = ref<Pet>(defaultPet())
@@ -219,6 +223,7 @@ const settings = ref<UserSettings>(defaultSettings())
 const archive = ref<PetArchive>(defaultArchive())
 const snapshots = ref<DailySnapshot[]>(defaultSnapshots())
 const metrics = ref<AppMetrics>(defaultMetrics())
+const petPersonaPrompt = ref(defaultPetPersonaPrompt)
 const hydrated = ref(false)
 
 const hasUniStorage = () => typeof uni !== 'undefined' && typeof uni.getStorageSync === 'function'
@@ -267,6 +272,7 @@ const persistState = () => {
     archive: archive.value,
     snapshots: snapshots.value,
     metrics: metrics.value,
+    petPersonaPrompt: petPersonaPrompt.value,
   }
 
   uni.setStorageSync(STORAGE_KEY, payload)
@@ -286,6 +292,7 @@ const applySnapshot = (snapshot?: Partial<PersistedState>) => {
   archive.value = snapshot?.archive ?? defaultArchive()
   snapshots.value = snapshot?.snapshots ?? defaultSnapshots()
   metrics.value = snapshot?.metrics ?? defaultMetrics()
+  petPersonaPrompt.value = snapshot?.petPersonaPrompt ?? defaultPetPersonaPrompt
 }
 
 const hydrateState = () => {
@@ -391,7 +398,7 @@ const rewardTask = (rewardType: RewardType) => {
   updatePet(rewardMap[rewardType])
 }
 
-const carePet = (action: 'feedMeal' | 'feedSnack' | 'clean' | 'heal' | 'rest' | 'play') => {
+const carePet = (action: 'feedMeal' | 'feedSnack' | 'feedWater' | 'clean' | 'heal' | 'rest' | 'play') => {
   hydrateState()
 
   const careMap = {
@@ -404,6 +411,11 @@ const carePet = (action: 'feedMeal' | 'feedSnack' | 'clean' | 'heal' | 'rest' | 
       label: '喂零食',
       changes: { hunger: pet.value.hunger + 8, mood: pet.value.mood + 8, intimacy: pet.value.intimacy + 3 },
       event: '零食奖励已同步，宠物情绪明显回升。',
+    },
+    feedWater: {
+      label: '喂水',
+      changes: { hunger: pet.value.hunger + 6, clean: pet.value.clean + 4, mood: pet.value.mood + 5, energy: pet.value.energy + 4 },
+      event: '补水完成，宠物看起来更精神了。',
     },
     clean: {
       label: '清洁',
@@ -518,6 +530,35 @@ const deleteTask = (taskId: string) => {
   persistState()
 }
 
+const applyMiniGameReward = (result: MiniGameResult) => {
+  hydrateState()
+
+  const baseMood = result.gameType === 'catch' ? 6 : 8
+  const baseIntimacy = result.gameType === 'catch' ? 4 : 5
+  const scoreScale = Math.min(12, Math.floor(result.score / 2))
+
+  metrics.value = {
+    ...metrics.value,
+    interactions: metrics.value.interactions + 1,
+    companionMinutes: metrics.value.companionMinutes + 6,
+    coins: metrics.value.coins + Math.min(12, Math.max(3, Math.floor(result.score / 3))),
+  }
+
+  updatePet({
+    mood: pet.value.mood + baseMood + scoreScale + (result.bonusMood ?? 0),
+    intimacy: pet.value.intimacy + baseIntimacy + Math.min(8, Math.floor(result.score / 4)) + (result.bonusIntimacy ?? 0),
+    energy: pet.value.energy - Math.min(6, Math.floor(result.score / 6)) + (result.bonusEnergy ?? 0),
+    clean: pet.value.clean + (result.bonusClean ?? 0),
+  })
+
+  logSyncEvent(`小游戏 ${result.gameType} 完成，得分 ${result.score}。`, {
+    target: 'desktop',
+    actionType: `mini-game-${result.gameType}`,
+    status: 'success',
+  })
+  persistState()
+}
+
 const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
   hydrateState()
 
@@ -608,7 +649,26 @@ const inferEmotion = (content: string): EmotionTag => {
   return 'happy'
 }
 
-const sendChatMessage = (content: string, forcedEmotion?: EmotionTag) => {
+const setPetPersonaPrompt = (prompt: string) => {
+  petPersonaPrompt.value = prompt.trim() || defaultPetPersonaPrompt
+}
+
+const getPetQuickReply = async (context?: string): Promise<PetQuickReply> => {
+  hydrateState()
+  const reply = await createPetQuickReply({
+    petName: pet.value.name,
+    personaPrompt: petPersonaPrompt.value,
+    context,
+  })
+
+  return {
+    id: createId('quick-reply'),
+    content: reply.content,
+    action: reply.action,
+  }
+}
+
+const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   hydrateState()
   const trimmed = content.trim()
   if (!trimmed) {
@@ -633,7 +693,20 @@ const sendChatMessage = (content: string, forcedEmotion?: EmotionTag) => {
   ]
 
   const templates = emotionReplyMap[emotionTag]
-  const reply = templates[messages.value.length % templates.length]
+  const fallbackReply = templates[messages.value.length % templates.length]
+  const conversation = messages.value
+    .slice(-8)
+    .map((item) => ({
+      role: item.role,
+      content: item.content,
+    })) as Array<{ role: 'user' | 'assistant'; content: string }>
+  const reply = await createPetChatReply({
+    petName: pet.value.name,
+    personaPrompt: petPersonaPrompt.value,
+    messages: conversation,
+    fallbackEmotion: emotionTag,
+  }).catch(() => fallbackReply)
+
   messages.value = [
     ...messages.value,
     {
@@ -868,6 +941,7 @@ export const useKokoState = () => ({
   archive,
   snapshots,
   metrics,
+  petPersonaPrompt,
   pendingTasks,
   completedTasks,
   todayTasks,
@@ -880,13 +954,16 @@ export const useKokoState = () => ({
   overviewStats,
   hydrateState,
   carePet,
+  applyMiniGameReward,
   createTask,
   updateTask,
   deleteTask,
   setTaskStatus,
+  getPetQuickReply,
   sendChatMessage,
   clearMessages,
   updateSettings,
+  setPetPersonaPrompt,
   runDemoScenario,
   syncPetFromAuth,
 })

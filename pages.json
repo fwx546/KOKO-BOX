@@ -91,6 +91,22 @@
       }
     },
     {
+      "path": "pages/pet-game-catch/index",
+      "style": {
+        "navigationBarTitleText": "Catch Game",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true
+      }
+    },
+    {
+      "path": "pages/pet-game-bubble/index",
+      "style": {
+        "navigationBarTitleText": "Bubble Game",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true
+      }
+    },
+    {
       "path": "pages/hardware/index",
       "style": {
         "navigationBarTitleText": "Koko Box",

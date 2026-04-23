@@ -1,225 +1,221 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import StatusCard from '../components/StatusCard.vue'
 import { useKokoState } from '../composables/useKokoState'
-import { useLanguage } from '../composables/useLanguage'
-import type { StatKey } from '../i18n'
+import type { PetActionType } from '../types/koko'
 
-const { t } = useLanguage()
-const { pet, carePet } = useKokoState()
-const showGrowthPopup = ref(false)
-const petPose = ref<'idle' | 'wave' | 'snack' | 'sleep'>('idle')
-const petBubble = ref('Tap Koko to say hi.')
-const chatFabIcon = '/static/tab/tab-talk-active.png'
+const { pet, carePet, getPetQuickReply, metrics } = useKokoState()
 
-let poseTimer: ReturnType<typeof setTimeout> | undefined
+const petAction = ref<PetActionType>('idle')
+const petBubble = ref('')
+const showBubble = ref(false)
 
-const growthSteps = [
-  '蛋期',
-  '幼体',
-  '成长期',
-  '成熟期',
-  '守护期',
+let tapTimer: ReturnType<typeof setTimeout> | undefined
+let bubbleTimer: ReturnType<typeof setTimeout> | undefined
+let actionTimer: ReturnType<typeof setTimeout> | undefined
+
+const moodLabel = computed(() => {
+  if (pet.value.mood >= 80) return '超开心'
+  if (pet.value.mood >= 60) return '放松中'
+  if (pet.value.mood >= 40) return '想陪你'
+  return '需要抱抱'
+})
+
+const compactStats = computed(() => [
+  { label: '心情', value: pet.value.mood },
+  { label: '体力', value: pet.value.energy },
+  { label: '亲密', value: pet.value.intimacy },
+])
+
+const stageFacts = computed(() => [
+  `${pet.value.stage}阶段`,
+  `已互动 ${metrics.value.interactions} 次`,
+])
+
+const interactiveActions: Array<{ action: PetActionType; bubble: string }> = [
+  { action: 'pounce', bubble: '看我扑一下，今天状态不错。' },
+  { action: 'spin', bubble: '转个圈给你看，尾巴都晃起来了。' },
+  { action: 'nuzzle', bubble: '让我蹭蹭你，今天想要更多陪伴。' },
+  { action: 'chase', bubble: '我刚刚追了一下尾巴，厉害吧。' },
+  { action: 'stretch', bubble: '先伸个懒腰，再继续和你玩。' },
 ]
 
-const statColors: Record<StatKey, string> = {
-  health: 'var(--mint)',
-  mood: 'var(--sun)',
-  hunger: 'var(--peach)',
-  energy: 'var(--sky)',
-  intimacy: 'var(--rose)',
-  clean: 'var(--lime)',
-}
-
-const statEntries = computed(() => {
-  const labels = t.value.stats
-  const valueMap: Record<StatKey, number> = {
-    health: pet.value.health,
-    mood: pet.value.mood,
-    hunger: pet.value.hunger,
-    energy: pet.value.energy,
-    intimacy: pet.value.intimacy,
-    clean: pet.value.clean,
-  }
-
-  return (Object.keys(valueMap) as StatKey[]).map((key) => ({
-    key,
-    value: valueMap[key],
-    label: labels[key].label,
-    hint: labels[key].hint,
-    color: statColors[key],
-  }))
-})
+const careActions: Array<{
+  key: 'feedMeal' | 'feedWater' | 'play' | 'clean'
+  label: string
+  hint: string
+  action: PetActionType
+  bubble: string
+}> = [
+  { key: 'feedMeal', label: '喂食', hint: '补充饱腹', action: 'munch', bubble: '啊呜啊呜，今天的这份刚刚好。' },
+  { key: 'feedWater', label: '喂水', hint: '补水舒缓', action: 'sip', bubble: '咕噜咕噜，喝完就精神一点了。' },
+  { key: 'play', label: '玩耍', hint: '提升亲密', action: 'sparkle', bubble: '陪我玩一会儿，我会记很久。' },
+  { key: 'clean', label: '清洁', hint: '整理状态', action: 'stretch', bubble: '清清爽爽，毛毛也更蓬了。' },
+]
 
 const openPage = (url: string) => {
   uni.navigateTo({ url })
 }
 
-const setPetPose = (pose: typeof petPose.value, bubble: string) => {
-  petPose.value = pose
-  petBubble.value = bubble
+const clearTimers = () => {
+  if (tapTimer) clearTimeout(tapTimer)
+  if (bubbleTimer) clearTimeout(bubbleTimer)
+  if (actionTimer) clearTimeout(actionTimer)
+  tapTimer = undefined
+  bubbleTimer = undefined
+  actionTimer = undefined
+}
 
-  if (poseTimer) {
-    clearTimeout(poseTimer)
+const queueIdleReset = (duration = 1800) => {
+  if (actionTimer) {
+    clearTimeout(actionTimer)
   }
 
-  poseTimer = setTimeout(() => {
-    petPose.value = 'idle'
-    petBubble.value = 'Koko is waiting for your next move.'
-  }, 1800)
+  actionTimer = setTimeout(() => {
+    petAction.value = 'idle'
+  }, duration)
 }
 
-const tapPet = () => {
-  setPetPose('wave', `${pet.name} is happy to see you.`)
+const showPetBubble = (message: string, duration = 2200) => {
+  petBubble.value = message
+  showBubble.value = true
+
+  if (bubbleTimer) {
+    clearTimeout(bubbleTimer)
+  }
+
+  bubbleTimer = setTimeout(() => {
+    showBubble.value = false
+  }, duration)
 }
 
-const petActions = [
-  {
-    key: 'wave',
-    label: 'Wave',
-    bubble: 'Koko leans closer and wiggles a paw.',
-    run: () => {},
-  },
-  {
-    key: 'snack',
-    label: 'Snack',
-    bubble: 'A tiny snack makes the mood meter glow.',
-    run: () => carePet('feedMeal'),
-  },
-  {
-    key: 'sleep',
-    label: 'Rest',
-    bubble: 'Koko curls up for a soft little recharge.',
-    run: () => carePet('rest'),
-  },
-] as const
+const triggerPetAction = (action: PetActionType, message: string, duration = 2000) => {
+  petAction.value = action
+  showPetBubble(message, duration)
+  queueIdleReset(duration)
+}
 
-const triggerPetAction = (action: (typeof petActions)[number]) => {
-  action.run()
-  setPetPose(action.key, action.bubble)
+const handleSingleTap = async () => {
+  const reply = await getPetQuickReply('home-tap')
+  triggerPetAction(reply.action === 'idle' ? 'greet' : reply.action, reply.content)
+}
+
+const handleDoubleTap = () => {
+  const next = interactiveActions[Math.floor(Math.random() * interactiveActions.length)]
+  triggerPetAction(next.action, next.bubble, 2400)
+}
+
+const handlePetTap = () => {
+  if (tapTimer) {
+    clearTimeout(tapTimer)
+    tapTimer = undefined
+    handleDoubleTap()
+    return
+  }
+
+  tapTimer = setTimeout(() => {
+    tapTimer = undefined
+    void handleSingleTap()
+  }, 220)
+}
+
+const performCare = (action: (typeof careActions)[number]) => {
+  carePet(action.key)
+  triggerPetAction(action.action, action.bubble)
 }
 
 onBeforeUnmount(() => {
-  if (poseTimer) {
-    clearTimeout(poseTimer)
-  }
+  clearTimers()
 })
 </script>
 
 <template>
-  <view class="page-view home-page-with-chat-fab">
-    <view class="page-head">
+  <view class="page-view home-stage-page">
+    <view class="home-stage-topbar">
       <view>
-        <view class="eyebrow">宠物主界面</view>
-        <view>首页</view>
+        <view class="eyebrow">宠物首页</view>
+        <view class="home-stage-title">{{ pet.name }}</view>
       </view>
-      <view>今天继续和团子一起成长吧。</view>
+      <view class="home-stage-tools">
+        <view class="home-stage-chip">{{ moodLabel }}</view>
+        <button class="home-stage-link" @click="openPage('/pages/chat/index')">聊天</button>
+      </view>
     </view>
 
-    <view class="page-grid-2 page-home-stack">
-      <view class="hero-card panel-block--full home-pet-card">
-        <view class="hero-layout hero-layout--centered">
-          <view class="pet-image-frame">
-            <view class="home-pet-placeholder">
-              <view class="pet-stage">
-                <view class="pet-bubble">{{ petBubble }}</view>
-                <button class="pet-shell-button" @click="tapPet">
-                  <view class="pet-shell" :class="`pet-shell--${petPose}`">
-                    <view class="pet-shadow" />
-                    <view class="pet-tail" />
-                    <view class="pet-body">
-                      <view class="pet-ear pet-ear--left" />
-                      <view class="pet-ear pet-ear--right" />
-                      <view class="pet-face">
-                        <view class="pet-blush pet-blush--left" />
-                        <view class="pet-blush pet-blush--right" />
-                        <view class="pet-eye pet-eye--left" />
-                        <view class="pet-eye pet-eye--right" />
-                        <view class="pet-mouth" />
-                      </view>
-                      <view class="pet-arm pet-arm--left" />
-                      <view class="pet-arm pet-arm--right" />
-                      <view class="pet-foot pet-foot--left" />
-                      <view class="pet-foot pet-foot--right" />
-                    </view>
-                  </view>
-                </button>
-                <view class="pet-action-row">
-                  <button
-                    v-for="action in petActions"
-                    :key="action.key"
-                    class="pet-action-pill"
-                    @click="triggerPetAction(action)"
-                  >
-                    {{ action.label }}
-                  </button>
+    <view class="home-stage-layout">
+      <view class="home-side-rail home-side-rail--left">
+        <button class="home-rail-bubble" @click="openPage('/pages/pet-game-catch/index')">
+          <view>接球</view>
+          <view>小游戏</view>
+        </button>
+        <button class="home-rail-bubble" @click="openPage('/pages/pet-game-bubble/index')">
+          <view>泡泡</view>
+          <view>小游戏</view>
+        </button>
+      </view>
+
+      <view class="pet-stage-shell">
+        <view v-if="showBubble" class="pet-speech-pop">
+          {{ petBubble }}
+        </view>
+
+        <view class="pet-stage-copy">
+          <view>{{ pet.state }}</view>
+          <view>{{ stageFacts.join(' · ') }}</view>
+        </view>
+
+        <view class="pet-stage-center" @click="handlePetTap">
+          <view class="pet-model" :class="`pet-model--${petAction}`">
+            <view class="pet-model__shadow" />
+            <view class="pet-model__tail" />
+            <view class="pet-model__body">
+              <view class="pet-model__back-paw pet-model__back-paw--left" />
+              <view class="pet-model__back-paw pet-model__back-paw--right" />
+              <view class="pet-model__belly" />
+              <view class="pet-model__front-paw pet-model__front-paw--left" />
+              <view class="pet-model__front-paw pet-model__front-paw--right" />
+              <view class="pet-model__head">
+                <view class="pet-model__ear pet-model__ear--left">
+                  <view class="pet-model__ear-inner" />
+                </view>
+                <view class="pet-model__ear pet-model__ear--right">
+                  <view class="pet-model__ear-inner" />
+                </view>
+                <view class="pet-model__tuft" />
+                <view class="pet-model__face">
+                  <view class="pet-model__eye pet-model__eye--left" />
+                  <view class="pet-model__eye pet-model__eye--right" />
+                  <view class="pet-model__blush pet-model__blush--left" />
+                  <view class="pet-model__blush pet-model__blush--right" />
+                  <view class="pet-model__nose" />
+                  <view class="pet-model__mouth" />
+                  <view class="pet-model__whiskers pet-model__whiskers--left" />
+                  <view class="pet-model__whiskers pet-model__whiskers--right" />
+                </view>
+                <view class="pet-model__collar">
+                  <view class="pet-model__bell" />
                 </view>
               </view>
             </view>
           </view>
+        </view>
 
-          <view class="hero-copy hero-copy--centered">
-            <view class="eyebrow">我的宠物</view>
-            <view>{{ pet.name }} · {{ pet.stage }} · {{ pet.state }}</view>
-            <view>圆圆的团子今天软乎乎的，继续陪伴就能慢慢长大。</view>
-            <button class="quick-action-button" @click="showGrowthPopup = true">成长阶段</button>
+        <view class="home-stage-hint">
+          单击宠物弹出对话，双击会随机展示互动动作。
+        </view>
+
+        <view class="home-stage-stats">
+          <view v-for="item in compactStats" :key="item.label" class="home-stage-stat">
+            <view>{{ item.label }}</view>
+            <view>{{ item.value }}</view>
           </view>
         </view>
       </view>
 
-      <view class="panel-block panel-block--full home-attribute-panel">
-        <view class="eyebrow">属性概览</view>
-        <view>健康、心情、饥饿、精力、亲密度、清洁度</view>
-        <view class="stats-grid">
-          <StatusCard
-            v-for="item in statEntries"
-            :key="item.key"
-            :label="item.label"
-            :value="item.value"
-            :hint="item.hint"
-            :color="item.color"
-          />
-        </view>
-      </view>
-
-      <view class="panel-block">
-        <view class="eyebrow">宠物照料</view>
-        <view>日常互动</view>
-        <view class="quick-action-grid">
-          <button class="quick-action-button" @click="carePet('feedMeal')">喂食</button>
-          <button class="quick-action-button" @click="carePet('clean')">清洁</button>
-          <button class="quick-action-button" @click="carePet('rest')">打理小窝</button>
-          <button class="quick-action-button" @click="carePet('play')">装扮</button>
-        </view>
-      </view>
-
-      <view class="panel-block">
-        <view class="eyebrow">生命档案</view>
-        <view>记录陪伴轨迹</view>
-        <view class="muted-line">查看领养时间、成长阶段、病史和里程碑记录。</view>
-        <view class="action-stack">
-          <button class="quick-action-button quick-action-button--ghost" @click="openPage('/pages/archive/index')">
-            打开生命档案
-          </button>
-        </view>
-      </view>
-    </view>
-
-    <button class="chat-fab chat-fab--icon" @click="openPage('/pages/chat/index')">
-      <image class="chat-fab__icon" :src="chatFabIcon" mode="aspectFit" />
-    </button>
-
-    <view v-if="showGrowthPopup" class="overlay-mask" @click="showGrowthPopup = false">
-      <view class="overlay-card" @click.stop>
-        <view class="eyebrow">成长路线</view>
-        <view>团子成长五阶段</view>
-        <view class="stage-row">
-          <view v-for="(item, index) in growthSteps" :key="item" class="stage-item stage-item--active">
-            <view>{{ index + 1 }}</view>
-            <view>{{ item }}</view>
-          </view>
-        </view>
-        <button class="quick-action-button quick-action-button--ghost" @click="showGrowthPopup = false">关闭</button>
+      <view class="home-side-rail home-side-rail--right">
+        <button v-for="action in careActions" :key="action.key" class="home-grow-bubble" @click="performCare(action)">
+          <view>{{ action.label }}</view>
+          <view>{{ action.hint }}</view>
+        </button>
       </view>
     </view>
   </view>

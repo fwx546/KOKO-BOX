@@ -15,6 +15,18 @@ export type EmotionTag =
   | 'lonely'
   | 'proud'
   | 'angry'
+export type PetActionType =
+  | 'idle'
+  | 'greet'
+  | 'pounce'
+  | 'spin'
+  | 'nuzzle'
+  | 'chase'
+  | 'stretch'
+  | 'munch'
+  | 'sip'
+  | 'sparkle'
+export type MiniGameType = 'catch' | 'bubble'
 export type DeviceType = 'miniapp' | 'desktop' | 'm5'
 export type SyncStatus = 'success' | 'offline' | 'retrying'
 
@@ -62,6 +74,12 @@ export interface ChatMessage {
   emotionTag: EmotionTag
   encrypted: boolean
   createdAt: string
+}
+
+export interface PetQuickReply {
+  id: string
+  content: string
+  action: PetActionType
 }
 
 export interface DeviceStatus {
@@ -127,4 +145,13 @@ export interface AppMetrics {
   completedTasks: number
   companionMinutes: number
   coins: number
+}
+
+export interface MiniGameResult {
+  gameType: MiniGameType
+  score: number
+  bonusMood?: number
+  bonusIntimacy?: number
+  bonusEnergy?: number
+  bonusClean?: number
 }
