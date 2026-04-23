@@ -13,6 +13,7 @@ import type {
   SyncStatus,
   Task,
   TaskCategory,
+  TaskPriority,
   TaskRepeatType,
   TaskStatus,
   UserSettings,
@@ -458,19 +459,36 @@ const carePet = (action: 'feedMeal' | 'feedSnack' | 'clean' | 'heal' | 'rest' | 
 
 const createTask = (payload: {
   title: string
+  notes?: string
   category: TaskCategory
   time: string
+  dueDate?: string
   repeatType: TaskRepeatType
+  priority?: TaskPriority
   rewardType: RewardType
+  isStarred?: boolean
+  subtasks?: string[]
 }) => {
   hydrateState()
   const nextTask: Task = {
     id: createId('task'),
     title: payload.title,
+    notes: payload.notes ?? '',
     category: payload.category,
     time: payload.time,
+    dueDate: payload.dueDate ?? '',
     repeatType: payload.repeatType,
     rewardType: payload.rewardType,
+    priority: payload.priority ?? 'medium',
+    isStarred: payload.isStarred ?? false,
+    subtasks: (payload.subtasks ?? [])
+      .map((title) => title.trim())
+      .filter(Boolean)
+      .map((title) => ({
+        id: createId('subtask'),
+        title,
+        completed: false,
+      })),
     status: 'pending',
     createdAt: nowIso(),
   }
@@ -480,6 +498,23 @@ const createTask = (payload: {
     target: 'desktop',
     actionType: 'plan-create',
   })
+  persistState()
+}
+
+const updateTask = (
+  taskId: string,
+  changes: Partial<
+    Pick<Task, 'title' | 'notes' | 'category' | 'time' | 'dueDate' | 'repeatType' | 'priority' | 'rewardType' | 'isStarred' | 'subtasks'>
+  >,
+) => {
+  hydrateState()
+  tasks.value = tasks.value.map((item) => (item.id === taskId ? { ...item, ...changes } : item))
+  persistState()
+}
+
+const deleteTask = (taskId: string) => {
+  hydrateState()
+  tasks.value = tasks.value.filter((item) => item.id !== taskId)
   persistState()
 }
 
@@ -757,6 +792,21 @@ const runDemoScenario = (scenario: 'reminder' | 'taskComplete' | 'comfort' | 'of
 
 const pendingTasks = computed(() => tasks.value.filter((item) => item.status === 'pending'))
 const completedTasks = computed(() => tasks.value.filter((item) => item.status === 'completed'))
+const todayTasks = computed(() =>
+  tasks.value
+    .filter((item) => item.status === 'pending')
+    .slice()
+    .sort((left, right) => `${left.dueDate ?? ''} ${left.time}`.localeCompare(`${right.dueDate ?? ''} ${right.time}`)),
+)
+const inboxTasks = computed(() => tasks.value.filter((item) => item.status === 'pending' && !(item.isStarred ?? false)))
+const upcomingTasks = computed(() =>
+  tasks.value
+    .filter((item) => item.status === 'pending' || item.status === 'delayed')
+    .slice()
+    .sort((left, right) => `${left.dueDate ?? ''} ${left.time}`.localeCompare(`${right.dueDate ?? ''} ${right.time}`)),
+)
+const dueSoonTasks = computed(() => upcomingTasks.value.slice(0, 3))
+const completedTodayCount = computed(() => completedTasks.value.length)
 const recentReminders = computed(() => {
   const taskReminders = tasks.value
     .filter((item) => item.status === 'pending' || item.status === 'delayed')
@@ -820,12 +870,19 @@ export const useKokoState = () => ({
   metrics,
   pendingTasks,
   completedTasks,
+  todayTasks,
+  inboxTasks,
+  upcomingTasks,
+  dueSoonTasks,
+  completedTodayCount,
   recentReminders,
   weeklyCompletionRate,
   overviewStats,
   hydrateState,
   carePet,
   createTask,
+  updateTask,
+  deleteTask,
   setTaskStatus,
   sendChatMessage,
   clearMessages,

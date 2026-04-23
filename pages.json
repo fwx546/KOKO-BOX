@@ -73,6 +73,24 @@
       }
     },
     {
+      "path": "pages/planner-create/index",
+      "style": {
+        "navigationBarTitleText": "New Task"
+      }
+    },
+    {
+      "path": "pages/planner-task/index",
+      "style": {
+        "navigationBarTitleText": "Task Detail"
+      }
+    },
+    {
+      "path": "pages/planner-list/index",
+      "style": {
+        "navigationBarTitleText": "Task List"
+      }
+    },
+    {
       "path": "pages/hardware/index",
       "style": {
         "navigationBarTitleText": "Koko Box",

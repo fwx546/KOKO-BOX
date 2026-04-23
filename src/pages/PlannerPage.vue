@@ -1,64 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import ReminderCard from '../components/ReminderCard.vue'
 import { useKokoState } from '../composables/useKokoState'
-import { useLanguage } from '../composables/useLanguage'
-import type { RewardType, TaskCategory, TaskRepeatType } from '../types/koko'
 
-const { t } = useLanguage()
-const { tasks, recentReminders, createTask, setTaskStatus } = useKokoState()
+const { todayTasks, inboxTasks, dueSoonTasks, completedTodayCount, recentReminders } = useKokoState()
 
-const taskTitle = ref('')
-const taskTime = ref('09:00')
-const selectedCategory = ref<TaskCategory>('schedule')
-const selectedRepeat = ref<TaskRepeatType>('once')
-const selectedReward = ref<RewardType>('mood')
+const openCreatePage = () => {
+  uni.navigateTo({ url: '/pages/planner-create/index' })
+}
 
-const categories: Array<{ value: TaskCategory; label: string }> = [
-  { value: 'schedule', label: '作息' },
-  { value: 'study', label: '学习' },
-  { value: 'work', label: '工作' },
-  { value: 'health', label: '健康' },
-  { value: 'life', label: '生活' },
-]
-
-const repeats: Array<{ value: TaskRepeatType; label: string }> = [
-  { value: 'once', label: '单次' },
-  { value: 'daily', label: '每日' },
-  { value: 'weekly', label: '每周' },
-]
-
-const rewards: Array<{ value: RewardType; label: string }> = [
-  { value: 'mood', label: '心情提升' },
-  { value: 'bond', label: '亲密奖励' },
-  { value: 'snack', label: '零食奖励' },
-  { value: 'coin', label: '金币奖励' },
-]
-
-const orderedTasks = computed(() =>
-  [...tasks.value].sort((left, right) => {
-    if (left.status === right.status) {
-      return left.time.localeCompare(right.time)
-    }
-
-    return left.status === 'pending' ? -1 : 1
-  }),
-)
-
-const createNewTask = () => {
-  if (!taskTitle.value.trim()) {
-    return
-  }
-
-  createTask({
-    title: taskTitle.value.trim(),
-    time: taskTime.value,
-    category: selectedCategory.value,
-    repeatType: selectedRepeat.value,
-    rewardType: selectedReward.value,
-  })
-
-  taskTitle.value = ''
+const openListPage = (mode: 'today' | 'inbox' | 'upcoming' | 'done') => {
+  uni.navigateTo({ url: `/pages/planner-list/index?mode=${mode}` })
 }
 </script>
 
@@ -66,98 +17,62 @@ const createNewTask = () => {
   <view class="page-view">
     <view class="page-head">
       <view>
-        <view class="eyebrow">时间安排</view>
-        <view>今日代办</view>
+        <view class="eyebrow">Task Hub</view>
+        <view>Planner</view>
       </view>
-      <view>优先处理今天最重要的事项，并关注最近提醒。</view>
+      <view>See only what matters right now, then step into dedicated pages for lists, creation, and editing.</view>
     </view>
 
-    <view class="page-grid-2">
-      <view class="panel-block">
-        <view class="eyebrow">最近提醒</view>
-        <view>任务与联动提醒</view>
-        <view class="reminder-list">
-          <ReminderCard
-            v-for="item in recentReminders"
-            :key="item.id"
-            :title="item.title"
-            :subtitle="item.subtitle"
-            :badge="item.badge"
-            :tone="item.tone"
-          />
-        </view>
+    <view class="planner-home-shell">
+      <view class="panel-block planner-home-topbar">
+        <input class="input-field" disabled placeholder="Open Today or Inbox to browse tasks" />
+        <button class="quick-action-button" @click="openCreatePage">New Task</button>
       </view>
 
-      <view class="panel-block panel-block--full">
-        <view class="eyebrow">今日代办</view>
-        <view>待办列表与进度更新</view>
-        <view class="task-list">
-          <view v-for="task in orderedTasks" :key="task.id" class="task-card">
-            <view class="task-card__head">
-              <view>
-                <view class="task-card__title">{{ task.title }}</view>
-                <view class="task-card__meta">{{ task.time }} · {{ task.category }} · {{ task.rewardType }}</view>
-              </view>
-              <view class="task-card__status">{{ task.status }}</view>
-            </view>
-            <view class="pill-row">
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'completed')">完成</button>
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'delayed')">延期</button>
-              <button class="profile-shortcut-button" @click="setTaskStatus(task.id, 'skipped')">跳过</button>
-            </view>
-          </view>
-        </view>
-      </view>
+      <view class="planner-home-grid">
+        <button class="panel-block planner-home-card planner-home-card--hero" @click="openListPage('today')">
+          <view class="eyebrow">Today</view>
+          <view class="planner-home-card__value">{{ todayTasks.length }}</view>
+          <view class="planner-home-card__copy">Tasks ready for action today.</view>
+        </button>
 
-      <view class="panel-block panel-block--full">
-        <view class="eyebrow">新增代办</view>
-        <view>快速创建今日任务</view>
-        <view class="form-stack">
-          <input v-model="taskTitle" class="input-field" placeholder="输入任务标题" />
-          <input v-model="taskTime" class="input-field" placeholder="时间，例如 18:30" />
-          <view>
-            <view class="field-label">分类</view>
-            <view class="pill-row">
-              <button
-                v-for="item in categories"
-                :key="item.value"
-                class="chip-button"
-                :class="{ 'chip-button--active': selectedCategory === item.value }"
-                @click="selectedCategory = item.value"
-              >
-                {{ item.label }}
-              </button>
+        <button class="panel-block planner-home-card planner-home-card--hero" @click="openListPage('inbox')">
+          <view class="eyebrow">Inbox</view>
+          <view class="planner-home-card__value">{{ inboxTasks.length }}</view>
+          <view class="planner-home-card__copy">Unsorted or unstarred work waiting to be triaged.</view>
+        </button>
+
+        <button class="panel-block planner-home-card" @click="openListPage('upcoming')">
+          <view class="eyebrow">Due Soon</view>
+          <view class="planner-home-card__mini-list">
+            <view v-for="task in dueSoonTasks" :key="task.id">{{ task.title }}</view>
+            <view v-if="!dueSoonTasks.length" class="planner-empty-state">Nothing urgent.</view>
+          </view>
+        </button>
+
+        <button class="panel-block planner-home-card" @click="openListPage('done')">
+          <view class="eyebrow">Completed Today</view>
+          <view class="planner-home-card__value">{{ completedTodayCount }}</view>
+          <view class="planner-home-card__copy">Finished tasks stay out of your way but remain easy to review.</view>
+        </button>
+
+        <view class="panel-block planner-home-card planner-home-card--full">
+          <view class="planner-section-head">
+            <view>
+              <view class="eyebrow">Recent Reminders</view>
+              <view>Signals</view>
             </view>
           </view>
-          <view>
-            <view class="field-label">重复</view>
-            <view class="pill-row">
-              <button
-                v-for="item in repeats"
-                :key="item.value"
-                class="chip-button"
-                :class="{ 'chip-button--active': selectedRepeat === item.value }"
-                @click="selectedRepeat = item.value"
-              >
-                {{ item.label }}
-              </button>
-            </view>
+          <view class="reminder-list">
+            <ReminderCard
+              v-for="item in recentReminders.slice(0, 2)"
+              :key="item.id"
+              :title="item.title"
+              :subtitle="item.subtitle"
+              :badge="item.badge"
+              :tone="item.tone"
+            />
           </view>
-          <view>
-            <view class="field-label">奖励</view>
-            <view class="pill-row">
-              <button
-                v-for="item in rewards"
-                :key="item.value"
-                class="chip-button"
-                :class="{ 'chip-button--active': selectedReward === item.value }"
-                @click="selectedReward = item.value"
-              >
-                {{ item.label }}
-              </button>
-            </view>
-          </view>
-          <button class="quick-action-button" @click="createNewTask">创建任务</button>
         </view>
       </view>
     </view>

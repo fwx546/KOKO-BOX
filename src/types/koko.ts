@@ -5,6 +5,7 @@ export type TaskCategory = 'schedule' | 'study' | 'work' | 'health' | 'life'
 export type TaskRepeatType = 'once' | 'daily' | 'weekly'
 export type TaskStatus = 'pending' | 'completed' | 'delayed' | 'skipped'
 export type RewardType = 'snack' | 'coin' | 'toy' | 'mood' | 'bond'
+export type TaskPriority = 'low' | 'medium' | 'high'
 export type EmotionTag =
   | 'happy'
   | 'upset'
@@ -35,12 +36,22 @@ export interface Pet {
 export interface Task {
   id: string
   title: string
+  notes?: string
   category: TaskCategory
   time: string
+  dueDate?: string
   repeatType: TaskRepeatType
   status: TaskStatus
+  priority?: TaskPriority
+  isStarred?: boolean
   rewardType: RewardType
+  subtasks?: Array<{
+    id: string
+    title: string
+    completed: boolean
+  }>
   createdAt: string
+  completedAt?: string
 }
 
 export interface ChatMessage {
