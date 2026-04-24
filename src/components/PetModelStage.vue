@@ -16,7 +16,7 @@ const props = withDefaults(
     interactive: true,
     initialFrame: 0,
     action: 'idle',
-    petName: '可可',
+    petName: 'Koko',
   },
 )
 
@@ -43,11 +43,11 @@ const facingRight = computed(() => sideBias.value >= 0)
 const widthScale = computed(() => 0.82 + frontness.value * 0.2)
 const headShift = computed(() => `${sideBias.value * 32}rpx`)
 const tailShift = computed(() => `${sideBias.value * 74}rpx`)
-const faceOpacity = computed(() => 0.16 + frontness.value * 0.84)
-const backOpacity = computed(() => 0.08 + backness.value * 0.88)
-const sideShadowOpacity = computed(() => 0.12 + Math.abs(sideBias.value) * 0.28)
+const faceOpacity = computed(() => `${0.16 + frontness.value * 0.84}`)
+const backOpacity = computed(() => `${0.08 + backness.value * 0.88}`)
+const sideShadowOpacity = computed(() => `${0.12 + Math.abs(sideBias.value) * 0.28}`)
 const legSpread = computed(() => `${12 + Math.abs(sideBias.value) * 20}rpx`)
-const earTilt = computed(() => `${8 + sideBias.value * 12}deg`)
+const earTilt = computed(() => 8 + sideBias.value * 12)
 
 const bodyStyle = computed(() => ({
   transform: `translateX(-50%) scaleX(${widthScale.value})`,
@@ -62,25 +62,13 @@ const tailStyle = computed(() => ({
   opacity: `${0.72 + Math.abs(sideBias.value) * 0.28}`,
 }))
 
-const faceStyle = computed(() => ({
-  opacity: `${faceOpacity.value}`,
-}))
-
-const backStyle = computed(() => ({
-  opacity: `${backOpacity.value}`,
-}))
-
-const sideShadowStyle = computed(() => ({
-  opacity: `${sideShadowOpacity.value}`,
-}))
-
-const leftLegStyle = computed(() => ({
-  transform: `translateX(-${legSpread.value})`,
-}))
-
-const rightLegStyle = computed(() => ({
-  transform: `translateX(${legSpread.value})`,
-}))
+const faceStyle = computed(() => ({ opacity: faceOpacity.value }))
+const backStyle = computed(() => ({ opacity: backOpacity.value }))
+const sideShadowStyle = computed(() => ({ opacity: sideShadowOpacity.value }))
+const leftLegStyle = computed(() => ({ transform: `translateX(-${legSpread.value})` }))
+const rightLegStyle = computed(() => ({ transform: `translateX(${legSpread.value})` }))
+const leftEarStyle = computed(() => ({ transform: `rotate(${earTilt.value}deg)` }))
+const rightEarStyle = computed(() => ({ transform: `rotate(${-earTilt.value}deg)` }))
 
 const applyDelta = (deltaX: number) => {
   if (!props.interactive) return
@@ -119,7 +107,6 @@ const endDrag = () => {
 }
 
 const touchX = (event: any) => event?.touches?.[0]?.pageX ?? event?.changedTouches?.[0]?.pageX ?? 0
-const mouseX = (event: any) => event?.pageX ?? 0
 
 watch(
   () => props.initialFrame,
@@ -136,15 +123,11 @@ watch(
     @touchmove.stop.prevent="moveDrag(touchX($event))"
     @touchend.stop="endDrag"
     @touchcancel.stop="endDrag"
-    @mousedown.stop.prevent="beginDrag(mouseX($event))"
-    @mousemove.stop.prevent="moveDrag(mouseX($event))"
-    @mouseup.stop="endDrag"
-    @mouseleave="endDrag"
   >
     <view class="pet-model-stage__halo" />
     <view class="pet-model-stage__platform" />
-    <view class="pet-model-stage__badge">360°</view>
-    <view class="pet-model-stage__hint">{{ dragging ? '左右拖动观察宠物' : '拖动即可水平旋转宠物' }}</view>
+    <view class="pet-model-stage__badge">360</view>
+    <view class="pet-model-stage__hint">{{ dragging ? 'Drag to rotate' : 'Swipe left or right' }}</view>
 
     <view class="pet-faux3d" :class="`pet-faux3d--${action}`">
       <view class="pet-faux3d__shadow" />
@@ -163,10 +146,10 @@ watch(
 
       <view class="pet-faux3d__head" :style="headStyle">
         <view class="pet-faux3d__head-backmark" :style="backStyle" />
-        <view class="pet-faux3d__ear pet-faux3d__ear--left" :style="{ transform: `rotate(${earTilt})` }">
+        <view class="pet-faux3d__ear pet-faux3d__ear--left" :style="leftEarStyle">
           <view class="pet-faux3d__ear-inner" />
         </view>
-        <view class="pet-faux3d__ear pet-faux3d__ear--right" :style="{ transform: `rotate(calc(${earTilt} * -1))` }">
+        <view class="pet-faux3d__ear pet-faux3d__ear--right" :style="rightEarStyle">
           <view class="pet-faux3d__ear-inner" />
         </view>
         <view class="pet-faux3d__face" :style="faceStyle">
@@ -359,8 +342,9 @@ watch(
   background: rgba(255, 170, 170, 0.54);
   border-radius: 28rpx;
   bottom: 10rpx;
-  inset-inline: 8rpx;
+  left: 8rpx;
   position: absolute;
+  right: 8rpx;
   top: 10rpx;
 }
 

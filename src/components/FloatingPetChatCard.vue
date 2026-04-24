@@ -87,8 +87,9 @@ watch(
 .pet-chat-card__glow {
   background: linear-gradient(90deg, rgba(109, 213, 255, 0), rgba(109, 213, 255, 0.5), rgba(109, 213, 255, 0));
   height: 2rpx;
-  inset-inline: 0;
+  left: 0;
   position: absolute;
+  right: 0;
   top: 0;
 }
 
