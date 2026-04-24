@@ -19,6 +19,7 @@ const useWechatProfile = ref(true)
 const wechatNickname = ref('')
 const customNickname = ref('')
 const avatarFilePath = ref('')
+const isRedirectingHome = ref(false)
 
 const enteredNickname = computed(() =>
   useWechatProfile.value ? wechatNickname.value.trim() : customNickname.value.trim(),
@@ -37,8 +38,24 @@ const canContinue = computed(() => {
 })
 
 const redirectToHome = () => {
+  if (isRedirectingHome.value) {
+    return
+  }
+
+  isRedirectingHome.value = true
   uni.switchTab({
     url: '/pages/home/index',
+    fail: () => {
+      uni.reLaunch({
+        url: '/pages/home/index',
+        complete: () => {
+          isRedirectingHome.value = false
+        },
+      })
+    },
+    success: () => {
+      isRedirectingHome.value = false
+    },
   })
 }
 

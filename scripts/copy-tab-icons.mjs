@@ -5,8 +5,10 @@ import path from 'node:path'
 const root = process.cwd()
 const sourceTabDir = path.join(root, 'static', 'tab')
 const sourcePetDir = path.join(root, 'static', 'pet')
+const sourceTownDir = path.join(root, 'static', 'town')
 const targetTabDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'tab')
 const targetPetDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'pet')
+const targetTownDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'town')
 const manifestPath = path.join(root, 'tab-icons-base64.json')
 
 async function writeEmbeddedIcons() {
@@ -36,9 +38,15 @@ async function main() {
     await cp(sourcePetDir, targetPetDir, { recursive: true, force: true })
   }
 
+  // Copy town assets
+  if (existsSync(sourceTownDir)) {
+    await mkdir(targetTownDir, { recursive: true })
+    await cp(sourceTownDir, targetTownDir, { recursive: true, force: true })
+  }
+
   // Write embedded icons
   await writeEmbeddedIcons()
-  console.log(`[copy-tab-icons] Prepared tab icons and pet assets`)
+  console.log(`[copy-tab-icons] Prepared tab, pet, and town assets`)
 }
 
 main().catch((error) => {
