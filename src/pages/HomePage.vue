@@ -287,6 +287,7 @@ onBeforeUnmount(() => {
 
         <view class="home-stage__model">
           <PetModelStage
+            class="home-stage__pet-view"
             :initial-frame="rotationFrame"
             :action="petAction"
             :pet-name="pet.name"
@@ -313,6 +314,7 @@ onBeforeUnmount(() => {
 
         <view class="home-stage__chat">
           <FloatingPetChatCard
+            class="home-stage__chat-card"
             :collapsed="overlayChatCollapsed"
             :latest-message="lastAssistantMessage"
             :sending="sending"
@@ -507,8 +509,8 @@ onBeforeUnmount(() => {
 .hill {
   background: linear-gradient(180deg, #97dd88, #74c969);
   border-radius: 50% 50% 0 0;
-  bottom: 184rpx;
-  height: 220rpx;
+  bottom: -36rpx;
+  height: 360rpx;
 }
 
 .hill--one {
@@ -713,11 +715,19 @@ onBeforeUnmount(() => {
 }
 
 .home-stage__model {
-  bottom: 154rpx;
+  bottom: 166rpx;
   left: 0;
+  min-height: 420rpx;
   position: absolute;
   right: 144rpx;
   top: 188rpx;
+}
+
+.home-stage__pet-view {
+  display: block;
+  height: 100%;
+  min-height: 420rpx;
+  width: 100%;
 }
 
 .home-stage__rail {
@@ -771,6 +781,11 @@ onBeforeUnmount(() => {
   position: absolute;
   right: 146rpx;
   z-index: 4;
+}
+
+.home-stage__chat-card {
+  display: block;
+  width: 100%;
 }
 
 .chat-history-layer {
