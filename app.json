@@ -2,7 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/home/index",
-    "pages/care/index",
+    "pages/town/index",
     "pages/chat/index",
     "pages/stats/index",
     "pages/profile/index",
@@ -23,8 +23,8 @@
         "selectedIconPath": "static/tab/tab-rest-active.png"
       },
       {
-        "pagePath": "pages/care/index",
-        "text": "养成",
+        "pagePath": "pages/town/index",
+        "text": "宠物小镇",
         "iconPath": "static/tab/tab-grow.png",
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },

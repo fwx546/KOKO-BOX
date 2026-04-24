@@ -17,14 +17,6 @@
       }
     },
     {
-      "path": "pages/care/index",
-      "style": {
-        "navigationBarTitleText": "Koko Box",
-        "enableShareAppMessage": true,
-        "enableShareTimeline": true
-      }
-    },
-    {
       "path": "pages/chat/index",
       "style": {
         "navigationBarTitleText": "Koko Box",
@@ -142,8 +134,8 @@
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },
       {
-        "pagePath": "pages/care/index",
-        "text": "互动",
+        "pagePath": "pages/town/index",
+        "text": "宠物小镇",
         "iconPath": "static/tab/tab-talk.png",
         "selectedIconPath": "static/tab/tab-talk-active.png"
       },
