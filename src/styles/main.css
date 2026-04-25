@@ -2812,8 +2812,8 @@ button {
 .planner-punch-create--corner {
   min-width: 96px;
   position: absolute;
-  right: 14px;
-  top: 14px;
+  right: 0;
+  top: -2px;
 }
 
 .planner-punch-create::after,
@@ -3014,12 +3014,14 @@ button {
   align-items: center;
   display: flex;
   justify-content: flex-end;
-  min-height: 64px;
+  min-height: 0;
   overflow: visible;
   pointer-events: auto;
-  position: relative;
-  width: 100%;
-  z-index: 1;
+  position: fixed;
+  right: 0;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  width: auto;
+  z-index: 3;
 }
 
 .planner-punch-pet {
@@ -3213,8 +3215,10 @@ button {
 
   .planner-punch-pet-zone {
     margin: 0;
-    position: relative;
-    width: 100%;
+    position: fixed;
+    right: 0;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    width: auto;
   }
 
   .planner-punch-pet {
