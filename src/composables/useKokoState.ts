@@ -561,6 +561,9 @@ const carePet = (action: CareActionKey): CareActionResult => {
 
 const createTask = (payload: {
   title: string
+  kind?: Task['kind']
+  icon?: string
+  borderColor?: string
   notes?: string
   category: TaskCategory
   time: string
@@ -575,6 +578,9 @@ const createTask = (payload: {
   const nextTask: Task = {
     id: createId('task'),
     title: payload.title,
+    kind: payload.kind ?? 'task',
+    icon: payload.icon,
+    borderColor: payload.borderColor,
     notes: payload.notes ?? '',
     category: payload.category,
     time: payload.time,
@@ -606,7 +612,7 @@ const createTask = (payload: {
 const updateTask = (
   taskId: string,
   changes: Partial<
-    Pick<Task, 'title' | 'notes' | 'category' | 'time' | 'dueDate' | 'repeatType' | 'priority' | 'rewardType' | 'isStarred' | 'subtasks'>
+    Pick<Task, 'title' | 'kind' | 'icon' | 'borderColor' | 'notes' | 'category' | 'time' | 'dueDate' | 'repeatType' | 'priority' | 'rewardType' | 'isStarred' | 'subtasks'>
   >,
 ) => {
   hydrateState()

@@ -4,6 +4,7 @@ export type PetState = 'normal' | 'hungry' | 'tired' | 'low' | 'sick' | 'resting
 export type TaskCategory = 'schedule' | 'study' | 'work' | 'health' | 'life'
 export type TaskRepeatType = 'once' | 'daily' | 'weekly'
 export type TaskStatus = 'pending' | 'completed' | 'delayed' | 'skipped'
+export type TaskKind = 'task' | 'ddl'
 export type RewardType = 'snack' | 'coin' | 'toy' | 'mood' | 'bond'
 export type TaskPriority = 'low' | 'medium' | 'high'
 export type EmotionTag =
@@ -64,6 +65,9 @@ export interface Pet {
 export interface Task {
   id: string
   title: string
+  kind?: TaskKind
+  icon?: string
+  borderColor?: string
   notes?: string
   category: TaskCategory
   time: string

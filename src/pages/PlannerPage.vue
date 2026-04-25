@@ -2,24 +2,17 @@
 import { computed, ref } from 'vue'
 import PetLottieAvatar from '../components/PetLottieAvatar.vue'
 import { useKokoState } from '../composables/useKokoState'
-import type { Task, TaskCategory } from '../types/koko'
+import type { Task, TaskCategory, TaskKind } from '../types/koko'
 
-const { todayTasks, completedTasks, pet, setTaskStatus } = useKokoState()
+const { tasks, todayTasks, completedTasks, createTask, updateTask, setTaskStatus } = useKokoState()
 
-type HabitTaskCard = Task & {
-  accent: string
+type StyledTaskCard = Task & {
   categoryIcon: string
   categoryLabel: string
-  streakDays: string
+  cardBorderColor: string
 }
 
-const encouragements = [
-  '先完成一个小目标就很棒啦',
-  '我在旁边陪你打卡',
-  '今天也慢慢来，稳稳完成',
-  '完成一件小事，也是很厉害的前进',
-  '你点一下，我就给你加油一下',
-]
+type EditorMode = 'create' | 'edit'
 
 const categoryMeta: Record<TaskCategory, { icon: string; label: string }> = {
   schedule: { icon: '⏰', label: '日程' },
@@ -29,121 +22,252 @@ const categoryMeta: Record<TaskCategory, { icon: string; label: string }> = {
   life: { icon: '🏠', label: '生活' },
 }
 
-const accentClasses = ['lavender', 'mint', 'sun', 'rose', 'sky', 'peach']
-const petMessage = ref(encouragements[0])
+const iconOptions = ['🌿', '✏️', '📌', '⏰', '🏠', '🍰']
+const colorOptions = ['#d9cff3', '#cfefd7', '#ffe9ad', '#ffd3dc', '#d6e8fa', '#ffd8c9']
 const petTapCount = ref(0)
+const showCreateChoice = ref(false)
+const editorVisible = ref(false)
+const editorMode = ref<EditorMode>('create')
+const editorKind = ref<TaskKind>('task')
+const editingTaskId = ref('')
+const formTitle = ref('')
+const formDate = ref('')
+const formIcon = ref(iconOptions[2])
+const formBorderColor = ref(colorOptions[0])
 
-const openCreatePage = () => {
-  uni.navigateTo({ url: '/pages/planner-create/index' })
-}
+const todayDate = () => new Date().toISOString().slice(0, 10)
+const defaultIconForKind = (kind: TaskKind) => (kind === 'ddl' ? '⏰' : '📌')
+const defaultBorderForKind = (kind: TaskKind) => (kind === 'ddl' ? colorOptions[2] : colorOptions[0])
 
-const openTask = (taskId: string) => {
-  uni.navigateTo({ url: `/pages/planner-task/index?id=${taskId}` })
-}
-
-const formatStreakDays = (createdAt?: string) => {
-  const createdMs = createdAt ? new Date(createdAt).getTime() : Number.NaN
-  if (!Number.isFinite(createdMs)) return '01'
-
-  const days = Math.max(1, Math.ceil((Date.now() - createdMs) / 86400000))
-  return String(days).padStart(2, '0')
-}
-
-const toHabitCard = (task: Task, index: number): HabitTaskCard => {
+const toStyledCard = (task: Task, index: number): StyledTaskCard => {
   const meta = categoryMeta[task.category] ?? categoryMeta.life
 
   return {
     ...task,
-    accent: accentClasses[index % accentClasses.length],
-    categoryIcon: meta.icon,
+    categoryIcon: task.icon || meta.icon,
     categoryLabel: meta.label,
-    streakDays: formatStreakDays(task.createdAt),
+    cardBorderColor: task.borderColor || colorOptions[index % colorOptions.length],
   }
 }
 
-const pendingCards = computed(() => todayTasks.value.map(toHabitCard))
-const doneCards = computed(() => completedTasks.value.map(toHabitCard))
-const visiblePendingCards = computed(() => pendingCards.value.slice(0, 4))
-const visibleDoneCards = computed(() => doneCards.value.slice(0, 4))
-const completedCount = computed(() => doneCards.value.length)
-const totalCount = computed(() => pendingCards.value.length + doneCards.value.length)
+const isDdlTask = (task: Task) => task.kind === 'ddl'
+
+const ddlCards = computed(() =>
+  tasks.value
+    .filter((task) => isDdlTask(task) && task.status !== 'completed')
+    .slice()
+    .sort((left, right) => `${left.dueDate ?? ''} ${left.time}`.localeCompare(`${right.dueDate ?? ''} ${right.time}`))
+    .map(toStyledCard),
+)
+
+const pendingCards = computed(() => todayTasks.value.filter((task) => !isDdlTask(task)).map(toStyledCard))
+const doneCards = computed(() => completedTasks.value.filter((task) => !isDdlTask(task)).map(toStyledCard))
+
+const openCreateChoice = () => {
+  showCreateChoice.value = true
+}
+
+const closeCreateChoice = () => {
+  showCreateChoice.value = false
+}
+
+const openEditor = (mode: EditorMode, kind: TaskKind, task?: Task) => {
+  const fallbackCategory = kind === 'ddl' ? 'schedule' : 'work'
+  const fallbackMeta = categoryMeta[task?.category ?? fallbackCategory]
+
+  editorMode.value = mode
+  editorKind.value = kind
+  editingTaskId.value = task?.id ?? ''
+  formTitle.value = task?.title ?? ''
+  formDate.value = kind === 'ddl' ? task?.dueDate || todayDate() : ''
+  formIcon.value = task?.icon || fallbackMeta?.icon || defaultIconForKind(kind)
+  formBorderColor.value = task?.borderColor || defaultBorderForKind(kind)
+  showCreateChoice.value = false
+  editorVisible.value = true
+}
+
+const closeEditor = () => {
+  editorVisible.value = false
+  editingTaskId.value = ''
+  formTitle.value = ''
+  formDate.value = ''
+}
+
+const chooseCreateKind = (kind: TaskKind) => {
+  openEditor('create', kind)
+}
+
+const submitEditor = () => {
+  const title = formTitle.value.trim()
+  if (!title) {
+    uni.showToast({ title: '先写一个标题', icon: 'none' })
+    return
+  }
+
+  if (editorKind.value === 'ddl' && !formDate.value) {
+    uni.showToast({ title: '请选择日期', icon: 'none' })
+    return
+  }
+
+  const sharedPayload = {
+    title,
+    kind: editorKind.value,
+    icon: formIcon.value,
+    borderColor: formBorderColor.value,
+    dueDate: editorKind.value === 'ddl' ? formDate.value : '',
+  }
+
+  if (editorMode.value === 'edit' && editingTaskId.value) {
+    updateTask(editingTaskId.value, sharedPayload)
+  } else {
+    createTask({
+      ...sharedPayload,
+      notes: '',
+      category: editorKind.value === 'ddl' ? 'schedule' : 'work',
+      time: editorKind.value === 'ddl' ? '23:59' : '09:00',
+      repeatType: 'once',
+      rewardType: 'mood',
+      priority: 'medium',
+      isStarred: false,
+      subtasks: [],
+    })
+  }
+
+  closeEditor()
+}
 
 const completeTask = (taskId: string) => {
   setTaskStatus(taskId, 'completed')
-  petMessage.value = '打卡成功！奖励已经送给小宠物啦'
+}
+
+const undoCompleteTask = (taskId: string) => {
+  setTaskStatus(taskId, 'pending')
 }
 
 const cheerPet = () => {
-  const nextIndex = Math.floor(Math.random() * encouragements.length)
-  petMessage.value = encouragements[nextIndex]
   petTapCount.value += 1
 }
 </script>
 
 <template>
   <view class="planner-punch-page">
+    <button class="planner-punch-create planner-punch-create--corner" @click="openCreateChoice">新建</button>
+
     <view class="planner-punch-board">
-      <view class="planner-punch-board__head">
-        <view>
-          <view class="planner-punch-board__title">今日打卡</view>
-          <view class="planner-punch-board__meta">已完成 {{ completedCount }} / {{ totalCount }}</view>
+      <view class="planner-punch-section planner-punch-ddl-section">
+        <view class="planner-punch-section__title">DDL</view>
+        <view v-if="ddlCards.length" class="planner-punch-ddl-list">
+          <button
+            v-for="task in ddlCards"
+            :key="task.id"
+            class="planner-punch-ddl-item"
+            :style="{ borderColor: task.cardBorderColor }"
+            @click="openEditor('edit', 'ddl', task)"
+          >
+            <view class="planner-punch-ddl-item__icon">{{ task.categoryIcon }}</view>
+            <view class="planner-punch-ddl-item__main">
+              <view>{{ task.title }}</view>
+            </view>
+            <view class="planner-punch-ddl-item__date">{{ task.dueDate }}</view>
+          </button>
         </view>
-        <button class="planner-punch-create" @click="openCreatePage">新建</button>
+        <view v-else class="planner-punch-ddl-empty">暂无临近截止事项</view>
       </view>
 
       <view class="planner-punch-section">
-        <view class="planner-punch-section__title">今日未完成</view>
-        <view v-if="visiblePendingCards.length" class="planner-punch-grid planner-punch-grid--pending">
+        <view class="planner-punch-section__title">未完成</view>
+        <view v-if="pendingCards.length" class="planner-punch-grid planner-punch-grid--pending">
           <view
-            v-for="task in visiblePendingCards"
+            v-for="task in pendingCards"
             :key="task.id"
             class="planner-punch-card"
-            :class="`planner-punch-card--${task.accent}`"
-            @click="openTask(task.id)"
+            :style="{ borderColor: task.cardBorderColor }"
+            @click="openEditor('edit', 'task', task)"
           >
-            <view class="planner-punch-card__top">
-              <view>坚持 <text>{{ task.streakDays }}</text> 天</view>
-              <button class="planner-punch-check" @click.stop="completeTask(task.id)" aria-label="完成打卡" />
-            </view>
             <view class="planner-punch-card__body">
               <view class="planner-punch-card__icon">{{ task.categoryIcon }}</view>
               <view class="planner-punch-card__title">{{ task.title }}</view>
+              <button class="planner-punch-check" @click.stop="completeTask(task.id)" aria-label="完成" />
             </view>
-            <view class="planner-punch-card__meta">{{ task.time }} · {{ task.categoryLabel }}</view>
           </view>
         </view>
-        <view v-else class="planner-punch-empty">今天的未完成已经清空啦，可以休息一下，或者给明天加一个小目标。</view>
-      </view>
-
-      <view class="planner-punch-pet-zone">
-        <view class="planner-punch-pet-bubble" :key="petMessage">{{ petMessage }}</view>
-        <button class="planner-punch-pet" :class="{ 'planner-punch-pet--tap': petTapCount % 2 === 1 }" @click="cheerPet">
-          <PetLottieAvatar :size-rpx="210" />
-        </button>
+        <view v-else class="planner-punch-empty">未完成已经清空啦，可以休息一下，或者加一个小目标。</view>
       </view>
 
       <view class="planner-punch-section">
-        <view class="planner-punch-section__title">今日已完成</view>
-        <view v-if="visibleDoneCards.length" class="planner-punch-grid">
+        <view class="planner-punch-section__title">已完成</view>
+        <view v-if="doneCards.length" class="planner-punch-grid">
           <view
-            v-for="task in visibleDoneCards"
+            v-for="task in doneCards"
             :key="task.id"
             class="planner-punch-card planner-punch-card--done"
-            :class="`planner-punch-card--${task.accent}`"
-            @click="openTask(task.id)"
+            :style="{ borderColor: task.cardBorderColor }"
+            @click="openEditor('edit', 'task', task)"
           >
-            <view class="planner-punch-card__top">
-              <view>坚持 <text>{{ task.streakDays }}</text> 天</view>
-              <view class="planner-punch-done-mark">✓</view>
-            </view>
             <view class="planner-punch-card__body">
               <view class="planner-punch-card__icon">{{ task.categoryIcon }}</view>
               <view class="planner-punch-card__title">{{ task.title }}</view>
+              <button class="planner-punch-undo" @click.stop="undoCompleteTask(task.id)" aria-label="取消完成">↺</button>
             </view>
-            <view class="planner-punch-card__meta">{{ task.time }} · {{ task.categoryLabel }}</view>
           </view>
         </view>
         <view v-else class="planner-punch-empty">先从一个小目标开始，完成后它会来到这里。</view>
+      </view>
+
+      <view class="planner-punch-pet-zone">
+        <button class="planner-punch-pet" :class="{ 'planner-punch-pet--tap': petTapCount % 2 === 1 }" @click="cheerPet">
+          <PetLottieAvatar :size-rpx="120" />
+        </button>
+      </view>
+    </view>
+
+    <view v-if="showCreateChoice" class="planner-punch-choice-mask" @click="closeCreateChoice">
+      <view class="planner-punch-choice" @click.stop>
+        <button @click="chooseCreateKind('ddl')">创建 DDL</button>
+        <button @click="chooseCreateKind('task')">创建任务</button>
+      </view>
+    </view>
+
+    <view v-if="editorVisible" class="planner-punch-editor-mask" @click="closeEditor">
+      <view class="planner-punch-editor" @click.stop>
+        <view class="planner-punch-editor__handle" />
+        <view class="planner-punch-editor__title">
+          {{ editorMode === 'create' ? '新建' : '编辑' }}{{ editorKind === 'ddl' ? 'DDL' : '任务' }}
+        </view>
+        <input v-model="formTitle" class="planner-punch-editor__input" placeholder="写下标题" />
+        <picker v-if="editorKind === 'ddl'" mode="date" :value="formDate" @change="formDate = $event.detail.value">
+          <view class="planner-punch-editor__date">{{ formDate || '选择日期' }}</view>
+        </picker>
+
+        <view class="planner-punch-editor__label">图标</view>
+        <view class="planner-punch-picker-row">
+          <button
+            v-for="icon in iconOptions"
+            :key="icon"
+            class="planner-punch-icon-option"
+            :class="{ 'planner-punch-icon-option--active': formIcon === icon }"
+            @click="formIcon = icon"
+          >
+            {{ icon }}
+          </button>
+        </view>
+
+        <view class="planner-punch-editor__label">边框颜色</view>
+        <view class="planner-punch-picker-row">
+          <button
+            v-for="color in colorOptions"
+            :key="color"
+            class="planner-punch-color-option"
+            :class="{ 'planner-punch-color-option--active': formBorderColor === color }"
+            :style="{ background: color }"
+            @click="formBorderColor = color"
+          />
+        </view>
+
+        <view class="planner-punch-editor__actions">
+          <button class="planner-punch-editor__ghost" @click="closeEditor">取消</button>
+          <button class="planner-punch-editor__primary" @click="submitEditor">保存</button>
+        </view>
       </view>
     </view>
   </view>
