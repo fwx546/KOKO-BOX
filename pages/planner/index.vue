@@ -13,7 +13,14 @@ useWechatShare({
 </script>
 
 <template>
-  <PageScaffold>
+  <PageScaffold shell-class="page-shell--planner-fixed">
     <PlannerPage />
   </PageScaffold>
 </template>
+
+<style>
+page {
+  height: 100%;
+  overflow: hidden;
+}
+</style>

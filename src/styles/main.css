@@ -86,6 +86,33 @@ button {
   box-shadow: var(--shadow);
 }
 
+.page-shell--planner-fixed {
+  background: #fff7e8;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.page-shell--planner-fixed .app-card {
+  background: #fff7e8;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100vh;
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+.page-shell--planner-fixed .view-container {
+  background: #fff7e8;
+  height: 100%;
+  margin-top: 0;
+  overflow: hidden;
+}
+
 .topbar {
   margin-bottom: 6px;
 }
@@ -2752,6 +2779,313 @@ button {
   border-radius: 999px;
   background: rgba(143, 220, 193, 0.28);
   color: #12362c;
+}
+
+.planner-punch-page {
+  background: #fff7e8;
+  border-radius: 0;
+  color: #2d2b35;
+  display: grid;
+  gap: 0;
+  grid-template-rows: 1fr;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  padding: 14px 14px 12px;
+  position: relative;
+}
+
+.planner-punch-create {
+  background: #ffffff;
+  border: 1px solid rgba(196, 156, 82, 0.18);
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(176, 124, 55, 0.12);
+  color: #8d6732;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 18px;
+  position: relative;
+  right: auto;
+  top: auto;
+  z-index: 2;
+}
+
+.planner-punch-create::after,
+.planner-punch-check::after,
+.planner-punch-pet::after {
+  border: 0;
+}
+
+.planner-punch-board {
+  background: #fff7e8;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: grid;
+  gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+}
+
+.planner-punch-board__head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.planner-punch-board__title {
+  color: #855f48;
+  font-size: 1.28rem;
+  font-weight: 900;
+}
+
+.planner-punch-board__meta {
+  color: #9a8a86;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.planner-punch-section {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.planner-punch-section__title {
+  color: #2f2e36;
+  font-size: 1.18rem;
+  font-weight: 900;
+  padding: 0 4px;
+}
+
+.planner-punch-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.planner-punch-grid--pending {
+  padding-right: 0;
+}
+
+.planner-punch-card {
+  background: #ffffff;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 10px 20px rgba(108, 94, 122, 0.08);
+  color: #2f2e36;
+  height: 104px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.planner-punch-card__top {
+  align-items: center;
+  background: rgba(232, 224, 244, 0.92);
+  color: #6f7683;
+  display: flex;
+  font-weight: 800;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.planner-punch-card__top text {
+  color: #35465c;
+  font-size: 1.12rem;
+  font-weight: 900;
+  margin: 0 3px;
+}
+
+.planner-punch-card__body {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  padding: 10px 12px 2px;
+}
+
+.planner-punch-card__icon {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  display: flex;
+  font-size: 1.26rem;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.planner-punch-card__title {
+  display: -webkit-box;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.planner-punch-card__meta {
+  color: #928f99;
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow: hidden;
+  padding: 0 12px 10px 60px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-punch-card--lavender .planner-punch-card__top {
+  background: #e9e2f3;
+}
+
+.planner-punch-card--mint .planner-punch-card__top {
+  background: #dbf4df;
+}
+
+.planner-punch-card--sun .planner-punch-card__top {
+  background: #fff0bf;
+}
+
+.planner-punch-card--rose .planner-punch-card__top {
+  background: #ffd9df;
+}
+
+.planner-punch-card--sky .planner-punch-card__top {
+  background: #dcedfb;
+}
+
+.planner-punch-card--peach .planner-punch-card__top {
+  background: #ffe0d8;
+}
+
+.planner-punch-check,
+.planner-punch-done-mark {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.58);
+  border: 2px solid #8e96a0;
+  border-radius: 50%;
+  display: flex;
+  height: 30px;
+  justify-content: center;
+  margin: 0;
+  min-height: 30px;
+  padding: 0;
+  width: 30px;
+}
+
+.planner-punch-done-mark {
+  background: #a5e6ad;
+  border-color: #347b45;
+  color: #255c34;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.planner-punch-card--done {
+  opacity: 0.96;
+}
+
+.planner-punch-empty {
+  background: rgba(255, 255, 255, 0.72);
+  border: 0;
+  border-radius: 16px;
+  color: #82758e;
+  font-weight: 700;
+  line-height: 1.55;
+  padding: 16px;
+}
+
+.planner-punch-pet-zone {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  min-height: 96px;
+  overflow: hidden;
+  pointer-events: auto;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.planner-punch-pet-bubble {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(196, 156, 82, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 8px 16px rgba(176, 124, 55, 0.12);
+  color: #7c5c2c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.35;
+  max-height: 44px;
+  max-width: 180px;
+  overflow: hidden;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.planner-punch-pet {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  height: 116px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  pointer-events: auto;
+  width: 116px;
+}
+
+.planner-punch-pet--tap {
+  animation: planner-pet-pop 0.42s ease-in-out;
+}
+
+@keyframes planner-pet-pop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.04);
+  }
+}
+
+@media (max-width: 420px) {
+  .planner-punch-board {
+    border-width: 0;
+    padding: 0;
+  }
+
+  .planner-punch-grid {
+    gap: 10px;
+  }
+
+  .planner-punch-grid--pending {
+    padding-right: 0;
+  }
+
+  .planner-punch-pet-zone {
+    margin: 0;
+    position: relative;
+    width: 100%;
+  }
+
+  .planner-punch-pet {
+    height: 108px;
+    width: 108px;
+  }
 }
 
 .planner-sidebar,
