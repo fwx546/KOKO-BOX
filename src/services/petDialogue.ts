@@ -1,4 +1,4 @@
-import { QWEN_API_BASE_URL, QWEN_API_KEY, QWEN_MODEL, isQwenConfigured } from '../config/ai'
+import { isWechatCloudConfigured } from '../config/cloud'
 import type { EmotionTag, PetActionType } from '../types/koko'
 
 const localQuickReplies: Array<{ content: string; action: PetActionType }> = [
@@ -37,54 +37,42 @@ const limitText = (value: string, maxLength: number) => {
   return normalized.length > maxLength ? normalized.slice(0, maxLength) : normalized
 }
 
-const requestQwenReply = async (
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-  maxTokens = 64,
-) => {
-  return await new Promise<string>((resolve, reject) => {
-    if (typeof uni === 'undefined' || typeof uni.request !== 'function') {
-      reject(new Error('uni.request is unavailable'))
-      return
-    }
+interface WechatCloudApi {
+  callFunction?: (options: unknown) => Promise<{ result: unknown }>
+}
 
-    uni.request({
-      url: `${QWEN_API_BASE_URL}/chat/completions`,
-      method: 'POST',
-      timeout: 12000,
-      header: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${QWEN_API_KEY}`,
-      },
-      data: {
-        model: QWEN_MODEL,
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.85,
-      },
-      success: (response) => {
-        const data = response.data as
-          | {
-              choices?: Array<{
-                message?: {
-                  content?: string
-                }
-              }>
-            }
-          | undefined
+const getWechatCloudApi = () =>
+  (globalThis as { wx?: { cloud?: WechatCloudApi } }).wx?.cloud
 
-        const content = data?.choices?.[0]?.message?.content?.trim()
-        if (content) {
-          resolve(content)
-          return
-        }
+const callWechatCloudFunction = async <T>(name: string, data?: Record<string, unknown>) => {
+  const wxCloud = getWechatCloudApi()
 
-        reject(new Error('empty response'))
-      },
-      fail: (error) => {
-        reject(error)
-      },
-    })
+  if (!wxCloud?.callFunction) {
+    throw new Error('WeChat cloud is not available in this environment.')
+  }
+
+  const response = await wxCloud.callFunction({
+    name,
+    data,
   })
+
+  return response.result as T
+}
+
+const requestPetReplyFromCloud = async (payload: {
+  action: 'quickReply' | 'chatReply'
+  petName: string
+  personaPrompt: string
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+}) => {
+  const result = await callWechatCloudFunction<{ content?: string }>('pet-dialogue', payload)
+  const content = result.content?.trim()
+
+  if (!content) {
+    throw new Error('empty cloud response')
+  }
+
+  return content
 }
 
 export const createPetQuickReply = async (options?: {
@@ -95,24 +83,16 @@ export const createPetQuickReply = async (options?: {
   const fallback = pickQuickReply(options?.context?.length)
   const petName = options?.petName?.trim() || '可可'
 
-  if (!isQwenConfigured()) {
+  if (!isWechatCloudConfigured()) {
     return fallback
   }
 
   try {
-    const reply = await requestQwenReply(
-      [
-        {
-          role: 'system',
-          content: `${options?.personaPrompt ?? defaultPetPersonaPrompt}\n当前宠物名：${petName}`,
-        },
-        {
-          role: 'user',
-          content: '用户刚刚点击或双击了你，请随机说一句亲近的短问候。',
-        },
-      ],
-      36,
-    )
+    const reply = await requestPetReplyFromCloud({
+      action: 'quickReply',
+      petName,
+      personaPrompt: options?.personaPrompt ?? defaultPetPersonaPrompt,
+    })
 
     return {
       content: limitText(reply, 24),
@@ -133,21 +113,17 @@ export const createPetChatReply = async (options: {
   const fallback = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)]
   const petName = options.petName?.trim() || '可可'
 
-  if (!isQwenConfigured()) {
+  if (!isWechatCloudConfigured()) {
     return fallback
   }
 
   try {
-    const reply = await requestQwenReply(
-      [
-        {
-          role: 'system',
-          content: `${options.personaPrompt ?? defaultPetPersonaPrompt}\n当前宠物名：${petName}`,
-        },
-        ...options.messages.slice(-10),
-      ],
-      80,
-    )
+    const reply = await requestPetReplyFromCloud({
+      action: 'chatReply',
+      petName,
+      personaPrompt: options.personaPrompt ?? defaultPetPersonaPrompt,
+      messages: options.messages.slice(-10),
+    })
 
     return limitText(reply, 60)
   } catch {

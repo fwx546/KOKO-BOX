@@ -8,9 +8,9 @@ This workspace contains a uni-app Vue prototype that is now standardized for WeC
 2. Start the WeChat Mini Program dev build: `npm run dev`
 3. Create a production build for the WeChat Mini Program: `npm run build`
 
-## WeChat cloud login
+## WeChat cloud backend
 
-The first real backend feature uses WeChat CloudBase for automatic mini-program login and user-owned database records.
+Backend features use WeChat CloudBase cloud functions so sensitive logic and keys stay server-side.
 
 ### 1. Create the cloud environment
 
@@ -45,6 +45,22 @@ Recommended permission for the first version: users can only read and write thei
 
 The `login` cloud function uses `cloud.getWXContext()` to get `OPENID`, creates the user/pet/settings records on first login, and updates `lastLoginAt` on later logins.
 
+### 4. Deploy the AI cloud function
+
+The chat and pet quick-reply flow now calls cloud function `pet-dialogue` instead of directly requesting DashScope from the client.
+
+1. In WeChat DevTools, find `cloudfunctions/pet-dialogue`.
+2. Install dependencies for this function.
+3. In Cloud Development console, open function `pet-dialogue` settings and configure environment variables:
+
+- `QWEN_API_KEY`: your real DashScope key
+- `QWEN_MODEL` (optional): defaults to `qwen-plus`
+
+1. Upload and deploy function `pet-dialogue`.
+2. Test from mini program chat page and pet interaction entry.
+
+Important security note: if a key was ever committed in client code before, rotate that key in DashScope immediately and only keep the new key in cloud function env variables.
+
 ## WeChat DevTools
 
 1. Open the project root in WeChat DevTools.
@@ -55,6 +71,7 @@ The `login` cloud function uses `cloud.getWXContext()` to get `OPENID`, creates 
 ## Current scope
 
 - WeChat cloud login scaffold
+- WeChat cloud AI dialogue function (`pet-dialogue`)
 - Cloud database collections for users, pets, and settings
 - Mock cross-device status sync
 - Pet attribute dashboard
