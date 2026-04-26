@@ -9,7 +9,7 @@ import { useWechatShare } from '../../src/composables/useWechatShare'
 type LoginMode = 'wechat' | 'guest'
 type LoginStep = 'auth-choice' | 'pet-naming'
 
-const { loading, pet: authPet, hasCompletedOnboarding, login, completeOnboarding, refreshOnboardingState } = useAuth()
+const { loading, authMode, pet: authPet, hasCompletedOnboarding, login, completeOnboarding, refreshOnboardingState } = useAuth()
 const { syncPetFromAuth } = useKokoState()
 
 useWechatShare({
@@ -22,11 +22,11 @@ useWechatShare({
 
 const step = ref<LoginStep>('auth-choice')
 const selectedLoginMode = ref<LoginMode>('wechat')
-const petName = ref('可可')
+const petName = ref('')
 const isRedirectingHome = ref(false)
 
 const normalizedPetName = computed(() => petName.value.trim())
-const canStart = computed(() => !loading.value && normalizedPetName.value.length > 0)
+const canStart = computed(() => !loading.value && selectedLoginMode.value === 'wechat' && normalizedPetName.value.length > 0)
 const stepLabel = computed(() => (step.value === 'auth-choice' ? '1 / 2' : '2 / 2'))
 
 const redirectToHome = () => {
@@ -51,7 +51,22 @@ const redirectToHome = () => {
 
 const chooseLoginMode = async (mode: LoginMode) => {
   selectedLoginMode.value = mode
-  await login()
+
+  const result = await login(mode)
+
+  if (mode === 'guest') {
+    syncPetFromAuth(result.pet)
+    redirectToHome()
+    return
+  }
+
+  if (result.user.onboardingDone) {
+    syncPetFromAuth(result.pet)
+    redirectToHome()
+    return
+  }
+
+  petName.value = ''
   step.value = 'pet-naming'
 }
 
@@ -60,6 +75,10 @@ const handlePetNameInput = (event: { detail?: { value?: string } }) => {
 }
 
 const submitPetName = async () => {
+  if (selectedLoginMode.value !== 'wechat') {
+    return
+  }
+
   if (!canStart.value) {
     uni.showToast({
       title: '请先给宠物起名',
@@ -84,7 +103,7 @@ const submitPetName = async () => {
 onShow(() => {
   refreshOnboardingState()
 
-  if (hasCompletedOnboarding.value) {
+  if (authMode.value && hasCompletedOnboarding.value) {
     redirectToHome()
   }
 })
@@ -110,7 +129,7 @@ onShow(() => {
         <view v-if="step === 'auth-choice'" class="onboarding-panel">
           <view class="onboarding-kicker">KOKO BOX</view>
           <view class="onboarding-title">选择你的进入方式</view>
-          <view class="onboarding-copy">先确认身份，下一步再给宠物起名字。</view>
+          <view class="onboarding-copy">微信首次登录需要先给宠物起名；游客模式会使用默认名 koko。</view>
 
           <view class="onboarding-actions">
             <button class="onboarding-button onboarding-button--primary" :disabled="loading" @click="chooseLoginMode('wechat')">

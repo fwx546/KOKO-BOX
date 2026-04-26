@@ -44,13 +44,33 @@ const defaultSettings = (openid) => ({
   updatedAt: now(),
 })
 
-const getFirstByOpenid = async (collection, openid) => {
-  const result = await collection.where({ _openid: openid }).limit(1).get()
-  return result.data[0]
+const getByOpenidList = async (collection, openid) => {
+  const result = await collection.where({ _openid: openid }).limit(100).get()
+  return result.data || []
+}
+
+const keepSingleByOpenid = async (collection, openid) => {
+  const records = await getByOpenidList(collection, openid)
+
+  if (!records.length) {
+    return undefined
+  }
+
+  const [primary, ...duplicates] = records
+
+  if (duplicates.length) {
+    await Promise.all(
+      duplicates
+        .filter((item) => Boolean(item && item._id))
+        .map((item) => collection.doc(item._id).remove()),
+    )
+  }
+
+  return primary
 }
 
 const createIfMissing = async (collection, dataFactory, openid) => {
-  const existing = await getFirstByOpenid(collection, openid)
+  const existing = await keepSingleByOpenid(collection, openid)
 
   if (existing) {
     return existing
@@ -79,7 +99,7 @@ exports.main = async (event = {}) => {
   }
 
   const profile = pickProfile(event.profile)
-  let user = await getFirstByOpenid(users, OPENID)
+  let user = await keepSingleByOpenid(users, OPENID)
   const isNewUser = !user
 
   if (!user) {

@@ -1,84 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import { isWechatCloudConfigured } from '../config/cloud'
 import { useAuth } from '../composables/useAuth'
 import { useKokoState } from '../composables/useKokoState'
 
-const { user, pet: authPet, loading, error, isMockSession, isLoggedIn, login, syncUserProfile, importWechatProfile } = useAuth()
+const { user, pet: authPet, authMode, isGuestSession, login } = useAuth()
 const { pet, weeklyCompletionRate, syncPetFromAuth } = useKokoState()
 
-const displayName = computed(() => user.value?.nickName || 'Koko Friend')
-const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
+const displayName = computed(() => user.value?.nickName || (isGuestSession.value ? '游客' : 'Koko Friend'))
+const accountModeLabel = computed(() => (isGuestSession.value ? '游客模式' : '微信账号'))
 
-const accountTone = computed(() => {
-  if (loading.value) {
-    return 'loading'
-  }
-
-  if (isLoggedIn.value) {
-    return isMockSession.value ? 'preview' : 'linked'
-  }
-
-  return error.value ? 'warning' : 'idle'
-})
-
-const accountStatusLabel = computed(() => {
-  if (loading.value) {
-    return '连接中'
-  }
-
-  if (isLoggedIn.value) {
-    return isMockSession.value ? '预览模式' : '微信已连接'
-  }
-
-  return isWechatCloudConfigured() ? '等待连接' : '本地预览'
-})
-
-const accountStatusHint = computed(() => {
-  if (loading.value) {
-    return '正在同步你的账户和宠物资料。'
-  }
-
-  if (isLoggedIn.value) {
-    return isMockSession.value ? '当前是演示数据，你仍然可以继续体验主要功能。' : '头像昵称已和当前小程序账户同步。'
-  }
-
-  return error.value ? '登录遇到一点问题，可以在这里直接重试。' : '你可以继续编辑昵称，稍后再重新连接。'
-})
-
-const shouldShowRetry = computed(() => Boolean(error.value) || (!loading.value && !isLoggedIn.value && isWechatCloudConfigured()))
-
-const profileMetrics = computed(() => [
-  { label: '心情', value: pet.value.mood },
-  { label: '亲密度', value: pet.value.intimacy },
-  { label: '本周完成度', value: weeklyCompletionRate.value },
-])
-
-const openPage = (url: string) => {
-  uni.navigateTo({ url })
-}
-
-const handleLogin = () => {
-  void login()
-}
-
-const handleNicknameBlur = (event: { detail?: { value?: string } }) => {
-  const nickName = event.detail?.value?.trim()
-
-  if (nickName && nickName !== user.value?.nickName) {
-    void syncUserProfile({ nickName })
-  }
-}
-
-const handleChooseAvatar = (event: { detail?: { avatarUrl?: string } }) => {
-  const avatarFilePath = event.detail?.avatarUrl
-
-  if (avatarFilePath) {
-    void importWechatProfile({
-      nickName: user.value?.nickName,
-      avatarFilePath,
-    })
-  }
+const openSettings = () => {
+  uni.navigateTo({
+    url: '/pages/settings/index',
+  })
 }
 
 watch(
@@ -89,147 +23,138 @@ watch(
   { immediate: true },
 )
 
-onMounted(() => {
-  void login()
+onMounted(async () => {
+  const result = await login(authMode.value ?? 'wechat')
+  syncPetFromAuth(result.pet)
 })
 </script>
 
 <template>
-  <view class="profile-page profile-page--light">
-    <view class="profile-card-main">
-      <view class="profile-card-main__top">
-        <view class="profile-card-main__copy">
-          <view class="profile-card-main__eyebrow">个人中心</view>
-          <view class="profile-card-main__title">账户、设置和宠物状态都在这里</view>
-          <view class="profile-card-main__subtitle">保持信息简单清楚，随时继续陪伴和养成。</view>
-        </view>
-        <view class="profile-card-main__pet-chip">
-          <view>{{ pet.name }}</view>
-          <view>{{ pet.stage }}</view>
-        </view>
+  <view class="profile-page">
+    <view class="profile-hero">
+      <view class="profile-hero__eyebrow">我的</view>
+      <view class="profile-hero__name">{{ displayName }}</view>
+      <view class="profile-hero__meta">{{ accountModeLabel }}</view>
+      <view class="profile-pet-pill">宠物：{{ pet.name }} · {{ pet.stage }}</view>
+    </view>
+
+    <view class="profile-stats">
+      <view class="profile-stat-item">
+        <view class="profile-stat-item__label">心情</view>
+        <view class="profile-stat-item__value">{{ pet.mood }}</view>
       </view>
-
-      <view class="profile-identity-card">
-        <button class="profile-avatar profile-avatar-button" open-type="chooseAvatar" @chooseavatar="handleChooseAvatar">
-          <image v-if="user?.avatarUrl" :src="user.avatarUrl" mode="aspectFill" />
-          <view v-else>{{ profileInitial }}</view>
-        </button>
-
-        <view class="profile-identity-card__main">
-          <input
-            class="profile-name-input"
-            type="nickname"
-            :value="displayName"
-            placeholder="输入你的昵称"
-            @blur="handleNicknameBlur"
-          />
-          <view class="profile-status-tag" :class="`profile-status-tag--${accountTone}`">
-            <view class="profile-status-dot" />
-            <view>{{ accountStatusLabel }}</view>
-          </view>
-          <view class="profile-identity-card__hint">{{ accountStatusHint }}</view>
-        </view>
-
-        <button v-if="shouldShowRetry" class="profile-inline-button" :disabled="loading" @click="handleLogin">
-          {{ loading ? '稍候' : '重试连接' }}
-        </button>
+      <view class="profile-stat-item">
+        <view class="profile-stat-item__label">亲密度</view>
+        <view class="profile-stat-item__value">{{ pet.intimacy }}</view>
       </view>
-
-      <view class="profile-pet-summary">
-        <view>
-          <view class="profile-section-kicker">宠物状态</view>
-          <view class="profile-pet-summary__title">{{ pet.name }} · {{ pet.state }}</view>
-          <view class="profile-pet-summary__copy">当前处于 {{ pet.stage }} 阶段，可以继续照料、聊天和查看成长记录。</view>
-        </view>
-      </view>
-
-      <view class="profile-meter-list">
-        <view v-for="item in profileMetrics" :key="item.label" class="profile-meter-item">
-          <view class="profile-meter-item__head">
-            <view>{{ item.label }}</view>
-            <view>{{ item.value }}{{ item.label === '本周完成度' ? '%' : '' }}</view>
-          </view>
-          <view class="profile-meter-item__track">
-            <view class="profile-meter-item__fill" :style="{ width: `${item.value}%` }" />
-          </view>
-        </view>
-      </view>
-
-      <view v-if="error" class="profile-inline-error">
-        {{ error }}
+      <view class="profile-stat-item">
+        <view class="profile-stat-item__label">本周完成度</view>
+        <view class="profile-stat-item__value">{{ weeklyCompletionRate }}%</view>
       </view>
     </view>
 
-    <view class="profile-group-card">
-      <view class="profile-group-card__title">账户</view>
-      <button class="profile-list-row">
-        <view class="profile-list-icon profile-list-icon--account">
-          <view class="profile-icon-person" />
-        </view>
-        <view class="profile-list-copy">
-          <view>个人信息</view>
-          <view>头像、昵称和当前连接状态</view>
-        </view>
-        <view class="profile-list-value">{{ accountStatusLabel }}</view>
-      </button>
-      <button class="profile-list-row" @click="handleLogin">
-        <view class="profile-list-icon profile-list-icon--sync">
-          <view class="profile-icon-sync" />
-        </view>
-        <view class="profile-list-copy">
-          <view>同步账户</view>
-          <view>重新获取微信资料或更新当前状态</view>
-        </view>
-        <view class="profile-list-arrow">></view>
-      </button>
-    </view>
-
-    <view class="profile-group-card">
-      <view class="profile-group-card__title">宠物状态</view>
-      <button class="profile-list-row" @click="openPage('/pages/archive/index')">
-        <view class="profile-list-icon profile-list-icon--pet">
-          <view class="profile-icon-paw" />
-        </view>
-        <view class="profile-list-copy">
-          <view>成长记录</view>
-          <view>查看生命档案、里程碑和恢复记录</view>
-        </view>
-        <view class="profile-list-arrow">></view>
-      </button>
-      <button class="profile-list-row" @click="openPage('/pages/chat/index')">
-        <view class="profile-list-icon profile-list-icon--chat">
-          <view class="profile-icon-chat" />
-        </view>
-        <view class="profile-list-copy">
-          <view>继续陪伴</view>
-          <view>和 {{ pet.name }} 聊天，保持情绪和亲密度成长</view>
-        </view>
-        <view class="profile-list-arrow">></view>
-      </button>
-    </view>
-
-    <view class="profile-group-card">
-      <view class="profile-group-card__title">设置</view>
-      <button class="profile-list-row" @click="openPage('/pages/settings/index')">
-        <view class="profile-list-icon profile-list-icon--settings">
-          <view class="profile-icon-sliders" />
-        </view>
-        <view class="profile-list-copy">
-          <view>应用设置</view>
-          <view>语言、隐私和 Demo 模式</view>
-        </view>
-        <view class="profile-list-arrow">></view>
-      </button>
-      <button class="profile-list-row" @click="openPage('/pages/settings/index')">
-        <view class="profile-list-icon profile-list-icon--privacy">
-          <view class="profile-icon-shield" />
-        </view>
-        <view class="profile-list-copy">
-          <view>隐私与会话</view>
-          <view>管理聊天隐藏、摘要同步和清空记录</view>
-        </view>
-        <view class="profile-list-arrow">></view>
-      </button>
-    </view>
+    <button class="profile-settings-entry" @click="openSettings">
+      <view>设置</view>
+      <view class="profile-settings-entry__hint">退出登录、切换语言、给宠物改名</view>
+    </button>
   </view>
 </template>
+
+<style scoped>
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 28rpx;
+}
+
+.profile-hero {
+  background: #fff;
+  border: 2rpx solid #ece2d7;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 24rpx;
+}
+
+.profile-hero__eyebrow {
+  color: #a18972;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.profile-hero__name {
+  color: #26324f;
+  font-size: 46rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.profile-hero__meta {
+  color: #7d6b5c;
+  font-size: 26rpx;
+}
+
+.profile-pet-pill {
+  align-self: flex-start;
+  background: #f8f1e6;
+  border-radius: 999rpx;
+  color: #7d644f;
+  font-size: 24rpx;
+  margin-top: 6rpx;
+  padding: 8rpx 18rpx;
+}
+
+.profile-stats {
+  display: grid;
+  gap: 14rpx;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-stat-item {
+  background: #fff;
+  border: 2rpx solid #efe5d8;
+  border-radius: 20rpx;
+  padding: 16rpx;
+}
+
+.profile-stat-item__label {
+  color: #9b846e;
+  font-size: 22rpx;
+}
+
+.profile-stat-item__value {
+  color: #2a3553;
+  font-size: 34rpx;
+  font-weight: 700;
+  margin-top: 8rpx;
+}
+
+.profile-settings-entry {
+  align-items: flex-start;
+  background: #fff;
+  border: 2rpx solid #efe5d8;
+  border-radius: 20rpx;
+  color: #2a3553;
+  display: flex;
+  flex-direction: column;
+  font-size: 32rpx;
+  font-weight: 700;
+  gap: 6rpx;
+  line-height: 1.2;
+  margin-top: 4rpx;
+  padding: 22rpx;
+  text-align: left;
+}
+
+.profile-settings-entry::after {
+  border: 0;
+}
+
+.profile-settings-entry__hint {
+  color: #8f7a66;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+</style>

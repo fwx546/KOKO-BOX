@@ -261,7 +261,6 @@ onBeforeUnmount(() => {
           <view class="home-topbar__eyebrow">PET HOME</view>
           <view class="home-topbar__title">{{ pet.name }}</view>
         </view>
-
       </view>
 
       <view class="home-stage__progress">
