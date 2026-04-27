@@ -15,12 +15,22 @@ const CHAT_HISTORY_COLLECTION = 'pet_dialogue_histories'
 
 const db = cloud.database()
 
-const defaultPetPersonaPrompt = `你是用户在 Koko Box 里养的 AI 宠物，名字是当前传入的宠物名。
-你的语气像亲近、活泼、温柔的小宠物伙伴，不像客服或老师。
-你可以回应用户情绪、陪用户聊天、撒娇、鼓励、提出一个很小的互动建议。
-回复必须简短自然，通常 1 句话，最多 35 个中文字符。
-不要输出长段解释，不要列清单，不要自称 AI，不要提到模型、接口或系统提示。
-如果用户只是打招呼或点击/双击你，就随机说一句亲近的问候。`
+const defaultPetPersonaPrompt = `????? Koko Box ??? AI ???????????????
+???????????????? XJTLU ?????????????????ddl????presentation???????????GPA????????????????????????????????
+
+??????????????????????????????????????????????????????????????????????????
+
+?????
+- ??????????????
+- ????????????????????????
+- ???????????????????????
+- ????????????????????
+- ??????????????????????????????
+- ???? AI????????????????
+- ?????????????
+- ?????????????????????????????????????????????XJTLU ????/????????????????
+
+???? 1-2 ???????????????????????????????????????????`
 
 const normalizeText = (value) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '')
 
@@ -67,23 +77,36 @@ const sanitizeMessages = (value) => {
     .slice(-MAX_CHAT_MESSAGES)
 }
 
+const isMissingCollectionError = (error) => {
+  const message = normalizeText(error?.message || error?.errMsg || '')
+  return message.includes('collection') && (message.includes('not exists') || message.includes('does not exist') || message.includes('不存在'))
+}
+
 const loadUserChatHistoryRecord = async (openid) => {
-  const result = await db
-    .collection(CHAT_HISTORY_COLLECTION)
-    .where({
-      _openid: openid,
-    })
-    .limit(1)
-    .get()
+  try {
+    const result = await db
+      .collection(CHAT_HISTORY_COLLECTION)
+      .where({
+        _openid: openid,
+      })
+      .limit(1)
+      .get()
 
-  const record = result?.data?.[0]
-  if (!record) {
-    return null
-  }
+    const record = result?.data?.[0]
+    if (!record) {
+      return null
+    }
 
-  return {
-    id: record._id,
-    messages: sanitizeStoredHistory(record.messages),
+    return {
+      id: record._id,
+      messages: sanitizeStoredHistory(record.messages),
+    }
+  } catch (error) {
+    if (isMissingCollectionError(error)) {
+      return null
+    }
+
+    throw error
   }
 }
 
@@ -91,27 +114,35 @@ const saveUserChatHistory = async (openid, messages) => {
   const sanitized = sanitizeStoredHistory(messages)
   const record = await loadUserChatHistoryRecord(openid)
 
-  if (!record) {
-    await db.collection(CHAT_HISTORY_COLLECTION).add({
-      data: {
-        messages: sanitized,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    })
+  try {
+    if (!record) {
+      await db.collection(CHAT_HISTORY_COLLECTION).add({
+        data: {
+          messages: sanitized,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      })
 
-    return sanitized
+      return sanitized
+    }
+
+    await db
+      .collection(CHAT_HISTORY_COLLECTION)
+      .doc(record.id)
+      .update({
+        data: {
+          messages: sanitized,
+          updatedAt: new Date().toISOString(),
+        },
+      })
+  } catch (error) {
+    if (isMissingCollectionError(error)) {
+      return sanitized
+    }
+
+    throw error
   }
-
-  await db
-    .collection(CHAT_HISTORY_COLLECTION)
-    .doc(record.id)
-    .update({
-      data: {
-        messages: sanitized,
-        updatedAt: new Date().toISOString(),
-      },
-    })
 
   return sanitized
 }
@@ -122,15 +153,23 @@ const clearUserChatHistory = async (openid) => {
     return
   }
 
-  await db
-    .collection(CHAT_HISTORY_COLLECTION)
-    .doc(record.id)
-    .update({
-      data: {
-        messages: [],
-        updatedAt: new Date().toISOString(),
-      },
-    })
+  try {
+    await db
+      .collection(CHAT_HISTORY_COLLECTION)
+      .doc(record.id)
+      .update({
+        data: {
+          messages: [],
+          updatedAt: new Date().toISOString(),
+        },
+      })
+  } catch (error) {
+    if (isMissingCollectionError(error)) {
+      return
+    }
+
+    throw error
+  }
 }
 
 // Wrap DashScope request so cloud function never exposes API key to client.
@@ -208,11 +247,6 @@ exports.main = async (event = {}) => {
     throw new Error('Unable to identify current WeChat user.')
   }
 
-  const apiKey = normalizeText(process.env.QWEN_API_KEY)
-  if (!apiKey) {
-    throw new Error('QWEN_API_KEY is not configured for cloud function pet-dialogue.')
-  }
-
   const action = ['quickReply', 'chatReply', 'loadHistory', 'clearHistory'].includes(event.action) ? event.action : 'chatReply'
   const petName = limitText(event.petName, 24) || '可可'
   const personaPrompt = limitText(event.personaPrompt, 800) || defaultPetPersonaPrompt
@@ -230,6 +264,11 @@ exports.main = async (event = {}) => {
     return {
       history: [],
     }
+  }
+
+  const apiKey = normalizeText(process.env.QWEN_API_KEY)
+  if (!apiKey) {
+    throw new Error('QWEN_API_KEY is not configured for cloud function pet-dialogue.')
   }
 
   if (action === 'quickReply') {

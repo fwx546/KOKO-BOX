@@ -33,6 +33,7 @@ Create these CloudBase database collections:
 - `users`
 - `pets`
 - `user_settings`
+- `pet_dialogue_histories`
 
 Recommended permission for the first version: users can only read and write their own records. Keep identity-sensitive creation and updates in cloud functions so `_openid` cannot be forged by the client.
 
@@ -58,6 +59,8 @@ The chat and pet quick-reply flow now calls cloud function `pet-dialogue` instea
 
 1. Upload and deploy function `pet-dialogue`.
 2. Test from mini program chat page and pet interaction entry.
+
+If `pet_dialogue_histories` has not been created yet, the updated function can still reply in stateless mode, but chat history persistence will not work until that collection exists.
 
 Important security note: if a key was ever committed in client code before, rotate that key in DashScope immediately and only keep the new key in cloud function env variables.
 
