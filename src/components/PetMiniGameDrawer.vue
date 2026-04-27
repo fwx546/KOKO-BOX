@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 import type { MiniGameResult, MiniGameType } from '../types/koko'
 
 interface FallingBall {
@@ -34,12 +35,13 @@ const emit = defineEmits<{
 }>()
 
 const { applyMiniGameReward, setActiveMiniGame } = useKokoState()
+const { t } = useLanguage()
 
 const activeGame = ref<MiniGameType>(props.defaultGame)
 const isRunning = ref(false)
 const score = ref(0)
 const timeLeft = ref(0)
-const summary = ref('点击开始，和 Koko 一起玩一会儿。')
+const summary = ref('')
 const balls = ref<FallingBall[]>([])
 const bubbles = ref<BubbleItem[]>([])
 
@@ -50,16 +52,16 @@ let countdownTimer: ReturnType<typeof setInterval> | undefined
 const gameCopy = computed(() =>
   activeGame.value === 'catch'
     ? {
-        title: '接球小游戏',
+        title: t.value.game.catchTitle,
         target: '16+',
-        startHint: '点击开始，帮 Koko 接住落下来的小球。',
-        runningHint: '快点点住下落的小球，帮 Koko 接住它们。',
+        startHint: t.value.game.catchStart,
+        runningHint: t.value.game.catchRunning,
       }
     : {
-        title: '戳泡泡小游戏',
+        title: t.value.game.bubbleTitle,
         target: '18+',
-        startHint: '点击开始后，戳破 Koko 吹起来的泡泡。',
-        runningHint: '泡泡越靠上消失得越快，出手要更快一点。',
+        startHint: t.value.game.bubbleStart,
+        runningHint: t.value.game.bubbleRunning,
       },
 )
 
@@ -112,11 +114,11 @@ const finishGame = () => {
   summary.value =
     activeGame.value === 'catch'
       ? score.value >= 14
-        ? '接得很稳，Koko 高兴得想转圈。'
-        : '这一局结束啦，再来一次会更熟练。'
+        ? t.value.game.catchSuccess
+        : t.value.game.catchEnd
       : score.value >= 18
-        ? '泡泡都被你戳破了，Koko 开心得直晃尾巴。'
-        : '这一轮已经结束，下一局可以再快一点。'
+        ? t.value.game.bubbleSuccess
+        : t.value.game.bubbleEnd
 }
 
 const startGame = () => {
@@ -221,10 +223,10 @@ onBeforeUnmount(() => {
       <view class="mini-game-drawer__handle" />
       <view class="mini-game-drawer__head">
         <view>
-          <view class="mini-game-drawer__eyebrow">玩耍时间</view>
+          <view class="mini-game-drawer__eyebrow">{{ t.game.playTime }}</view>
           <view class="mini-game-drawer__title">{{ gameCopy.title }}</view>
         </view>
-        <button class="mini-game-drawer__close" @click="close">收起</button>
+        <button class="mini-game-drawer__close" @click="close">{{ t.game.collapse }}</button>
       </view>
 
       <view class="mini-game-tabs">
@@ -233,28 +235,28 @@ onBeforeUnmount(() => {
           :class="{ 'mini-game-tabs__item--active': activeGame === 'catch' }"
           @click="switchGame('catch')"
         >
-          接球
+          {{ t.game.catchTab }}
         </button>
         <button
           class="mini-game-tabs__item"
           :class="{ 'mini-game-tabs__item--active': activeGame === 'bubble' }"
           @click="switchGame('bubble')"
         >
-          戳泡泡
+          {{ t.game.bubbleTab }}
         </button>
       </view>
 
       <view class="mini-game-scorebar">
         <view class="mini-game-scorecard">
-          <view class="mini-game-scorecard__label">当前分数</view>
+          <view class="mini-game-scorecard__label">{{ t.game.currentScore }}</view>
           <view class="mini-game-scorecard__value">{{ score }}</view>
         </view>
         <view class="mini-game-scorecard">
-          <view class="mini-game-scorecard__label">倒计时</view>
+          <view class="mini-game-scorecard__label">{{ t.game.countdown }}</view>
           <view class="mini-game-scorecard__value">{{ timeLeft }}s</view>
         </view>
         <view class="mini-game-scorecard">
-          <view class="mini-game-scorecard__label">本局目标</view>
+          <view class="mini-game-scorecard__label">{{ t.game.goal }}</view>
           <view class="mini-game-scorecard__value">{{ gameCopy.target }}</view>
         </view>
       </view>
@@ -285,9 +287,9 @@ onBeforeUnmount(() => {
 
       <view class="mini-game-actions">
         <button class="mini-game-actions__primary" @click="startGame">
-          {{ isRunning ? '重新开始' : '开始游戏' }}
+          {{ isRunning ? t.game.restart : t.game.start }}
         </button>
-        <button class="mini-game-actions__ghost" @click="close">返回首页</button>
+        <button class="mini-game-actions__ghost" @click="close">{{ t.game.backHome }}</button>
       </view>
     </view>
   </view>

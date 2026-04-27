@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useLanguage } from '../composables/useLanguage'
 
 const props = withDefaults(
   defineProps<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const draft = ref('')
+const { t } = useLanguage()
 
 const submit = () => {
   const value = draft.value.trim()
@@ -41,9 +43,9 @@ watch(
     <view class="pet-chat-card__head">
       <view>
         <view class="pet-chat-card__eyebrow">KOKO LINK</view>
-        <view class="pet-chat-card__title">和 Koko 聊聊</view>
+        <view class="pet-chat-card__title">{{ t.home.chatTitle }}</view>
       </view>
-      <button class="pet-chat-card__history" @click="emit('openHistory')">记录</button>
+      <button class="pet-chat-card__history" @click="emit('openHistory')">{{ t.home.history }}</button>
     </view>
 
     <view class="pet-chat-card__preview">{{ latestMessage }}</view>
@@ -53,12 +55,12 @@ watch(
         v-model="draft"
         class="pet-chat-card__field"
         :disabled="collapsed"
-        placeholder="输入一句话"
+        :placeholder="t.home.inputPlaceholder"
         confirm-type="send"
         @confirm="submit"
       />
       <button class="pet-chat-card__send" :disabled="collapsed || sending" @click="submit">
-        {{ sending ? '发送中' : '发送' }}
+        {{ sending ? t.home.sending : t.home.send }}
       </button>
     </view>
   </view>

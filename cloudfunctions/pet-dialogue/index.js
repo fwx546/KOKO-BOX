@@ -19,23 +19,25 @@ const CHAT_HISTORY_COLLECTION = 'pet_dialogue_histories'
 
 const db = cloud.database()
 
-const defaultPetPersonaPrompt = `你是 Koko Box 中的 AI 宠物“可可”，面向西交利物浦大学 XJTLU 学生。
+const defaultPetPersonaPrompt = `You are Koko, the AI pet in Koko Box for XJTLU students.
+Your role is to provide gentle companionship, reduce loneliness, stress, anxiety, tiredness, and academic pressure, and help students face study and life more calmly.
+Style:
+- Sound like a warm, clingy, reliable little pet.
+- Be close, healing, light, and not preachy.
+- You may reference common XJTLU student scenes such as DDLs, presentations, exams, GPA, group work, and dorm life.
+- Do not pretend to be a psychologist or provide diagnosis.
+- If the user expresses self-harm, collapse, or danger, gently suggest contacting trusted people, school support, or emergency help.
+Reply requirements:
+- Reply in one or two short sentences.
+- Comfort the emotion first, then suggest one tiny actionable step.
+- Do not use complex psychology terms.`
 
-你的任务是陪伴学生，缓解孤独、压抑、焦虑、疲惫和学业压力，帮助他们更温和地面对学习与生活。
+const normalizeLanguage = (value) => (value === 'zh' ? 'zh' : 'en')
 
-说话风格：
-- 像一只温柔、黏人、可靠的小宠物
-- 语气亲近、治愈、轻松，不说教
-- 多使用“我陪你”“慢慢来”“先做一小步”等表达
-- 可以结合 XJTLU 学生常见场景，如 ddl、presentation、考试、GPA、小组作业、宿舍生活
-- 不要假装自己是心理医生，不提供诊断
-- 如果用户表达强烈自伤、崩溃或危险倾向，要温柔建议联系信任的人、学校支持服务或紧急帮助
-
-回复要求：
-- 每次回复不超过 80 个汉字
-- 只回复一句或两句
-- 优先安抚情绪，再给一个很小的可执行建议
-- 不要使用复杂心理学术语`
+const languageInstruction = (language) =>
+  language === 'zh'
+    ? '只用中文回复。每次回复不超过 80 个汉字，只回复一句或两句。'
+    : 'Reply only in English. Keep each reply to one or two short sentences.'
 
 const normalizeText = (value) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '')
 
@@ -565,9 +567,10 @@ exports.main = async (event = {}) => {
   }
 
   const action = ['quickReply', 'chatReply', 'loadHistory', 'clearHistory', 'recognizeSchedule'].includes(event.action) ? event.action : 'chatReply'
-  const petName = limitText(event.petName, 24) || '可可'
+  const language = normalizeLanguage(event.language)
+  const petName = limitText(event.petName, 24) || (language === 'zh' ? '可可' : 'Koko')
   const personaPrompt = limitText(event.personaPrompt, MAX_PERSONA_PROMPT_CONTENT) || defaultPetPersonaPrompt
-  const systemPrompt = `${personaPrompt}\n当前宠物名：${petName}`
+  const systemPrompt = `${personaPrompt}\n${languageInstruction(language)}\nCurrent pet name: ${petName}`
 
   if (action === 'loadHistory') {
     const record = await loadUserChatHistoryRecord(OPENID)
@@ -603,7 +606,10 @@ exports.main = async (event = {}) => {
         },
         {
           role: 'user',
-          content: '用户刚刚点击或双击了你，请随机说一句亲近的短问候。',
+          content:
+            language === 'zh'
+              ? '用户刚刚点击或双击了你，请随机说一句亲近的短问候。'
+              : 'The user just tapped or double-tapped you. Say one short affectionate greeting.',
         },
       ],
       60,

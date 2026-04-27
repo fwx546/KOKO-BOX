@@ -3,11 +3,11 @@ import { copy, type Language } from '../i18n'
 
 const readInitialLanguage = (): Language => {
   if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') {
-    return 'zh'
+    return 'en'
   }
 
   const stored = uni.getStorageSync('koko-language') as Language | undefined
-  return stored === 'en' ? 'en' : 'zh'
+  return stored === 'zh' ? 'zh' : 'en'
 }
 
 const language = ref<Language>(readInitialLanguage())

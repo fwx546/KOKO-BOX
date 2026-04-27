@@ -52,7 +52,7 @@ const mockUser: AuthUser = {
 
 const mockPet: PetProfile = {
   _openid: mockUser._openid,
-  name: '可可',
+  name: 'Koko',
   stage: 'growing',
   mood: 82,
   health: 88,
@@ -398,7 +398,7 @@ const completeOnboarding = async (options?: {
   const nextProfile: { nickName?: string; avatarUrl?: string; onboardingDone?: boolean } = {
     onboardingDone: true,
   }
-  const petName = options?.petName?.trim() || pet.value?.name?.trim() || '可可'
+  const petName = options?.petName?.trim() || pet.value?.name?.trim() || 'Koko'
 
   if (options?.useWechatProfile) {
     if (options.nickName?.trim()) {

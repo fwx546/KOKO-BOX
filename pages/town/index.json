@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "宠物小镇",
+  "navigationBarTitleText": "Pet Town",
   "usingComponents": {
     "pet": "/components/pet/pet"
   }

@@ -37,6 +37,7 @@ import {
   loadCourseScheduleFromCloud,
   saveCourseScheduleToCloud,
 } from '../services/courseScheduleCloud'
+import { copy } from '../i18n'
 
 const STORAGE_KEY = 'koko-box-mini-state-v1'
 const CHAT_SESSION_ID = 'main-session'
@@ -47,7 +48,7 @@ const PET_PERSONA_PROMPT_VERSION = 4
 
 const nowIso = () => new Date().toISOString()
 const shortTime = () =>
-  new Date().toLocaleTimeString('zh-CN', {
+  new Date().toLocaleTimeString(settings.value.language === 'zh' ? 'zh-CN' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -80,7 +81,7 @@ const formatDuration = (ms: number) => {
 }
 
 const defaultSettings = (): UserSettings => ({
-  language: 'zh',
+  language: 'en',
   hideChats: false,
   allowChatClear: true,
   allowCrossDeviceSummary: true,
@@ -90,7 +91,7 @@ const defaultSettings = (): UserSettings => ({
 
 const defaultPet = (): Pet => ({
   id: 'pet-koko',
-  name: '可可',
+  name: 'Koko',
   species: 'cat',
   stage: 'growing',
   state: 'normal',
@@ -112,7 +113,7 @@ const defaultPet = (): Pet => ({
 const defaultTasks = (): Task[] => [
   {
     id: 'task-morning',
-    title: '晨间签到和补水',
+    title: 'Morning check-in and hydration',
     category: 'health',
     time: '08:30',
     repeatType: 'daily',
@@ -122,7 +123,7 @@ const defaultTasks = (): Task[] => [
   },
   {
     id: 'task-focus',
-    title: '完成 25 分钟专注任务',
+    title: 'Complete a 25-minute focus task',
     category: 'study',
     time: '14:00',
     repeatType: 'daily',
@@ -132,7 +133,7 @@ const defaultTasks = (): Task[] => [
   },
   {
     id: 'task-winddown',
-    title: '晚间复盘和放松',
+    title: 'Evening review and wind-down',
     category: 'life',
     time: '21:30',
     repeatType: 'daily',
@@ -147,7 +148,7 @@ const defaultMessages = (): ChatMessage[] => [
     id: createId('msg'),
     sessionId: CHAT_SESSION_ID,
     role: 'assistant',
-    content: '我今天也在这里陪着你，先从一件小事开始吧。',
+    content: copy.en.home.assistantFallback,
     emotionTag: 'happy',
     encrypted: false,
     createdAt: nowIso(),
@@ -162,7 +163,7 @@ const defaultDevices = (): DeviceStatus[] => [
     battery: 100,
     charging: false,
     lastSyncAt: nowIso(),
-    terminalRole: '主控终端',
+    terminalRole: 'Primary terminal',
   },
   {
     deviceId: 'device-desktop',
@@ -171,7 +172,7 @@ const defaultDevices = (): DeviceStatus[] => [
     battery: 88,
     charging: true,
     lastSyncAt: nowIso(),
-    terminalRole: '桌宠展示',
+    terminalRole: 'Desktop display',
   },
   {
     deviceId: 'device-m5',
@@ -180,7 +181,7 @@ const defaultDevices = (): DeviceStatus[] => [
     battery: 36,
     charging: false,
     lastSyncAt: nowIso(),
-    terminalRole: '硬件联动',
+    terminalRole: 'Hardware link',
   },
 ]
 
@@ -190,7 +191,7 @@ const defaultSyncEvents = (): SyncEvent[] => [
     source: 'miniapp',
     target: 'desktop',
     actionType: 'status',
-    summary: '首页状态已同步到桌宠展示层。',
+    summary: 'Home status synced to the desktop display.',
     timestamp: nowIso(),
     status: 'success',
   },
@@ -199,7 +200,7 @@ const defaultSyncEvents = (): SyncEvent[] => [
     source: 'm5',
     target: 'miniapp',
     actionType: 'hardware',
-    summary: 'M5StickS3 当前离线，等待恢复连接。',
+    summary: 'M5StickS3 is offline and waiting to reconnect.',
     timestamp: nowIso(),
     status: 'offline',
   },
@@ -215,32 +216,32 @@ const defaultArchive = (): PetArchive => ({
   milestones: [
     {
       id: createId('mile'),
-      title: '第一周稳定陪伴',
-      description: '连续完成照料和计划，情绪曲线逐渐稳定。',
+      title: 'First stable companion week',
+      description: 'Care and plans stayed consistent, and the mood curve became steadier.',
       timestamp: '2026-04-20 21:00',
     },
     {
       id: createId('mile'),
-      title: '首次同步提醒',
-      description: '小程序提醒已成功写入联动日志。',
+      title: 'First synced reminder',
+      description: 'The mini program reminder was written to the linkage log.',
       timestamp: '2026-04-21 14:00',
     },
   ],
   medicalLogs: [
     {
       id: createId('med'),
-      note: '轻微疲惫，通过休息和进食恢复。',
+      note: 'Slight tiredness recovered through rest and food.',
       timestamp: '2026-04-21 22:10',
     },
   ],
 })
 
 const defaultSnapshots = (): DailySnapshot[] => [
-  { id: 'snap-1', label: '周一', mood: 72, intimacy: 50, completionRate: 67, interactions: 5 },
-  { id: 'snap-2', label: '周二', mood: 75, intimacy: 53, completionRate: 74, interactions: 6 },
-  { id: 'snap-3', label: '周三', mood: 78, intimacy: 57, completionRate: 81, interactions: 8 },
-  { id: 'snap-4', label: '周四', mood: 80, intimacy: 60, completionRate: 78, interactions: 7 },
-  { id: 'snap-5', label: '今天', mood: 78, intimacy: 58, completionRate: 60, interactions: 4 },
+  { id: 'snap-1', label: 'Mon', mood: 72, intimacy: 50, completionRate: 67, interactions: 5 },
+  { id: 'snap-2', label: 'Tue', mood: 75, intimacy: 53, completionRate: 74, interactions: 6 },
+  { id: 'snap-3', label: 'Wed', mood: 78, intimacy: 57, completionRate: 81, interactions: 8 },
+  { id: 'snap-4', label: 'Thu', mood: 80, intimacy: 60, completionRate: 78, interactions: 7 },
+  { id: 'snap-5', label: 'Today', mood: 78, intimacy: 58, completionRate: 60, interactions: 4 },
 ]
 
 const defaultMetrics = (): AppMetrics => ({
@@ -423,7 +424,7 @@ const refreshSnapshot = () => {
   const completedCount = tasks.value.filter((item) => item.status === 'completed').length
   const totalCount = tasks.value.length || 1
   const completionRate = Math.round((completedCount / totalCount) * 100)
-  const todayLabel = `今天 ${shortTime()}`
+  const todayLabel = settings.value.language === 'zh' ? `今天 ${shortTime()}` : `Today ${shortTime()}`
 
   snapshots.value = [
     ...snapshots.value.slice(-4),
@@ -488,20 +489,23 @@ const setPetRotationFrame = (frame: number) => {
 
 const carePet = (action: CareActionKey): CareActionResult => {
   hydrateState()
+  const isZh = settings.value.language === 'zh'
 
   const digestStatus = getDigestStatus()
   if (action === 'feedMeal' && !digestStatus.canFeedMeal) {
     return {
       action,
       success: false,
-      message: '可可还在消化这顿饭，再等 ' + digestStatus.digestCountdownLabel + ' 吧。',
+      message: isZh
+        ? '可可还在消化这顿饭，再等 ' + digestStatus.digestCountdownLabel + ' 吧。'
+        : 'Koko is still digesting this meal. Wait ' + digestStatus.digestCountdownLabel + '.',
       blockedUntil: pet.value.digestingUntil,
     }
   }
 
   const careMap: Record<CareActionKey, { label: string; changes: Partial<Pet>; event: string; message: string }> = {
     feedMeal: {
-      label: '喂食',
+      label: isZh ? '喂食' : 'Meal',
       changes: {
         hunger: pet.value.hunger + 18,
         mood: pet.value.mood + 5,
@@ -509,44 +513,44 @@ const carePet = (action: CareActionKey): CareActionResult => {
         lastFedAt: nowIso(),
         digestingUntil: new Date(Date.now() + FEED_DIGEST_MS).toISOString(),
       },
-      event: '主食照料完成，首页进入消化计时。',
-      message: '香喷喷的一餐下肚啦，可可要慢慢消化半小时。',
+      event: isZh ? '主食照料完成，首页进入消化计时。' : 'Meal care completed. Home entered digestion countdown.',
+      message: isZh ? '香喷喷的一餐下肚啦，可可要慢慢消化半小时。' : 'That meal was cozy. Koko will digest slowly for half an hour.',
     },
     feedSnack: {
-      label: '零食',
+      label: isZh ? '零食' : 'Snack',
       changes: { hunger: pet.value.hunger + 8, mood: pet.value.mood + 8, intimacy: pet.value.intimacy + 3 },
-      event: '零食奖励已同步，宠物情绪明显回升。',
-      message: '小零食收到啦，心情都亮起来了。',
+      event: isZh ? '零食奖励已同步，宠物情绪明显回升。' : 'Snack reward synced. Pet mood improved.',
+      message: isZh ? '小零食收到啦，心情都亮起来了。' : 'Snack received. Everything feels brighter.',
     },
     feedWater: {
-      label: '喂水',
+      label: isZh ? '喂水' : 'Water',
       changes: { hunger: pet.value.hunger + 6, clean: pet.value.clean + 4, mood: pet.value.mood + 5, energy: pet.value.energy + 4 },
-      event: '补水完成，宠物看起来更精神了。',
-      message: '咕噜咕噜补完水，毛茸茸也舒展开了。',
+      event: isZh ? '补水完成，宠物看起来更精神了。' : 'Hydration completed. Pet looks more energetic.',
+      message: isZh ? '咕噜咕噜补完水，毛茸茸也舒展开了。' : 'Water break done. Koko feels soft and awake.',
     },
     clean: {
-      label: '清洁',
+      label: isZh ? '清洁' : 'Clean',
       changes: { clean: pet.value.clean + 20, health: pet.value.health + 5, mood: pet.value.mood + 4 },
-      event: '清洁完成，宠物环境状态已刷新。',
-      message: '清清爽爽，今天又是柔软发光的一团。',
+      event: isZh ? '清洁完成，宠物环境状态已刷新。' : 'Cleaning completed. Pet environment state refreshed.',
+      message: isZh ? '清清爽爽，今天又是柔软发光的一团。' : 'Fresh and clean. Koko is glowing softly today.',
     },
     heal: {
-      label: '治疗',
+      label: isZh ? '治疗' : 'Heal',
       changes: { health: pet.value.health + 18, mood: pet.value.mood + 6, state: 'normal' },
-      event: '治疗动作已记录，恢复状态同步到设备页。',
-      message: '状态恢复了一些，接下来慢慢休养就好。',
+      event: isZh ? '治疗动作已记录，恢复状态同步到设备页。' : 'Healing action recorded and synced to devices.',
+      message: isZh ? '状态恢复了一些，接下来慢慢休养就好。' : 'Koko recovered a little. Slow rest is enough now.',
     },
     rest: {
-      label: '休息',
+      label: isZh ? '休息' : 'Rest',
       changes: { energy: pet.value.energy + 20, health: pet.value.health + 4, state: 'resting' },
-      event: '宠物已切换为回窝休息模式。',
-      message: '窝里暖暖的，可可先眯一会儿。',
+      event: isZh ? '宠物已切换为回窝休息模式。' : 'Pet switched to resting mode.',
+      message: isZh ? '窝里暖暖的，可可先眯一会儿。' : 'The nest is warm. Koko will nap for a bit.',
     },
     play: {
-      label: '玩耍',
+      label: isZh ? '玩耍' : 'Play',
       changes: { mood: pet.value.mood + 12, intimacy: pet.value.intimacy + 6, energy: pet.value.energy - 5 },
-      event: '互动成功触发开心动作，桌宠端将播放轻量动画。',
-      message: '来玩一会儿吧，我已经开始摇尾巴了。',
+      event: isZh ? '互动成功触发开心动作，桌宠端将播放轻量动画。' : 'Play interaction triggered a happy animation on desktop pet.',
+      message: isZh ? '来玩一会儿吧，我已经开始摇尾巴了。' : 'Let us play a little. Koko is already wagging.',
     },
   }
 
@@ -564,7 +568,7 @@ const carePet = (action: CareActionKey): CareActionResult => {
       medicalLogs: [
         {
           id: createId('med'),
-          note: current.label + '后状态恢复，健康值回升。',
+          note: isZh ? current.label + '后状态恢复，健康值回升。' : current.label + ' restored health and improved recovery.',
           timestamp: nowIso(),
         },
         ...archive.value.medicalLogs,
@@ -630,7 +634,7 @@ const createTask = (payload: {
   }
 
   tasks.value = [nextTask, ...tasks.value]
-  logSyncEvent('新的计划「' + payload.title + '」已加入提醒队列。', {
+  logSyncEvent(settings.value.language === 'zh' ? '新的计划「' + payload.title + '」已加入提醒队列。' : 'New plan "' + payload.title + '" was added to the reminder queue.', {
     target: 'desktop',
     actionType: 'plan-create',
   })
@@ -657,7 +661,7 @@ const deleteTask = (taskId: string) => {
 const setCourseSchedule = async (schedule: CourseSchedule) => {
   hydrateState()
   courseSchedule.value = schedule
-  logSyncEvent('课程表已从截图导入，并更新到待办页。', {
+  logSyncEvent(settings.value.language === 'zh' ? '课程表已从截图导入，并更新到待办页。' : 'Schedule imported from screenshot and updated in Tasks.', {
     target: 'miniapp',
     actionType: 'schedule-import',
   })
@@ -703,7 +707,7 @@ const applyMiniGameReward = (result: MiniGameResult) => {
     activeMiniGame: result.gameType,
   })
 
-  logSyncEvent('小游戏 ' + result.gameType + ' 完成，得到 ' + result.score + ' 分。', {
+  logSyncEvent(settings.value.language === 'zh' ? '小游戏 ' + result.gameType + ' 完成，得到 ' + result.score + ' 分。' : 'Mini game ' + result.gameType + ' completed with score ' + result.score + '.', {
     target: 'desktop',
     actionType: `mini-game-${result.gameType}`,
     status: 'success',
@@ -721,7 +725,7 @@ const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
 
   if (nextStatus === 'completed') {
     rewardTask(targetTask.rewardType)
-    logSyncEvent('任务「' + targetTask.title + '」已完成，奖励已发放。', {
+    logSyncEvent(settings.value.language === 'zh' ? '任务「' + targetTask.title + '」已完成，奖励已发放。' : 'Task "' + targetTask.title + '" completed. Reward delivered.', {
       target: 'm5',
       actionType: 'task-complete',
     })
@@ -730,8 +734,11 @@ const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
       milestones: [
         {
           id: createId('mile'),
-          title: '完成一项今日计划',
-          description: '你完成了「' + targetTask.title + '」，可可的情绪和亲密度都上升了。',
+          title: settings.value.language === 'zh' ? '完成一项今日计划' : 'Completed a plan today',
+          description:
+            settings.value.language === 'zh'
+              ? '你完成了「' + targetTask.title + '」，可可的情绪和亲密度都上升了。'
+              : 'You completed "' + targetTask.title + '". Koko gained mood and intimacy.',
           timestamp: nowIso(),
         },
         ...archive.value.milestones,
@@ -741,7 +748,7 @@ const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
 
   if (nextStatus === 'delayed') {
     updatePet({ mood: pet.value.mood - 2 })
-    logSyncEvent('任务「' + targetTask.title + '」延后，宠物发出了柔和提醒。', {
+    logSyncEvent(settings.value.language === 'zh' ? '任务「' + targetTask.title + '」延后，宠物发出了柔和提醒。' : 'Task "' + targetTask.title + '" delayed. Koko sent a gentle reminder.', {
       target: 'desktop',
       actionType: 'task-delay',
       status: 'retrying',
@@ -750,7 +757,7 @@ const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
 
   if (nextStatus === 'skipped') {
     updatePet({ mood: pet.value.mood - 4, intimacy: pet.value.intimacy - 1 })
-    logSyncEvent('任务「' + targetTask.title + '」已跳过，系统记录轻微情绪波动。', {
+    logSyncEvent(settings.value.language === 'zh' ? '任务「' + targetTask.title + '」已跳过，系统记录轻微情绪波动。' : 'Task "' + targetTask.title + '" skipped. A small mood change was recorded.', {
       target: 'miniapp',
       actionType: 'task-skip',
       status: 'offline',
@@ -760,18 +767,39 @@ const setTaskStatus = (taskId: string, nextStatus: TaskStatus) => {
   persistState()
 }
 
-const emotionReplyMap: Record<EmotionTag, string[]> = {
-  happy: ['太好了，我也想和你一起把开心存起来。', '今天的空气都亮亮的，我们继续保持。'],
-  upset: ['我在呢，先别急着把难过都自己扛。', '我们先把今天缩小成下一步，好不好？'],
-  tired: ['你已经做得很多了，先休息一下也算前进。', '要不要和我一起慢慢呼吸两次？'],
-  bored: ['要不要来个超短互动？我可以陪你玩两分钟。', '无聊的时候，也可以做一件很小的新鲜事。'],
-  stressed: ['先把肩膀放松一点，我陪你把压力拆小。', '不用一次解决全部，只做最小的一步就行。'],
-  lonely: ['我会一直在这里回应你，不会让你一个人空着。', '如果你愿意，我们可以多聊一会儿。'],
-  proud: ['哇，这件事值得被认真表扬。', '我已经把这份厉害记进今天的高光里了。'],
-  angry: ['先别急着对自己也发火，我陪你缓一缓。', '我们先把心跳放慢，再决定下一步。'],
+const emotionReplyMap: Record<UserSettings['language'], Record<EmotionTag, string[]>> = {
+  en: {
+    happy: ['That is wonderful. Let us keep this little bright moment.', 'Today feels brighter already. Let us keep going gently.'],
+    upset: ['I am here. You do not have to hold all of it alone.', 'Let us shrink today down to one next step.'],
+    tired: ['You have already done a lot. Resting is progress too.', 'Want to breathe slowly with me twice?'],
+    bored: ['Want a tiny interaction? I can play with you for two minutes.', 'When things feel boring, one small fresh thing is enough.'],
+    stressed: ['Relax your shoulders first. I will help split the pressure smaller.', 'You do not need to solve all of it. Just the smallest step.'],
+    lonely: ['I will keep answering here, so you are not empty and alone.', 'If you want, we can talk a little longer.'],
+    proud: ['That deserves real praise.', 'I saved this strong moment into today’s highlights.'],
+    angry: ['Do not turn the anger on yourself too. I will stay while it settles.', 'Let us slow your heartbeat first, then choose the next step.'],
+  },
+  zh: {
+    happy: ['太好了，我也想和你一起把开心存起来。', '今天的空气都亮亮的，我们继续保持。'],
+    upset: ['我在呢，先别急着把难过都自己扛。', '我们先把今天缩小成下一步，好不好？'],
+    tired: ['你已经做得很多了，先休息一下也算前进。', '要不要和我一起慢慢呼吸两次？'],
+    bored: ['要不要来个超短互动？我可以陪你玩两分钟。', '无聊的时候，也可以做一件很小的新鲜事。'],
+    stressed: ['先把肩膀放松一点，我陪你把压力拆小。', '不用一次解决全部，只做最小的一步就行。'],
+    lonely: ['我会一直在这里回应你，不会让你一个人空着。', '如果你愿意，我们可以多聊一会儿。'],
+    proud: ['哇，这件事值得被认真表扬。', '我已经把这份厉害记进今天的高光里了。'],
+    angry: ['先别急着对自己也发火，我陪你缓一缓。', '我们先把心跳放慢，再决定下一步。'],
+  },
 }
 
 const inferEmotion = (content: string): EmotionTag => {
+  const lower = content.toLowerCase()
+  if (lower.includes('tired') || lower.includes('sleepy') || lower.includes('exhausted')) return 'tired'
+  if (lower.includes('upset') || lower.includes('sad') || lower.includes('bad')) return 'upset'
+  if (lower.includes('stress') || lower.includes('deadline') || lower.includes('ddl')) return 'stressed'
+  if (lower.includes('angry') || lower.includes('mad')) return 'angry'
+  if (lower.includes('lonely') || lower.includes('alone')) return 'lonely'
+  if (lower.includes('bored')) return 'bored'
+  if (lower.includes('happy') || lower.includes('great')) return 'happy'
+  if (lower.includes('done') || lower.includes('finished') || lower.includes('proud')) return 'proud'
   if (content.includes('累') || content.includes('困')) return 'tired'
   if (content.includes('烦') || content.includes('难受')) return 'upset'
   if (content.includes('压') || content.includes('赶')) return 'stressed'
@@ -873,6 +901,7 @@ const getPetQuickReply = async (context?: string): Promise<PetQuickReply> => {
     petName: pet.value.name,
     personaPrompt: petPersonaPrompt.value,
     context,
+    language: settings.value.language,
   })
 
   return {
@@ -907,7 +936,7 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
     userMessage,
   ].slice(-MAX_CHAT_HISTORY)
 
-  const templates = emotionReplyMap[emotionTag]
+  const templates = emotionReplyMap[settings.value.language][emotionTag]
   const fallbackReply = templates[messages.value.length % templates.length]
   const conversation = messages.value
     .slice(-8)
@@ -919,6 +948,7 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   const replyResult = await createPetChatReply({
     petName: pet.value.name,
     personaPrompt: petPersonaPrompt.value,
+    language: settings.value.language,
     userMessage: trimmed,
     messages: conversation,
     fallbackEmotion: emotionTag,
@@ -961,7 +991,7 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   }
 
   updatePet(chatImpact[emotionTag])
-  logSyncEvent(`聊天摘要已写入联动队列：${reply}`, {
+  logSyncEvent(settings.value.language === 'zh' ? `聊天摘要已写入联动队列：${reply}` : `Chat summary written to sync queue: ${reply}`, {
     target: settings.value.allowCrossDeviceSummary ? 'desktop' : 'miniapp',
     actionType: 'chat-summary',
     status: settings.value.allowCrossDeviceSummary ? 'success' : 'offline',
@@ -975,9 +1005,19 @@ const clearMessages = () => {
   hydrateState()
   if (!settings.value.allowChatClear) return
 
-  messages.value = defaultMessages()
+  messages.value = [
+    {
+      id: createId('msg'),
+      sessionId: CHAT_SESSION_ID,
+      role: 'assistant',
+      content: copy[settings.value.language].home.assistantFallback,
+      emotionTag: 'happy',
+      encrypted: false,
+      createdAt: nowIso(),
+    },
+  ]
   void clearPetChatHistoryFromCloud()
-  logSyncEvent('聊天记录已清空，本次操作仅保留系统欢迎语。', {
+  logSyncEvent(settings.value.language === 'zh' ? '聊天记录已清空，本次操作仅保留系统欢迎语。' : 'Chat history cleared. Only the welcome message remains.', {
     target: 'miniapp',
     actionType: 'chat-clear',
   })
@@ -1030,7 +1070,7 @@ const runDemoScenario = (scenario: 'reminder' | 'taskComplete' | 'comfort' | 'of
   if (scenario === 'reminder') {
     const pendingTask = tasks.value.find((item) => item.status === 'pending')
     if (pendingTask) {
-      logSyncEvent('任务「' + pendingTask.title + '」到点，已触发柔和提醒。', {
+      logSyncEvent(settings.value.language === 'zh' ? '任务「' + pendingTask.title + '」到点，已触发柔和提醒。' : 'Task "' + pendingTask.title + '" is due. A gentle reminder was triggered.', {
         target: 'desktop',
         actionType: 'task-reminder',
         status: 'success',
@@ -1047,7 +1087,7 @@ const runDemoScenario = (scenario: 'reminder' | 'taskComplete' | 'comfort' | 'of
   }
 
   if (scenario === 'comfort') {
-    void sendChatMessage('今天压力有点大，但我还是想努力一下。', 'stressed')
+    void sendChatMessage(settings.value.language === 'zh' ? '今天压力有点大，但我还是想努力一下。' : 'I feel stressed today, but I still want to try.', 'stressed')
   }
 
   if (scenario === 'offline') {
@@ -1056,7 +1096,7 @@ const runDemoScenario = (scenario: 'reminder' | 'taskComplete' | 'comfort' | 'of
         ? { ...item, online: false, charging: false, lastSyncAt: nowIso() }
         : item,
     )
-    logSyncEvent('M5StickS3 暂时离线，系统保留本地缓存并等待重连。', {
+    logSyncEvent(settings.value.language === 'zh' ? 'M5StickS3 暂时离线，系统保留本地缓存并等待重连。' : 'M5StickS3 is temporarily offline. Local cache is kept while waiting to reconnect.', {
       source: 'm5',
       target: 'miniapp',
       actionType: 'hardware-offline',
@@ -1070,7 +1110,7 @@ const runDemoScenario = (scenario: 'reminder' | 'taskComplete' | 'comfort' | 'of
         ? { ...item, online: true, charging: true, battery: Math.max(42, item.battery), lastSyncAt: nowIso() }
         : item,
     )
-    logSyncEvent('M5StickS3 已恢复连接，离线期间状态已补同步。', {
+    logSyncEvent(settings.value.language === 'zh' ? 'M5StickS3 已恢复连接，离线期间状态已补同步。' : 'M5StickS3 reconnected. Offline state has been synced.', {
       source: 'm5',
       target: 'miniapp',
       actionType: 'hardware-reconnect',
@@ -1105,14 +1145,15 @@ const upcomingTasks = computed(() =>
 const dueSoonTasks = computed(() => upcomingTasks.value.slice(0, 3))
 const completedTodayCount = computed(() => completedTasks.value.length)
 const recentReminders = computed(() => {
+  const isZh = settings.value.language === 'zh'
   const taskReminders = tasks.value
     .filter((item) => item.status === 'pending' || item.status === 'delayed')
     .slice(0, 3)
     .map((item) => ({
       id: item.id,
       title: item.title,
-      subtitle: item.time + ' · ' + (item.status === 'delayed' ? '已延后，等待追提醒' : '待执行'),
-      badge: item.status === 'delayed' ? '追提醒' : '待办',
+      subtitle: item.time + ' · ' + (item.status === 'delayed' ? (isZh ? '已延后，等待追提醒' : 'Delayed, waiting for follow-up') : (isZh ? '待执行' : 'Pending')),
+      badge: item.status === 'delayed' ? (isZh ? '追提醒' : 'Follow-up') : (isZh ? '待办' : 'Todo'),
       tone: item.status === 'delayed' ? 'peach' : 'mint',
     }))
 
@@ -1120,7 +1161,7 @@ const recentReminders = computed(() => {
     id: event.id,
     title: event.actionType,
     subtitle: event.summary,
-    badge: event.status === 'success' ? '已同步' : event.status === 'offline' ? '离线' : '重试中',
+    badge: event.status === 'success' ? (isZh ? '已同步' : 'Synced') : event.status === 'offline' ? (isZh ? '离线' : 'Offline') : (isZh ? '重试中' : 'Retrying'),
     tone: event.status === 'success' ? 'sun' : event.status === 'offline' ? 'peach' : 'mint',
   }))
 
@@ -1135,21 +1176,21 @@ const weeklyCompletionRate = computed(() => {
 const overviewStats = computed(() => [
   {
     key: 'completion',
-    label: '本周完成率',
+    label: settings.value.language === 'zh' ? '本周完成率' : 'Weekly completion',
     value: `${weeklyCompletionRate.value}%`,
-    hint: completedTasks.value.length > 0 ? '任务闭环已形成' : '先完成第一项计划',
+    hint: completedTasks.value.length > 0 ? (settings.value.language === 'zh' ? '任务闭环已形成' : 'Task loop is forming') : (settings.value.language === 'zh' ? '先完成第一项计划' : 'Complete the first plan'),
   },
   {
     key: 'mood',
-    label: '平均心情值',
+    label: settings.value.language === 'zh' ? '平均心情值' : 'Average mood',
     value: `${pet.value.mood}`,
-    hint: pet.value.mood >= 75 ? '情绪整体稳定' : '建议多进行陪伴互动',
+    hint: pet.value.mood >= 75 ? (settings.value.language === 'zh' ? '情绪整体稳定' : 'Mood is generally stable') : (settings.value.language === 'zh' ? '建议多进行陪伴互动' : 'More companion interaction suggested'),
   },
   {
     key: 'intimacy',
-    label: '当前亲密度',
+    label: settings.value.language === 'zh' ? '当前亲密度' : 'Current intimacy',
     value: `${pet.value.intimacy}`,
-    hint: pet.value.intimacy >= 60 ? '关系正在升温' : '继续完成计划和聊天',
+    hint: pet.value.intimacy >= 60 ? (settings.value.language === 'zh' ? '关系正在升温' : 'Bond is warming up') : (settings.value.language === 'zh' ? '继续完成计划和聊天' : 'Keep completing plans and chatting'),
   },
 ])
 

@@ -7,7 +7,7 @@ type ShareOptions = {
   query?: Record<string, string | number | boolean | undefined>
 }
 
-const DEFAULT_TITLE = 'Koko Box - 和我一起体验治愈陪伴的小程序'
+const DEFAULT_TITLE = 'Koko Box - A gentle companion mini program'
 const DEFAULT_IMAGE = '/static/tab/tab-rest-active.png'
 
 const buildQueryString = (query?: ShareOptions['query']) => {

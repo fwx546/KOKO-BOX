@@ -23,7 +23,7 @@ const defaultUser = (openid, profile = {}) => ({
 
 const defaultPet = (openid, profile = {}) => ({
   _openid: openid,
-  name: profile.petName || '可可',
+  name: profile.petName || 'Koko',
   stage: 'growing',
   mood: 82,
   health: 88,
@@ -37,7 +37,7 @@ const defaultPet = (openid, profile = {}) => ({
 
 const defaultSettings = (openid) => ({
   _openid: openid,
-  language: 'zh',
+  language: 'en',
   lowDisturbanceMode: false,
   reminderIntensity: 'gentle',
   createdAt: now(),

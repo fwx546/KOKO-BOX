@@ -19,7 +19,7 @@
     {
       "path": "pages/chat/index",
       "style": {
-        "navigationBarTitleText": "聊天",
+        "navigationBarTitleText": "Chat",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -27,7 +27,7 @@
     {
       "path": "pages/stats/index",
       "style": {
-        "navigationBarTitleText": "统计",
+        "navigationBarTitleText": "Stats",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -35,7 +35,7 @@
     {
       "path": "pages/profile/index",
       "style": {
-        "navigationBarTitleText": "我的",
+        "navigationBarTitleText": "Me",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -43,7 +43,7 @@
     {
       "path": "pages/archive/index",
       "style": {
-        "navigationBarTitleText": "成长档案",
+        "navigationBarTitleText": "Archive",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -51,7 +51,7 @@
     {
       "path": "pages/town/index",
       "style": {
-        "navigationBarTitleText": "宠物小镇",
+        "navigationBarTitleText": "Pet Town",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -59,7 +59,7 @@
     {
       "path": "pages/planner/index",
       "style": {
-        "navigationBarTitleText": "待办",
+        "navigationBarTitleText": "Tasks",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -67,7 +67,7 @@
     {
       "path": "pages/schedule/index",
       "style": {
-        "navigationBarTitleText": "我的课表",
+        "navigationBarTitleText": "Schedule",
         "navigationStyle": "custom",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
@@ -76,25 +76,25 @@
     {
       "path": "pages/planner-create/index",
       "style": {
-        "navigationBarTitleText": "新建任务"
+        "navigationBarTitleText": "New Task"
       }
     },
     {
       "path": "pages/planner-task/index",
       "style": {
-        "navigationBarTitleText": "任务详情"
+        "navigationBarTitleText": "Task Details"
       }
     },
     {
       "path": "pages/planner-list/index",
       "style": {
-        "navigationBarTitleText": "任务列表"
+        "navigationBarTitleText": "Task List"
       }
     },
     {
       "path": "pages/pet-game-catch/index",
       "style": {
-        "navigationBarTitleText": "接球小游戏",
+        "navigationBarTitleText": "Catch Game",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -102,7 +102,7 @@
     {
       "path": "pages/pet-game-bubble/index",
       "style": {
-        "navigationBarTitleText": "泡泡小游戏",
+        "navigationBarTitleText": "Bubble Game",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -110,7 +110,7 @@
     {
       "path": "pages/hardware/index",
       "style": {
-        "navigationBarTitleText": "设备联动",
+        "navigationBarTitleText": "Devices",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -118,7 +118,7 @@
     {
       "path": "pages/settings/index",
       "style": {
-        "navigationBarTitleText": "设置",
+        "navigationBarTitleText": "Settings",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -132,25 +132,25 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "首页",
+        "text": "Home",
         "iconPath": "static/tab/tab-rest.png",
         "selectedIconPath": "static/tab/tab-rest-active.png"
       },
       {
         "pagePath": "pages/planner/index",
-        "text": "待办",
+        "text": "Tasks",
         "iconPath": "static/tab/tab-grow.png",
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },
       {
         "pagePath": "pages/town/index",
-        "text": "小镇",
+        "text": "Town",
         "iconPath": "static/tab/tab-talk.png",
         "selectedIconPath": "static/tab/tab-talk-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的",
+        "text": "Me",
         "iconPath": "static/tab/tab-profile.png",
         "selectedIconPath": "static/tab/tab-profile-active.png"
       }

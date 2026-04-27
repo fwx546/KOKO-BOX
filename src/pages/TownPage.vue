@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetLottieAvatar from '../components/PetLottieAvatar.vue'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 import type { PetActionType } from '../types/koko'
 
 interface BuildingHotspot {
@@ -31,54 +32,15 @@ const PET_MIN_Y = 26
 const PET_MAX_Y = 92
 
 const { pet } = useKokoState()
+const { t } = useLanguage()
 
-const hotspots: BuildingHotspot[] = [
-  {
-    id: 'home',
-    name: '小屋',
-    description: '这是你和 Koko 的温暖小屋，可以在这里休息和互动。',
-    x: 200,
-    y: 560,
-    width: 180,
-    height: 170,
-  },
-  {
-    id: 'playground',
-    name: '宠物乐园',
-    description: 'Koko 最喜欢的活动区，可以玩小游戏和互动设施。',
-    x: 630,
-    y: 560,
-    width: 180,
-    height: 170,
-  },
-  {
-    id: 'shop',
-    name: '小商店',
-    description: '可以准备零食和装饰道具，让 Koko 的生活更丰富。',
-    x: 120,
-    y: 900,
-    width: 220,
-    height: 210,
-  },
-  {
-    id: 'task-board',
-    name: '任务公告栏',
-    description: '这里会发布每日任务和小镇活动通知。',
-    x: 650,
-    y: 940,
-    width: 190,
-    height: 180,
-  },
-  {
-    id: 'talk-house',
-    name: '聊天小屋',
-    description: '想放松时可以来这里和 Koko 聊聊天，记录心情。',
-    x: 360,
-    y: 1180,
-    width: 190,
-    height: 190,
-  },
-]
+const hotspots = computed<BuildingHotspot[]>(() => [
+  { id: 'home', ...t.value.town.buildings.home, x: 200, y: 560, width: 180, height: 170 },
+  { id: 'playground', ...t.value.town.buildings.playground, x: 630, y: 560, width: 180, height: 170 },
+  { id: 'shop', ...t.value.town.buildings.shop, x: 120, y: 900, width: 220, height: 210 },
+  { id: 'task-board', ...t.value.town.buildings.task, x: 650, y: 940, width: 190, height: 180 },
+  { id: 'talk-house', ...t.value.town.buildings.chat, x: 360, y: 1180, width: 190, height: 190 },
+])
 
 const activeBuilding = ref<BuildingHotspot | null>(null)
 const petPosition = ref({ x: 52, y: 76 })
@@ -258,7 +220,7 @@ onBeforeUnmount(() => {
       <view class="town-popup" @click.stop>
         <view class="town-popup__title">{{ activeBuilding.name }}</view>
         <view class="town-popup__description">{{ activeBuilding.description }}</view>
-        <button class="town-popup__button" @click="closeBuildingPopup">知道啦</button>
+        <button class="town-popup__button" @click="closeBuildingPopup">{{ t.town.ok }}</button>
       </view>
     </view>
   </view>

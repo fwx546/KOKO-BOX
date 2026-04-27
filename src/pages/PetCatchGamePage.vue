@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 
 interface FallingBall {
   id: string
@@ -10,12 +11,13 @@ interface FallingBall {
 }
 
 const { applyMiniGameReward } = useKokoState()
+const { t } = useLanguage()
 
 const isRunning = ref(false)
 const score = ref(0)
 const timeLeft = ref(25)
 const balls = ref<FallingBall[]>([])
-const summary = ref('点击开始，帮可可把落下来的小球接住。')
+const summary = ref(t.value.game.catchStart)
 
 let spawnTimer: ReturnType<typeof setInterval> | undefined
 let moveTimer: ReturnType<typeof setInterval> | undefined
@@ -39,7 +41,7 @@ const finishGame = () => {
     bonusMood: score.value >= 16 ? 4 : 0,
     bonusIntimacy: score.value >= 12 ? 3 : 0,
   })
-  summary.value = score.value >= 14 ? '接得很稳，可可高兴得想转圈。' : '这一局结束啦，再来一次会更熟练。'
+  summary.value = score.value >= 14 ? t.value.game.catchSuccess : t.value.game.catchEnd
 }
 
 const startGame = () => {
@@ -48,7 +50,7 @@ const startGame = () => {
   score.value = 0
   timeLeft.value = 25
   balls.value = []
-  summary.value = '快点点住下落的小球，帮可可接住它们。'
+  summary.value = t.value.game.catchRunning
 
   spawnTimer = setInterval(() => {
     balls.value = [
@@ -95,19 +97,19 @@ onBeforeUnmount(() => {
   <view class="pet-game-page">
     <view class="pet-game-page__head">
       <view>
-        <view class="pet-game-page__eyebrow">小游戏</view>
-        <view class="pet-game-page__title">点击接球</view>
+        <view class="pet-game-page__eyebrow">{{ t.game.eyebrow }}</view>
+        <view class="pet-game-page__title">{{ t.game.catchTitle }}</view>
       </view>
       <view class="pet-game-page__time">{{ timeLeft }}s</view>
     </view>
 
     <view class="pet-game-page__scorebar">
       <view class="pet-game-page__scorecard">
-        <view>当前分数</view>
+        <view>{{ t.game.currentScore }}</view>
         <view>{{ score }}</view>
       </view>
       <view class="pet-game-page__scorecard">
-        <view>本局目标</view>
+        <view>{{ t.game.goal }}</view>
         <view>16+</view>
       </view>
     </view>
@@ -126,8 +128,8 @@ onBeforeUnmount(() => {
     <view class="pet-game-summary">{{ summary }}</view>
 
     <view class="pet-game-page__actions">
-      <button class="pet-game-page__primary" @click="startGame">{{ isRunning ? '重新开始' : '开始游戏' }}</button>
-      <button class="pet-game-page__ghost" @click="goBack">返回首页</button>
+      <button class="pet-game-page__primary" @click="startGame">{{ isRunning ? t.game.restart : t.game.start }}</button>
+      <button class="pet-game-page__ghost" @click="goBack">{{ t.game.backHome }}</button>
     </view>
   </view>
 </template>

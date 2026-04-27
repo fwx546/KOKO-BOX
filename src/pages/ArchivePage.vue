@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 
 const { archive, metrics } = useKokoState()
-
-const stageLabelMap = {
-  egg: '蛋壳期',
-  baby: '幼崽期',
-  growing: '成长期',
-  adult: '成熟期',
-}
+const { t } = useLanguage()
 
 const openChat = () => {
   uni.navigateTo({
@@ -21,36 +16,36 @@ const openChat = () => {
   <view class="page-view archive-page-with-fab">
     <view class="page-head">
       <view>
-        <view class="eyebrow">陪伴记录</view>
-        <view>成长档案</view>
+        <view class="eyebrow">{{ t.archive.eyebrow }}</view>
+        <view>{{ t.archive.title }}</view>
       </view>
-      <view>这里记录 Koko 的成长阶段、恢复记录和里程碑。</view>
+      <view>{{ t.archive.subtitle }}</view>
     </view>
 
     <view class="page-grid-2">
       <view class="panel-block">
-        <view class="eyebrow">基础信息</view>
-        <view>领养与陪伴</view>
+        <view class="eyebrow">{{ t.archive.basic }}</view>
+        <view>{{ t.archive.adoption }}</view>
         <view class="bullet-list">
-          <view>领养时间：{{ archive.adoptedAt }}</view>
-          <view>陪伴时长：{{ metrics.companionMinutes }} 分钟</view>
+          <view>{{ t.archive.adoptedAt }}: {{ archive.adoptedAt }}</view>
+          <view>{{ t.archive.companionTime }}: {{ metrics.companionMinutes }} {{ t.archive.minutes }}</view>
         </view>
       </view>
 
       <view class="panel-block">
-        <view class="eyebrow">阶段记录</view>
-        <view>成长阶段历史</view>
+        <view class="eyebrow">{{ t.archive.stageRecord }}</view>
+        <view>{{ t.archive.stageHistory }}</view>
         <view class="simple-list">
           <view v-for="item in archive.stageHistory" :key="`${item.stage}-${item.timestamp}`">
-            <view>{{ stageLabelMap[item.stage] ?? item.stage }}</view>
+            <view>{{ t.profile.stages[item.stage] ?? item.stage }}</view>
             <view>{{ item.timestamp }}</view>
           </view>
         </view>
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="eyebrow">里程碑</view>
-        <view>关键成长瞬间</view>
+        <view class="eyebrow">{{ t.archive.milestones }}</view>
+        <view>{{ t.archive.milestoneTitle }}</view>
         <view class="archive-grid">
           <view v-for="item in archive.milestones" :key="item.id" class="archive-item">
             <view>{{ item.title }}</view>
@@ -61,8 +56,8 @@ const openChat = () => {
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="eyebrow">健康记录</view>
-        <view>最近恢复记录</view>
+        <view class="eyebrow">{{ t.archive.healthRecord }}</view>
+        <view>{{ t.archive.recentRecovery }}</view>
         <view class="card-list">
           <view v-for="item in archive.medicalLogs" :key="item.id" class="mini-card">
             <view>{{ item.note }}</view>

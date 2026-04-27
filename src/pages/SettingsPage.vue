@@ -3,8 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
+import { syncNativeLanguageUi } from '../utils/nativeLanguageUi'
 
-const { language, setLanguage } = useLanguage()
+const { language, setLanguage, t } = useLanguage()
 const { pet, syncPetFromAuth, updateSettings } = useKokoState()
 const { authMode, isGuestSession, pet: authPet, syncUserProfile, logout } = useAuth()
 
@@ -13,8 +14,8 @@ const renaming = ref(false)
 
 const renameHint = computed(() =>
   isGuestSession.value
-    ? '游客模式下，宠物名会固定为 koko。'
-    : '改名会同步到云端，换设备登录后也会保持一致。',
+    ? t.value.settings.guestRenameHint
+    : t.value.settings.renameHint,
 )
 
 watch(
@@ -30,12 +31,13 @@ watch(
 const changeLanguage = (next: 'zh' | 'en') => {
   setLanguage(next)
   updateSettings({ language: next })
+  syncNativeLanguageUi(next)
 }
 
 const renamePet = async () => {
   if (isGuestSession.value) {
     uni.showToast({
-      title: '游客模式宠物名固定为 koko',
+      title: t.value.settings.guestNameFixed,
       icon: 'none',
     })
     return
@@ -45,7 +47,7 @@ const renamePet = async () => {
 
   if (!nextName) {
     uni.showToast({
-      title: '请输入宠物名',
+      title: t.value.settings.emptyPetName,
       icon: 'none',
     })
     return
@@ -53,7 +55,7 @@ const renamePet = async () => {
 
   if (nextName.length > 12) {
     uni.showToast({
-      title: '宠物名最多 12 个字符',
+      title: t.value.settings.petNameTooLong,
       icon: 'none',
     })
     return
@@ -61,7 +63,7 @@ const renamePet = async () => {
 
   if (nextName === authPet.value?.name) {
     uni.showToast({
-      title: '名字没有变化',
+      title: t.value.settings.nameUnchanged,
       icon: 'none',
     })
     return
@@ -82,7 +84,7 @@ const renamePet = async () => {
     petNameInput.value = nextName
 
     uni.showToast({
-      title: '已更新宠物名',
+      title: t.value.settings.nameUpdated,
       icon: 'success',
     })
   } finally {
@@ -93,10 +95,10 @@ const renamePet = async () => {
 const confirmLogout = () =>
   new Promise<boolean>((resolve) => {
     uni.showModal({
-      title: '退出登录',
-      content: '确认退出当前账号吗？',
-      confirmText: '退出',
-      cancelText: '取消',
+      title: t.value.settings.logoutTitle,
+      content: t.value.settings.logoutContent,
+      confirmText: t.value.settings.logoutConfirm,
+      cancelText: t.value.settings.cancel,
       success: (result) => {
         resolve(Boolean(result.confirm))
       },
@@ -124,18 +126,18 @@ const handleLogout = async () => {
 <template>
   <view class="settings-page">
     <view class="settings-panel">
-      <view class="settings-title">设置</view>
-      <view class="settings-subtitle">保留核心操作，让 Koko 的体验更轻巧。</view>
+      <view class="settings-title">{{ t.settings.title }}</view>
+      <view class="settings-subtitle">{{ t.settings.subtitle }}</view>
 
       <view class="settings-block">
-        <view class="settings-block__label">切换语言</view>
+        <view class="settings-block__label">{{ t.settings.languageLabel }}</view>
         <view class="language-switch">
           <button
             class="language-switch__button"
             :class="{ 'language-switch__button--active': language === 'zh' }"
             @click="changeLanguage('zh')"
           >
-            中文
+            {{ t.app.langChinese }}
           </button>
           <button
             class="language-switch__button"
@@ -148,24 +150,26 @@ const handleLogout = async () => {
       </view>
 
       <view class="settings-block">
-        <view class="settings-block__label">给宠物改名</view>
+        <view class="settings-block__label">{{ t.settings.petNameLabel }}</view>
         <input
           class="settings-input"
           maxlength="12"
           :value="petNameInput"
-          placeholder="输入新的宠物名"
+          :placeholder="t.settings.petNamePlaceholder"
           @input="(event) => (petNameInput = event.detail?.value ?? '')"
         />
         <view class="settings-block__hint">{{ renameHint }}</view>
         <button class="settings-button" :disabled="renaming" @click="renamePet">
-          {{ renaming ? '保存中...' : '保存宠物名' }}
+          {{ renaming ? t.settings.saving : t.settings.savePetName }}
         </button>
       </view>
 
       <view class="settings-block">
-        <view class="settings-block__label">退出登录</view>
-        <view class="settings-block__hint">退出后会回到登录页。当前登录方式：{{ authMode || '未登录' }}</view>
-        <button class="settings-button settings-button--danger" @click="handleLogout">退出登录</button>
+        <view class="settings-block__label">{{ t.settings.logoutLabel }}</view>
+        <view class="settings-block__hint">
+          {{ t.settings.logoutHint.replace('{mode}', authMode || t.settings.notLoggedIn) }}
+        </view>
+        <button class="settings-button settings-button--danger" @click="handleLogout">{{ t.settings.logoutLabel }}</button>
       </view>
     </view>
   </view>

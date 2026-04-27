@@ -4,6 +4,7 @@ import { onShow } from '@dcloudio/uni-app'
 import PageScaffold from '../../src/components/PageScaffold.vue'
 import { useAuth } from '../../src/composables/useAuth'
 import { useKokoState } from '../../src/composables/useKokoState'
+import { useLanguage } from '../../src/composables/useLanguage'
 import { useWechatShare } from '../../src/composables/useWechatShare'
 
 type LoginMode = 'wechat' | 'guest'
@@ -11,6 +12,7 @@ type LoginStep = 'auth-choice' | 'pet-naming'
 
 const { loading, authMode, pet: authPet, hasCompletedOnboarding, login, completeOnboarding, refreshOnboardingState } = useAuth()
 const { syncPetFromAuth, syncCourseScheduleFromCloud } = useKokoState()
+const { t } = useLanguage()
 
 useWechatShare({
   path: '/pages/index/index',
@@ -82,13 +84,13 @@ const submitPetName = async () => {
 
   if (!canStart.value) {
     uni.showToast({
-      title: '请先给宠物起名',
+      title: t.value.onboarding.nameRequired,
       icon: 'none',
     })
     return
   }
 
-  const finalPetName = normalizedPetName.value || '可可'
+  const finalPetName = normalizedPetName.value || t.value.onboarding.defaultPetName
   await completeOnboarding({
     useWechatProfile: selectedLoginMode.value === 'wechat',
     petName: finalPetName,
@@ -130,39 +132,39 @@ onShow(() => {
 
         <view v-if="step === 'auth-choice'" class="onboarding-panel">
           <view class="onboarding-kicker">KOKO BOX</view>
-          <view class="onboarding-title">选择你的进入方式</view>
-          <view class="onboarding-copy">微信首次登录需要先给宠物起名；游客模式会使用默认名 koko。</view>
+          <view class="onboarding-title">{{ t.onboarding.authTitle }}</view>
+          <view class="onboarding-copy">{{ t.onboarding.authCopy }}</view>
 
           <view class="onboarding-actions">
             <button class="onboarding-button onboarding-button--primary" :disabled="loading" @click="chooseLoginMode('wechat')">
-              {{ loading && selectedLoginMode === 'wechat' ? '登录中...' : '微信登录' }}
+              {{ loading && selectedLoginMode === 'wechat' ? t.onboarding.loggingIn : t.onboarding.wechatLogin }}
             </button>
             <button class="onboarding-button onboarding-button--ghost" :disabled="loading" @click="chooseLoginMode('guest')">
-              {{ loading && selectedLoginMode === 'guest' ? '进入中...' : '游客登录' }}
+              {{ loading && selectedLoginMode === 'guest' ? t.onboarding.entering : t.onboarding.guestLogin }}
             </button>
           </view>
         </view>
 
         <view v-else class="onboarding-panel onboarding-panel--name">
           <view class="onboarding-kicker">MEET YOUR PET</view>
-          <view class="onboarding-title">给你的宠物起一个名字吧</view>
-          <view class="onboarding-copy">这个名字会显示在首页，也会用于 AI 宠物对话。</view>
+          <view class="onboarding-title">{{ t.onboarding.nameTitle }}</view>
+          <view class="onboarding-copy">{{ t.onboarding.nameCopy }}</view>
 
           <input
             class="onboarding-name-input"
             type="text"
             maxlength="12"
             :value="petName"
-            placeholder="例如：可可"
+            :placeholder="t.onboarding.namePlaceholder"
             @input="handlePetNameInput"
           />
 
           <button class="onboarding-button onboarding-button--primary" :disabled="!canStart" @click="submitPetName">
-            {{ loading ? '准备中...' : '开始陪伴' }}
+            {{ loading ? t.onboarding.preparing : t.onboarding.start }}
           </button>
 
           <button class="onboarding-back-button" :disabled="loading" @click="step = 'auth-choice'">
-            返回重新选择
+            {{ t.onboarding.back }}
           </button>
         </view>
       </view>

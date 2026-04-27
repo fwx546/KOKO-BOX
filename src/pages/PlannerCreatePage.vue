@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 import type { RewardType, TaskCategory, TaskPriority, TaskRepeatType } from '../types/koko'
 
 const { createTask } = useKokoState()
+const { t } = useLanguage()
 
 const title = ref('')
 const notes = ref('')
@@ -42,33 +44,33 @@ const createNewTask = () => {
   <view class="page-view">
     <view class="page-head">
       <view>
-        <view class="eyebrow">新建任务</view>
-        <view>写下一个小目标</view>
+        <view class="eyebrow">{{ t.plannerCreate.eyebrow }}</view>
+        <view>{{ t.plannerCreate.title }}</view>
       </view>
-      <view>把复杂内容放在单独页面里，待办首页会更清爽。</view>
+      <view>{{ t.plannerCreate.subtitle }}</view>
     </view>
 
     <view class="panel-block planner-form-page">
-      <input v-model="title" class="input-field" placeholder="任务标题" />
-      <textarea v-model="notes" class="planner-textarea" placeholder="备注" />
+      <input v-model="title" class="input-field" :placeholder="t.plannerCreate.titlePlaceholder" />
+      <textarea v-model="notes" class="planner-textarea" :placeholder="t.plannerCreate.notesPlaceholder" />
       <view class="planner-inline-fields">
         <input v-model="dueDate" class="input-field" type="date" />
         <input v-model="time" class="input-field" type="time" />
       </view>
       <view class="planner-inline-fields">
-        <input v-model="category" class="input-field" placeholder="分类：work/study/life/health/schedule" />
-        <input v-model="priority" class="input-field" placeholder="优先级：high/medium/low" />
+        <input v-model="category" class="input-field" :placeholder="t.plannerCreate.categoryPlaceholder" />
+        <input v-model="priority" class="input-field" :placeholder="t.plannerCreate.priorityPlaceholder" />
       </view>
       <view class="planner-inline-fields">
-        <input v-model="repeatType" class="input-field" placeholder="重复：once/daily/weekly" />
-        <input v-model="rewardType" class="input-field" placeholder="奖励：mood/bond/snack/coin/toy" />
+        <input v-model="repeatType" class="input-field" :placeholder="t.plannerCreate.repeatPlaceholder" />
+        <input v-model="rewardType" class="input-field" :placeholder="t.plannerCreate.rewardPlaceholder" />
       </view>
-      <textarea v-model="subtasks" class="planner-textarea" placeholder="清单项，每行一个" />
+      <textarea v-model="subtasks" class="planner-textarea" :placeholder="t.plannerCreate.subtasksPlaceholder" />
       <label class="planner-checkbox-row">
         <checkbox :checked="isStarred" @click="isStarred = !isStarred" />
-        <view>设为重点</view>
+        <view>{{ t.plannerCreate.starred }}</view>
       </label>
-      <button class="quick-action-button" @click="createNewTask">创建任务</button>
+      <button class="quick-action-button" @click="createNewTask">{{ t.plannerCreate.create }}</button>
     </view>
   </view>
 </template>

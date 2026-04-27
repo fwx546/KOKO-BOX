@@ -2,8 +2,8 @@
   <view class="town-page">
     <view class="town-hero">
       <view class="town-hero__eyebrow">Koko Town</view>
-      <view class="town-hero__title">宠物小镇</view>
-      <view class="town-hero__copy">中心喷泉连起了小屋、商店和任务屋，点击地图可以带团子在广场间散步。</view>
+      <view class="town-hero__title">Pet Town</view>
+      <view class="town-hero__copy">The central fountain connects home, shop, and task house. Tap the map to walk Koko around the plaza.</view>
     </view>
 
     <view id="town-map" class="town-map" bindtap="handleMapTap">
@@ -118,7 +118,7 @@
         variant="map"
       ></pet>
 
-      <view class="town-map__hint">点击草地移动宠物，点击建筑查看位置名称</view>
+      <view class="town-map__hint">Tap grass to move your pet. Tap buildings to view locations.</view>
     </view>
   </view>
 </template>

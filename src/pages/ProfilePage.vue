@@ -2,24 +2,17 @@
 import { computed, onMounted, watch } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 
 const { user, pet: authPet, authMode, isGuestSession, loading, importWechatProfile, login } = useAuth()
 const { pet, weeklyCompletionRate, syncPetFromAuth, syncCourseScheduleFromCloud } = useKokoState()
+const { t } = useLanguage()
 
-const stageLabelMap = {
-  egg: '蛋壳期',
-  baby: '幼崽期',
-  growing: '成长期',
-  adult: '成熟期',
-}
-
-const displayName = computed(() => user.value?.nickName || (isGuestSession.value ? '游客' : 'Koko Friend'))
-const accountModeLabel = computed(() => (isGuestSession.value ? '游客模式' : '微信账号'))
+const displayName = computed(() => user.value?.nickName || (isGuestSession.value ? t.value.profile.guest : 'Koko Friend'))
+const accountModeLabel = computed(() => (isGuestSession.value ? t.value.profile.guestMode : t.value.profile.wechatAccount))
 const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
-const accountHint = computed(() =>
-  isGuestSession.value ? '游客模式不会同步微信头像和账号信息。' : '账号信息已和当前微信小程序账号同步。',
-)
-const petStageLabel = computed(() => stageLabelMap[pet.value.stage] ?? pet.value.stage)
+const accountHint = computed(() => (isGuestSession.value ? t.value.profile.guestHint : t.value.profile.accountHint))
+const petStageLabel = computed(() => t.value.profile.stages[pet.value.stage] ?? pet.value.stage)
 
 const openSettings = () => {
   uni.navigateTo({
@@ -79,7 +72,7 @@ onMounted(async () => {
         </view>
 
         <view class="profile-hero__main">
-          <view class="profile-hero__eyebrow">我的</view>
+          <view class="profile-hero__eyebrow">{{ t.profile.eyebrow }}</view>
           <view class="profile-hero__name">{{ displayName }}</view>
           <view class="profile-hero__meta">{{ accountModeLabel }}</view>
         </view>
@@ -87,36 +80,36 @@ onMounted(async () => {
         <view class="profile-mode-pill">{{ isGuestSession ? 'Guest' : 'WeChat' }}</view>
       </view>
 
-      <view class="profile-pet-pill">宠物：{{ pet.name }} · {{ petStageLabel }}</view>
+      <view class="profile-pet-pill">{{ t.profile.pet }}: {{ pet.name }} · {{ petStageLabel }}</view>
       <view class="profile-hero__hint">{{ accountHint }}</view>
     </view>
 
     <view class="profile-stats">
       <view class="profile-stat-item">
-        <view class="profile-stat-item__label">心情</view>
+        <view class="profile-stat-item__label">{{ t.profile.mood }}</view>
         <view class="profile-stat-item__value">{{ pet.mood }}</view>
         <view class="profile-stat-item__bar"><view class="profile-stat-item__fill profile-stat-item__fill--mood" :style="{ width: `${pet.mood}%` }" /></view>
       </view>
       <view class="profile-stat-item">
-        <view class="profile-stat-item__label">亲密度</view>
+        <view class="profile-stat-item__label">{{ t.profile.intimacy }}</view>
         <view class="profile-stat-item__value">{{ pet.intimacy }}</view>
         <view class="profile-stat-item__bar"><view class="profile-stat-item__fill profile-stat-item__fill--bond" :style="{ width: `${pet.intimacy}%` }" /></view>
       </view>
       <view class="profile-stat-item">
-        <view class="profile-stat-item__label">本周完成</view>
+        <view class="profile-stat-item__label">{{ t.profile.weeklyCompletion }}</view>
         <view class="profile-stat-item__value">{{ weeklyCompletionRate }}%</view>
         <view class="profile-stat-item__bar"><view class="profile-stat-item__fill profile-stat-item__fill--done" :style="{ width: `${weeklyCompletionRate}%` }" /></view>
       </view>
     </view>
 
     <view class="profile-summary">
-      <view class="profile-summary__title">{{ pet.name }} 当前状态</view>
-      <view class="profile-summary__copy">处于 {{ petStageLabel }}，继续互动和完成任务可以提升亲密度。</view>
+      <view class="profile-summary__title">{{ pet.name }} {{ t.profile.currentStatus }}</view>
+      <view class="profile-summary__copy">{{ t.profile.stageCopy.replace('{stage}', petStageLabel) }}</view>
     </view>
 
     <button class="profile-settings-entry" :disabled="loading" @click="openSettings">
-      <view>设置</view>
-      <view class="profile-settings-entry__hint">退出登录、切换语言、给宠物改名</view>
+      <view>{{ t.profile.settings }}</view>
+      <view class="profile-settings-entry__hint">{{ t.profile.settingsHint }}</view>
     </button>
   </view>
 </template>

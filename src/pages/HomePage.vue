@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetLottieAvatar from '../components/PetLottieAvatar.vue'
 import PetMiniGameDrawer from '../components/PetMiniGameDrawer.vue'
 import { useKokoState } from '../composables/useKokoState'
+import { useLanguage } from '../composables/useLanguage'
 import type { MiniGameResult, PetActionType } from '../types/koko'
 
 const FRAME_COUNT = 16
@@ -16,15 +17,11 @@ const homeBackgroundCandidates = [
 ]
 const homeBackgroundSrc = ref(homeBackgroundCandidates[0])
 let homeBackgroundIndex = 0
-const chatPromptHints = [
-  '和 Koko 说说今天',
-  '让 Koko 给你一点鼓励',
-  '分享一件小开心',
-  '问问 Koko 想做什么',
-  '和毛茸茸打个招呼',
-]
-
-const pickChatPromptHint = () => chatPromptHints[Math.floor(Math.random() * chatPromptHints.length)]
+const { t } = useLanguage()
+const pickChatPromptHint = () => {
+  const hints = t.value.home.chatHints
+  return hints[Math.floor(Math.random() * hints.length)]
+}
 
 const handleHomeBackgroundError = (event: any) => {
   console.error('[HomePage] background image load failed:', homeBackgroundSrc.value, event?.detail?.errMsg ?? event)
@@ -102,21 +99,21 @@ let carryDistance = 0
 const digestStatus = computed(() => getDigestStatus(pet.value, nowMs.value))
 
 const compactStats = computed(() => [
-  { label: 'Mood', value: pet.value.mood, tint: 'sun' },
-  { label: 'Energy', value: pet.value.energy, tint: 'leaf' },
-  { label: 'Bond', value: pet.value.intimacy, tint: 'sky' },
+  { label: t.value.home.stats.mood, value: pet.value.mood, tint: 'sun' },
+  { label: t.value.home.stats.energy, value: pet.value.energy, tint: 'leaf' },
+  { label: t.value.home.stats.bond, value: pet.value.intimacy, tint: 'sky' },
 ])
 
 const recentMessages = computed(() =>
   messages.value.slice(-18).map((item) => ({
     ...item,
-    displayContent: settings.value.hideChats && item.role === 'user' ? 'Hidden user message' : item.content,
+    displayContent: settings.value.hideChats && item.role === 'user' ? t.value.home.hiddenUserMessage : item.content,
   })),
 )
 
 const lastAssistantMessage = computed(() => {
   const assistant = [...messages.value].reverse().find((item) => item.role === 'assistant')
-  return assistant?.content ?? '陪我待一会儿吧。'
+  return assistant?.content ?? t.value.home.assistantFallback
 })
 
 const petBubbleSizeClass = computed(() => ({
@@ -133,14 +130,16 @@ const careActions: Array<{
   label: string
   action: PetActionType
 }> = [
-  { key: 'feedMeal', label: '喂食', action: 'munch' },
-  { key: 'feedWater', label: '喝水', action: 'sip' },
-  { key: 'play', label: '玩耍', action: 'sparkle' },
-  { key: 'clean', label: '清洁', action: 'stretch' },
+  { key: 'feedMeal', label: '', action: 'munch' },
+  { key: 'feedWater', label: '', action: 'sip' },
+  { key: 'play', label: '', action: 'sparkle' },
+  { key: 'clean', label: '', action: 'stretch' },
 ]
 
 const actionDisplayLabel = (action: (typeof careActions)[number]) =>
-  action.key === 'feedMeal' && digestStatus.value.isDigesting ? digestStatus.value.digestCountdownLabel : action.label
+  action.key === 'feedMeal' && digestStatus.value.isDigesting
+    ? digestStatus.value.digestCountdownLabel
+    : t.value.home.care[action.key]
 
 const clearTimers = () => {
   if (tapTimer) clearTimeout(tapTimer)
@@ -251,7 +250,7 @@ const performCare = (action: (typeof careActions)[number]) => {
   if (action.key === 'play') {
     activeGame.value = 'catch'
     gameDrawerOpen.value = true
-    triggerPetAction(action.action, 'Game time is ready.', 2200)
+    triggerPetAction(action.action, t.value.home.gameReady, 2200)
     return
   }
 
@@ -281,8 +280,8 @@ const submitOverlayChat = async () => {
 const handleGameComplete = (result: MiniGameResult) => {
   const message =
     result.gameType === 'catch'
-      ? `接球得分 ${result.score}，配合得真好。`
-      : `泡泡得分 ${result.score}，玩得很开心。`
+      ? (t.value.game.catchSuccess + ` ${result.score}`)
+      : (t.value.game.bubbleSuccess + ` ${result.score}`)
   triggerPetAction('sparkle', message, 2600)
 }
 
@@ -372,9 +371,9 @@ onMounted(() => {
                 confirm-type="send"
                 @confirm="submitOverlayChat"
               />
-              <button class="pet-chat-card__history" @click="historyOpen = true">记录</button>
+              <button class="pet-chat-card__history" @click="historyOpen = true">{{ t.home.history }}</button>
               <button class="pet-chat-card__send" :disabled="overlayChatCollapsed || sending" @click="submitOverlayChat">
-                {{ sending ? '发送中' : '发送' }}
+                {{ sending ? t.home.sending : t.home.send }}
               </button>
             </view>
           </view>
@@ -387,12 +386,12 @@ onMounted(() => {
       <view class="chat-history-layer__panel">
         <view class="chat-history-layer__head">
           <view>
-            <view class="chat-history-layer__eyebrow">聊天记录</view>
-            <view class="chat-history-layer__title">和 {{ pet.name }} 的消息</view>
+            <view class="chat-history-layer__eyebrow">{{ t.home.history }}</view>
+            <view class="chat-history-layer__title">{{ t.home.chatTitle }}</view>
           </view>
           <view class="chat-history-layer__actions">
-            <button class="chat-history-layer__ghost" @click="clearMessages">清空</button>
-            <button class="chat-history-layer__ghost" @click="historyOpen = false">关闭</button>
+            <button class="chat-history-layer__ghost" @click="clearMessages">{{ t.chatPage.clear }}</button>
+            <button class="chat-history-layer__ghost" @click="historyOpen = false">{{ t.settings.cancel }}</button>
           </view>
         </view>
 
@@ -403,7 +402,7 @@ onMounted(() => {
             class="chat-history-layer__bubble"
             :class="message.role === 'assistant' ? 'chat-history-layer__bubble--assistant' : 'chat-history-layer__bubble--user'"
           >
-            <view class="chat-history-layer__role">{{ message.role === 'assistant' ? pet.name : '你' }}</view>
+            <view class="chat-history-layer__role">{{ message.role === 'assistant' ? pet.name : t.chatPage.me }}</view>
             <view class="chat-history-layer__content">{{ message.displayContent }}</view>
           </view>
         </scroll-view>

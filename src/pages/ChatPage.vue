@@ -10,21 +10,19 @@ const { messages, sendChatMessage, clearMessages, settings } = useKokoState()
 const draft = ref('')
 const selectedEmotion = ref<EmotionTag>('happy')
 
-const quickEmotions: Array<{ value: EmotionTag; label: string; prompt: string }> = [
-  { value: 'happy', label: '开心', prompt: '今天有点开心，想和你分享。' },
-  { value: 'upset', label: '烦恼', prompt: '我现在有点烦，不知道怎么调整。' },
-  { value: 'tired', label: '疲惫', prompt: '今天很累，脑子有点转不动。' },
-  { value: 'bored', label: '无聊', prompt: '有点无聊，我们来点轻互动吧。' },
-  { value: 'stressed', label: '压力大', prompt: '事情有点多，我有些压力。' },
-  { value: 'lonely', label: '孤独', prompt: '现在有点想找人说说话。' },
-  { value: 'proud', label: '自豪', prompt: '我刚完成了一件值得夸夸的事。' },
-  { value: 'angry', label: '生气', prompt: '我现在情绪有点上头，想冷静一下。' },
-]
+const emotionOrder: EmotionTag[] = ['happy', 'upset', 'tired', 'bored', 'stressed', 'lonely', 'proud', 'angry']
+const quickEmotions = computed(() =>
+  emotionOrder.map((value) => ({
+    value,
+    label: t.value.chatPage.emotions[value].label,
+    prompt: t.value.chatPage.emotions[value].prompt,
+  })),
+)
 
 const visibleMessages = computed(() =>
   messages.value.map((item) => ({
     ...item,
-    displayContent: settings.value.hideChats && item.role === 'user' ? '当前用户消息已隐藏' : item.content,
+    displayContent: settings.value.hideChats && item.role === 'user' ? t.value.chatPage.hiddenUserMessage : item.content,
   })),
 )
 
@@ -37,7 +35,7 @@ const submit = async () => {
   draft.value = ''
 }
 
-const sendQuickPrompt = async (emotion: (typeof quickEmotions)[number]) => {
+const sendQuickPrompt = async (emotion: { value: EmotionTag; prompt: string }) => {
   selectedEmotion.value = emotion.value
   await sendChatMessage(emotion.prompt, emotion.value)
 }
@@ -58,13 +56,13 @@ const sendQuickPrompt = async (emotion: (typeof quickEmotions)[number]) => {
         <view class="eyebrow">{{ t.chatPage.streamLabel }}</view>
         <view>{{ t.chatPage.streamTitle }}</view>
         <view v-for="message in visibleMessages" :key="message.id" class="chat-panel__bubble" :class="message.role === 'assistant' ? 'chat-panel__bubble--assistant' : 'chat-panel__bubble--user'">
-          <view>{{ message.role === 'assistant' ? 'Koko' : '你' }}</view>
+          <view>{{ message.role === 'assistant' ? 'Koko' : t.chatPage.me }}</view>
           <view>{{ message.displayContent }}</view>
         </view>
         <view class="form-stack">
           <input v-model="draft" class="input-field" :placeholder="t.chatPage.inputPlaceholder" />
           <view class="chat-panel__input">
-            <view>当前情绪：{{ selectedEmotion }}</view>
+            <view>{{ t.chatPage.currentEmotion }}: {{ t.chatPage.emotions[selectedEmotion].label }}</view>
             <button @click="submit">{{ t.chatPage.send }}</button>
           </view>
         </view>
@@ -88,7 +86,7 @@ const sendQuickPrompt = async (emotion: (typeof quickEmotions)[number]) => {
           <view v-for="emotion in quickEmotions.slice(0, 4)" :key="emotion.value" class="mini-card">
             <view>{{ emotion.label }}</view>
             <view>{{ emotion.prompt }}</view>
-            <button class="profile-shortcut-button" @click="sendQuickPrompt(emotion)">直接发送</button>
+            <button class="profile-shortcut-button" @click="sendQuickPrompt(emotion)">{{ t.chatPage.sendDirectly }}</button>
           </view>
         </view>
       </view>
@@ -97,9 +95,9 @@ const sendQuickPrompt = async (emotion: (typeof quickEmotions)[number]) => {
         <view class="eyebrow">{{ t.chatPage.privacyLabel }}</view>
         <view>{{ t.chatPage.privacyTitle }}</view>
         <view class="bullet-list">
-          <view>隐藏聊天：{{ settings.hideChats ? '开启' : '关闭' }}</view>
-          <view>允许清空：{{ settings.allowChatClear ? '开启' : '关闭' }}</view>
-          <view>跨端摘要：{{ settings.allowCrossDeviceSummary ? '开启' : '关闭' }}</view>
+          <view>{{ t.chatPage.hideChats }}: {{ settings.hideChats ? t.chatPage.on : t.chatPage.off }}</view>
+          <view>{{ t.chatPage.allowClear }}: {{ settings.allowChatClear ? t.chatPage.on : t.chatPage.off }}</view>
+          <view>{{ t.chatPage.crossDeviceSummary }}: {{ settings.allowCrossDeviceSummary ? t.chatPage.on : t.chatPage.off }}</view>
         </view>
         <button class="quick-action-button quick-action-button--ghost" @click="clearMessages">
           {{ t.chatPage.clear }}

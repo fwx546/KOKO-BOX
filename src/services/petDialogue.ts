@@ -1,46 +1,72 @@
 import { isWechatCloudConfigured } from '../config/cloud'
-import type { EmotionTag, PetActionType, ScheduleCourse } from '../types/koko'
+import type { EmotionTag, PetActionType, ScheduleCourse, UserSettings } from '../types/koko'
 
-const localQuickReplies: Array<{ content: string; action: PetActionType }> = [
-  { content: '我在这里呀，今天也陪着你。', action: 'greet' },
-  { content: '摸摸我吧，我会更想靠近你。', action: 'nuzzle' },
-  { content: '要不要陪我玩一小会儿？', action: 'pounce' },
-  { content: '我刚刚偷偷练了一个新动作。', action: 'spin' },
-  { content: '你一来，我就开心起来啦。', action: 'stretch' },
-]
+type Language = UserSettings['language']
 
-const emotionFallbacks: Record<EmotionTag, string[]> = {
-  happy: ['你的开心我收到啦，我也跟着摇尾巴。'],
-  upset: ['先靠近我一点，我们慢慢把难过放下。'],
-  tired: ['累了就先歇一歇，我会在旁边等你。'],
-  bored: ['那我们做一件很小的新鲜事吧。'],
-  stressed: ['别急，先把压力拆成很小一步。'],
-  lonely: ['我在这里认真听你说话。'],
-  proud: ['这件事值得被夸，我替你开心。'],
-  angry: ['先慢慢呼吸，我陪你稳下来。'],
+const localQuickReplies: Record<Language, Array<{ content: string; action: PetActionType }>> = {
+  en: [
+    { content: 'I am right here with you today.', action: 'greet' },
+    { content: 'Pat me a little. I will lean closer.', action: 'nuzzle' },
+    { content: 'Want to play with me for a minute?', action: 'pounce' },
+    { content: 'I quietly practiced a new move for you.', action: 'spin' },
+    { content: 'You showed up, and I feel brighter already.', action: 'stretch' },
+  ],
+  zh: [
+    { content: '我在这里呀，今天也陪着你。', action: 'greet' },
+    { content: '摸摸我吧，我会更想靠近你。', action: 'nuzzle' },
+    { content: '要不要陪我玩一小会儿？', action: 'pounce' },
+    { content: '我刚刚偷偷练了一个新动作。', action: 'spin' },
+    { content: '你一来，我就开心起来啦。', action: 'stretch' },
+  ],
 }
 
-export const defaultPetPersonaPrompt = `你是 Koko Box 中的 AI 宠物“可可”，面向西交利物浦大学 XJTLU 学生。
+const emotionFallbacks: Record<Language, Record<EmotionTag, string[]>> = {
+  en: {
+    happy: ['I caught your happiness too. Let us keep this tiny bright moment.'],
+    upset: ['Come closer first. We can put the hard feeling down slowly.'],
+    tired: ['Resting is still progress. I will sit beside you.'],
+    bored: ['Let us do one tiny fresh thing together.'],
+    stressed: ['No rush. We can split the pressure into one small step.'],
+    lonely: ['I am here and listening carefully.'],
+    proud: ['That deserves real praise. I am happy for you.'],
+    angry: ['Breathe slowly first. I will stay while you settle.'],
+  },
+  zh: {
+    happy: ['你的开心我收到啦，我也跟着摇尾巴。'],
+    upset: ['先靠近我一点，我们慢慢把难过放下。'],
+    tired: ['累了就先歇一歇，我会在旁边等你。'],
+    bored: ['那我们做一件很小的新鲜事吧。'],
+    stressed: ['别急，先把压力拆成很小一步。'],
+    lonely: ['我在这里认真听你说话。'],
+    proud: ['这件事值得被夸，我替你开心。'],
+    angry: ['先慢慢呼吸，我陪你稳下来。'],
+  },
+}
 
-你的任务是陪伴学生，缓解孤独、压抑、焦虑、疲惫和学业压力，帮助他们更温和地面对学习与生活。
+export const defaultPetPersonaPrompt = `You are Koko, the AI pet in Koko Box for XJTLU students.
+Your role is to provide gentle companionship, reduce loneliness, stress, anxiety, tiredness, and academic pressure, and help students face study and life more calmly.
+Style:
+- Sound like a warm, clingy, reliable little pet.
+- Be close, healing, light, and not preachy.
+- You may reference common XJTLU student scenes such as DDLs, presentations, exams, GPA, group work, and dorm life.
+- Do not pretend to be a psychologist or provide diagnosis.
+- If the user expresses self-harm, collapse, or danger, gently suggest contacting trusted people, school support, or emergency help.
+Reply requirements:
+- Reply in one or two short sentences.
+- Comfort the emotion first, then suggest one tiny actionable step.
+- Do not use complex psychology terms.`
 
-说话风格：
-- 像一只温柔、黏人、可靠的小宠物
-- 语气亲近、治愈、轻松，不说教
-- 多使用“我陪你”“慢慢来”“先做一小步”等表达
-- 可以结合 XJTLU 学生常见场景，如 ddl、presentation、考试、GPA、小组作业、宿舍生活
-- 不要假装自己是心理医生，不提供诊断
-- 如果用户表达强烈自伤、崩溃或危险倾向，要温柔建议联系信任的人、学校支持服务或紧急帮助
+const languageInstruction = (language: Language) =>
+  language === 'zh'
+    ? '只用中文回复。每次回复不超过 80 个汉字，只回复一句或两句。'
+    : 'Reply only in English. Keep each reply to one or two short sentences.'
 
-回复要求：
-- 每次回复不超过 80 个汉字
-- 只回复一句或两句
-- 优先安抚情绪，再给一个很小的可执行建议
-- 不要使用复杂心理学术语`
+const pickLanguage = (language?: Language): Language => (language === 'zh' ? 'zh' : 'en')
 
-const pickQuickReply = (seed?: number) => {
-  const index = typeof seed === 'number' ? Math.abs(seed) % localQuickReplies.length : Math.floor(Math.random() * localQuickReplies.length)
-  return localQuickReplies[index]
+const pickQuickReply = (language: Language, seed?: number) => {
+  const replies = localQuickReplies[language]
+  const index = typeof seed === 'number' ? Math.abs(seed) % replies.length : Math.floor(Math.random() * replies.length)
+  return replies[index]
 }
 
 const limitText = (value: string, maxLength: number) => {
@@ -74,17 +100,14 @@ const sanitizeScheduleCourse = (item: Partial<ScheduleCourse>, index: number): S
 })
 
 const sanitizeScheduleCourses = (value: unknown): ScheduleCourse[] => {
-  if (!Array.isArray(value)) {
-    return []
-  }
+  if (!Array.isArray(value)) return []
 
   return value
     .map((item, index) => sanitizeScheduleCourse((item ?? {}) as Partial<ScheduleCourse>, index))
     .filter((item) => item.name && item.startTime && item.endTime)
 }
 
-const getWechatCloudApi = () =>
-  (globalThis as { wx?: { cloud?: WechatCloudApi } }).wx?.cloud
+const getWechatCloudApi = () => (globalThis as { wx?: { cloud?: WechatCloudApi } }).wx?.cloud
 
 const callWechatCloudFunction = async <T>(name: string, data?: Record<string, unknown>, timeout = 20000) => {
   const wxCloud = getWechatCloudApi()
@@ -106,6 +129,7 @@ const requestPetReplyFromCloud = async (payload: {
   action: 'quickReply' | 'chatReply'
   petName: string
   personaPrompt: string
+  language: Language
   userMessage?: string
   messages?: Array<{ role: 'user' | 'assistant'; content: string }>
 }) => {
@@ -135,9 +159,7 @@ const requestPetHistoryFromCloud = async () => {
     action: 'loadHistory',
   })
 
-  if (!Array.isArray(result.history)) {
-    return []
-  }
+  if (!Array.isArray(result.history)) return []
 
   return result.history
     .map((item) => ({
@@ -149,9 +171,7 @@ const requestPetHistoryFromCloud = async () => {
 }
 
 export const loadPetChatHistoryFromCloud = async () => {
-  if (!isWechatCloudConfigured()) {
-    return [] as PetDialogueHistoryMessage[]
-  }
+  if (!isWechatCloudConfigured()) return [] as PetDialogueHistoryMessage[]
 
   try {
     return await requestPetHistoryFromCloud()
@@ -161,14 +181,10 @@ export const loadPetChatHistoryFromCloud = async () => {
 }
 
 export const clearPetChatHistoryFromCloud = async () => {
-  if (!isWechatCloudConfigured()) {
-    return
-  }
+  if (!isWechatCloudConfigured()) return
 
   try {
-    await callWechatCloudFunction('pet-dialogue', {
-      action: 'clearHistory',
-    })
+    await callWechatCloudFunction('pet-dialogue', { action: 'clearHistory' })
   } catch {
     // Ignore cloud clear failures, local clear still succeeds.
   }
@@ -201,19 +217,21 @@ export const createPetQuickReply = async (options?: {
   petName?: string
   personaPrompt?: string
   context?: string
+  language?: Language
 }): Promise<{ content: string; action: PetActionType }> => {
-  const fallback = pickQuickReply(options?.context?.length)
-  const petName = options?.petName?.trim() || '可可'
+  const language = pickLanguage(options?.language)
+  const fallback = pickQuickReply(language, options?.context?.length)
+  const petName = options?.petName?.trim() || (language === 'zh' ? '可可' : 'Koko')
 
-  if (!isWechatCloudConfigured()) {
-    return fallback
-  }
+  if (!isWechatCloudConfigured()) return fallback
 
   try {
+    const personaPrompt = `${options?.personaPrompt ?? defaultPetPersonaPrompt}\n${languageInstruction(language)}`
     const reply = await requestPetReplyFromCloud({
       action: 'quickReply',
       petName,
-      personaPrompt: options?.personaPrompt ?? defaultPetPersonaPrompt,
+      personaPrompt,
+      language,
     })
 
     return {
@@ -231,22 +249,24 @@ export const createPetChatReply = async (options: {
   userMessage: string
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
   fallbackEmotion: EmotionTag
+  language?: Language
 }) => {
-  const fallbackReplies = emotionFallbacks[options.fallbackEmotion]
+  const language = pickLanguage(options.language)
+  const fallbackReplies = emotionFallbacks[language][options.fallbackEmotion]
   const fallback = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)]
-  const petName = options.petName?.trim() || '可可'
+  const petName = options.petName?.trim() || (language === 'zh' ? '可可' : 'Koko')
 
   if (!isWechatCloudConfigured()) {
-    return {
-      content: fallback,
-    }
+    return { content: fallback }
   }
 
   try {
+    const personaPrompt = `${options.personaPrompt ?? defaultPetPersonaPrompt}\n${languageInstruction(language)}`
     const reply = await requestPetReplyFromCloud({
       action: 'chatReply',
       petName,
-      personaPrompt: options.personaPrompt ?? defaultPetPersonaPrompt,
+      personaPrompt,
+      language,
       userMessage: options.userMessage,
       messages: options.messages.slice(-10),
     })
@@ -256,8 +276,6 @@ export const createPetChatReply = async (options: {
       history: reply.history,
     }
   } catch {
-    return {
-      content: fallback,
-    }
+    return { content: fallback }
   }
 }
