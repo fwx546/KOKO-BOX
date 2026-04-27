@@ -23,10 +23,18 @@ import type {
   TaskStatus,
   UserSettings,
 } from '../types/koko'
-import { createPetChatReply, createPetQuickReply, defaultPetPersonaPrompt } from '../services/petDialogue'
+import {
+  clearPetChatHistoryFromCloud,
+  createPetChatReply,
+  createPetQuickReply,
+  defaultPetPersonaPrompt,
+  loadPetChatHistoryFromCloud,
+  type PetDialogueHistoryMessage,
+} from '../services/petDialogue'
 
 const STORAGE_KEY = 'koko-box-mini-state-v1'
 const CHAT_SESSION_ID = 'main-session'
+const MAX_CHAT_HISTORY = 100
 const FEED_DIGEST_MS = 30 * 60 * 1000
 const PET_ROTATION_FRAMES = 16
 
@@ -259,6 +267,8 @@ const snapshots = ref<DailySnapshot[]>(defaultSnapshots())
 const metrics = ref<AppMetrics>(defaultMetrics())
 const petPersonaPrompt = ref(defaultPetPersonaPrompt)
 const hydrated = ref(false)
+const cloudHistoryHydrated = ref(false)
+const cloudHistoryHydrating = ref(false)
 
 const deriveStage = (value: number): PetStage => {
   if (value >= 85) return 'adult'
@@ -728,6 +738,39 @@ const inferEmotion = (content: string): EmotionTag => {
   return 'happy'
 }
 
+const mapCloudHistoryToMessages = (history: PetDialogueHistoryMessage[]): ChatMessage[] =>
+  history.slice(-MAX_CHAT_HISTORY).map((item) => ({
+    id: createId('msg'),
+    sessionId: CHAT_SESSION_ID,
+    role: item.role,
+    content: item.content,
+    emotionTag: inferEmotion(item.content),
+    encrypted: false,
+    createdAt: item.createdAt ?? nowIso(),
+  }))
+
+const hydrateCloudChatHistory = async () => {
+  if (cloudHistoryHydrated.value || cloudHistoryHydrating.value) {
+    return
+  }
+
+  cloudHistoryHydrating.value = true
+
+  try {
+    const cloudHistory = await loadPetChatHistoryFromCloud()
+    if (cloudHistory.length > 0) {
+      messages.value = mapCloudHistoryToMessages(cloudHistory)
+      persistState()
+    }
+
+    cloudHistoryHydrated.value = true
+  } catch {
+    // Ignore history hydration failures and keep local cache.
+  } finally {
+    cloudHistoryHydrating.value = false
+  }
+}
+
 const setPetPersonaPrompt = (prompt: string) => {
   petPersonaPrompt.value = prompt.trim() || defaultPetPersonaPrompt
   persistState()
@@ -750,6 +793,7 @@ const getPetQuickReply = async (context?: string): Promise<PetQuickReply> => {
 
 const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   hydrateState()
+  await hydrateCloudChatHistory()
   const trimmed = content.trim()
   if (!trimmed) return
 
@@ -757,18 +801,20 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   const encrypted = settings.value.hideChats
   const createdAt = nowIso()
 
+  const userMessage: ChatMessage = {
+    id: createId('msg'),
+    sessionId: CHAT_SESSION_ID,
+    role: 'user',
+    content: trimmed,
+    emotionTag,
+    encrypted,
+    createdAt,
+  }
+
   messages.value = [
     ...messages.value,
-    {
-      id: createId('msg'),
-      sessionId: CHAT_SESSION_ID,
-      role: 'user',
-      content: trimmed,
-      emotionTag,
-      encrypted,
-      createdAt,
-    },
-  ]
+    userMessage,
+  ].slice(-MAX_CHAT_HISTORY)
 
   const templates = emotionReplyMap[emotionTag]
   const fallbackReply = templates[messages.value.length % templates.length]
@@ -779,25 +825,32 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
       content: item.content,
     })) as Array<{ role: 'user' | 'assistant'; content: string }>
 
-  const reply = await createPetChatReply({
+  const replyResult = await createPetChatReply({
     petName: pet.value.name,
     personaPrompt: petPersonaPrompt.value,
+    userMessage: trimmed,
     messages: conversation,
     fallbackEmotion: emotionTag,
-  }).catch(() => fallbackReply)
+  }).catch(() => ({ content: fallbackReply }))
 
-  messages.value = [
-    ...messages.value,
-    {
-      id: createId('msg'),
-      sessionId: CHAT_SESSION_ID,
-      role: 'assistant',
-      content: reply,
-      emotionTag,
-      encrypted,
-      createdAt: nowIso(),
-    },
-  ]
+  const reply = replyResult.content
+
+  if (replyResult.history?.length) {
+    messages.value = mapCloudHistoryToMessages(replyResult.history)
+  } else {
+    messages.value = [
+      ...messages.value,
+      {
+        id: createId('msg'),
+        sessionId: CHAT_SESSION_ID,
+        role: 'assistant',
+        content: reply,
+        emotionTag,
+        encrypted,
+        createdAt: nowIso(),
+      },
+    ].slice(-MAX_CHAT_HISTORY)
+  }
 
   metrics.value = {
     ...metrics.value,
@@ -832,6 +885,7 @@ const clearMessages = () => {
   if (!settings.value.allowChatClear) return
 
   messages.value = defaultMessages()
+  void clearPetChatHistoryFromCloud()
   logSyncEvent('聊天记录已清空，本次操作仅保留系统欢迎语。', {
     target: 'miniapp',
     actionType: 'chat-clear',
@@ -1009,6 +1063,7 @@ const overviewStats = computed(() => [
 ])
 
 hydrateState()
+void hydrateCloudChatHistory()
 
 export const useKokoState = () => ({
   pet,

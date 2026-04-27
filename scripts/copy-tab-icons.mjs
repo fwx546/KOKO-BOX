@@ -7,13 +7,21 @@ const sourceTabDir = path.join(root, 'static', 'tab')
 const sourcePetDir = path.join(root, 'static', 'pet')
 const sourceTownDir = path.join(root, 'static', 'town')
 const sourceHomeDir = path.join(root, 'static', 'home')
-const targetTabDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'tab')
-const targetPetDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'pet')
-const targetTownDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'town')
-const targetHomeDir = path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin', 'static', 'home')
+const candidateOutputRoots = [
+  path.join(root, 'dist', 'build', 'mp-weixin'),
+  path.join(root, 'unpackage', 'dist', 'build', 'mp-weixin'),
+]
 const manifestPath = path.join(root, 'tab-icons-base64.json')
 
-async function writeEmbeddedIcons() {
+function resolveOutputRoots() {
+  const existingRoots = candidateOutputRoots.filter((outputRoot) => existsSync(outputRoot))
+  if (existingRoots.length > 0) {
+    return existingRoots
+  }
+  return [candidateOutputRoots[0]]
+}
+
+async function writeEmbeddedIcons(targetTabDir) {
   if (!existsSync(manifestPath)) {
     return
   }
@@ -28,33 +36,43 @@ async function writeEmbeddedIcons() {
 }
 
 async function main() {
-  // Copy tab icons
-  if (existsSync(sourceTabDir)) {
-    await mkdir(targetTabDir, { recursive: true })
-    await cp(sourceTabDir, targetTabDir, { recursive: true, force: true })
+  const outputRoots = resolveOutputRoots()
+
+  for (const outputRoot of outputRoots) {
+    const targetTabDir = path.join(outputRoot, 'static', 'tab')
+    const targetPetDir = path.join(outputRoot, 'static', 'pet')
+    const targetTownDir = path.join(outputRoot, 'static', 'town')
+    const targetHomeDir = path.join(outputRoot, 'static', 'home')
+
+    // Copy tab icons
+    if (existsSync(sourceTabDir)) {
+      await mkdir(targetTabDir, { recursive: true })
+      await cp(sourceTabDir, targetTabDir, { recursive: true, force: true })
+    }
+
+    // Copy pet assets
+    if (existsSync(sourcePetDir)) {
+      await mkdir(targetPetDir, { recursive: true })
+      await cp(sourcePetDir, targetPetDir, { recursive: true, force: true })
+    }
+
+    // Copy town assets
+    if (existsSync(sourceTownDir)) {
+      await mkdir(targetTownDir, { recursive: true })
+      await cp(sourceTownDir, targetTownDir, { recursive: true, force: true })
+    }
+
+    // Copy home assets
+    if (existsSync(sourceHomeDir)) {
+      await mkdir(targetHomeDir, { recursive: true })
+      await cp(sourceHomeDir, targetHomeDir, { recursive: true, force: true })
+    }
+
+    // Write embedded icons
+    await writeEmbeddedIcons(targetTabDir)
   }
 
-  // Copy pet assets
-  if (existsSync(sourcePetDir)) {
-    await mkdir(targetPetDir, { recursive: true })
-    await cp(sourcePetDir, targetPetDir, { recursive: true, force: true })
-  }
-
-  // Copy town assets
-  if (existsSync(sourceTownDir)) {
-    await mkdir(targetTownDir, { recursive: true })
-    await cp(sourceTownDir, targetTownDir, { recursive: true, force: true })
-  }
-
-  // Copy home assets
-  if (existsSync(sourceHomeDir)) {
-    await mkdir(targetHomeDir, { recursive: true })
-    await cp(sourceHomeDir, targetHomeDir, { recursive: true, force: true })
-  }
-
-  // Write embedded icons
-  await writeEmbeddedIcons()
-  console.log(`[copy-tab-icons] Prepared tab, pet, town, and home assets`)
+  console.log(`[copy-tab-icons] Prepared tab, pet, town, and home assets for ${outputRoots.join(', ')}`)
 }
 
 main().catch((error) => {

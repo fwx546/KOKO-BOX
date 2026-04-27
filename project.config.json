@@ -2,7 +2,24 @@
   "description": "Project configuration for WeChat Mini Program",
   "packOptions": {
     "ignore": [],
-    "include": []
+    "include": [
+      {
+        "type": "file",
+        "value": "static/home/room.webp"
+      },
+      {
+        "type": "file",
+        "value": "static/home/room-fallback.jpg"
+      },
+      {
+        "type": "file",
+        "value": "static/town/map.webp"
+      },
+      {
+        "type": "file",
+        "value": "static/town/map-fallback.jpg"
+      }
+    ]
   },
   "setting": {
     "urlCheck": false,
@@ -32,7 +49,7 @@
   "compileType": "miniprogram",
   "libVersion": "trial",
   "appid": "wx90ec72eb27dedd5b",
-  "miniprogramRoot": "unpackage/dist/build/mp-weixin/",
+  "miniprogramRoot": "dist/build/mp-weixin/",
   "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "koko-box-ui-prototype",
   "condition": {},

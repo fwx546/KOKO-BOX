@@ -16,7 +16,14 @@ interface BuildingHotspot {
 
 const MAP_WIDTH = 941
 const MAP_HEIGHT = 1672
-const townMapSrc = '/static/town/map.webp'
+const townMapCandidates = [
+  '/static/town/map-fallback.jpg',
+  'static/town/map-fallback.jpg',
+  '/static/town/map.webp',
+  'static/town/map.webp',
+]
+const townMapSrc = ref(townMapCandidates[0])
+let townMapIndex = 0
 const PET_SIZE_RPX = 240
 const PET_MIN_X = 10
 const PET_MAX_X = 90
@@ -87,6 +94,46 @@ let roamTimer: ReturnType<typeof setInterval> | undefined
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
+
+const handleTownMapError = (event: any) => {
+  console.error('[TownPage] map image load failed:', townMapSrc.value, event?.detail?.errMsg ?? event)
+  if (townMapIndex < townMapCandidates.length - 1) {
+    townMapIndex += 1
+    townMapSrc.value = townMapCandidates[townMapIndex]
+    console.warn('[TownPage] switch map candidate to:', townMapSrc.value)
+  }
+}
+
+const checkImageSource = (src: string) =>
+  new Promise<{ ok: boolean; errMsg?: string }>((resolve) => {
+    if (typeof uni === 'undefined' || typeof uni.getImageInfo !== 'function') {
+      resolve({ ok: true })
+      return
+    }
+
+    uni.getImageInfo({
+      src,
+      success: () => resolve({ ok: true }),
+      fail: (err) => {
+        const errMsg = (err as { errMsg?: string })?.errMsg ?? String(err)
+        console.error('[TownPage] getImageInfo failed:', src, errMsg)
+        resolve({ ok: false, errMsg })
+      },
+    })
+  })
+
+const ensureTownMap = async () => {
+  for (let index = 0; index < townMapCandidates.length; index += 1) {
+    const candidate = townMapCandidates[index]
+    const result = await checkImageSource(candidate)
+    if (result.ok) {
+      townMapIndex = index
+      townMapSrc.value = candidate
+      return
+    }
+  }
+  console.error('[TownPage] all map candidates failed:', townMapCandidates.join(', '))
+}
 
 const hotspotStyle = (spot: BuildingHotspot) =>
   `left:${(spot.x / MAP_WIDTH) * 100}%;top:${(spot.y / MAP_HEIGHT) * 100}%;width:${(spot.width / MAP_WIDTH) * 100}%;height:${(spot.height / MAP_HEIGHT) * 100}%;`
@@ -170,6 +217,7 @@ watch(
 )
 
 onMounted(() => {
+  void ensureTownMap()
   petMirror.value = false
   roamTimer = setInterval(() => {
     roamSomewhere()
@@ -188,7 +236,7 @@ onBeforeUnmount(() => {
   <view class="town-page">
     <view class="town-map-wrap" @click="movePetFromMapTap">
       <view class="town-map">
-        <image class="town-map__image" :src="townMapSrc" mode="scaleToFill" />
+        <image class="town-map__image" :src="townMapSrc" mode="scaleToFill" @error="handleTownMapError" />
 
         <view class="town-pet" :class="`town-pet--${petAction}`" :style="petStyle" @click.stop>
           <view class="town-pet__name">{{ pet.name }}</view>
@@ -220,8 +268,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .town-page {
+  bottom: 0;
+  left: 0;
   position: fixed;
-  inset: 0;
+  right: 0;
+  top: 0;
   width: 100vw;
   height: 100vh;
   min-height: 100vh;
@@ -270,8 +321,11 @@ onBeforeUnmount(() => {
 }
 
 .town-popup-mask {
+  bottom: 0;
+  left: 0;
   position: fixed;
-  inset: 0;
+  right: 0;
+  top: 0;
   z-index: 40;
   display: flex;
   align-items: center;
@@ -373,8 +427,11 @@ onBeforeUnmount(() => {
 }
 
 :deep(.page-shell) {
+  bottom: 0;
+  left: 0;
   position: fixed;
-  inset: 0;
+  right: 0;
+  top: 0;
   min-height: 100vh;
   padding: 0;
   overflow: hidden;

@@ -41,6 +41,12 @@ interface WechatCloudApi {
   callFunction?: (options: unknown) => Promise<{ result: unknown }>
 }
 
+export interface PetDialogueHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+  createdAt?: string
+}
+
 const getWechatCloudApi = () =>
   (globalThis as { wx?: { cloud?: WechatCloudApi } }).wx?.cloud
 
@@ -63,16 +69,72 @@ const requestPetReplyFromCloud = async (payload: {
   action: 'quickReply' | 'chatReply'
   petName: string
   personaPrompt: string
+  userMessage?: string
   messages?: Array<{ role: 'user' | 'assistant'; content: string }>
 }) => {
-  const result = await callWechatCloudFunction<{ content?: string }>('pet-dialogue', payload)
+  const result = await callWechatCloudFunction<{ content?: string; history?: PetDialogueHistoryMessage[] }>('pet-dialogue', payload)
   const content = result.content?.trim()
 
   if (!content) {
     throw new Error('empty cloud response')
   }
 
-  return content
+  return {
+    content,
+    history: Array.isArray(result.history)
+      ? result.history
+          .map((item) => ({
+            role: item?.role === 'assistant' ? 'assistant' : 'user',
+            content: limitText(typeof item?.content === 'string' ? item.content : '', 280),
+            createdAt: typeof item?.createdAt === 'string' ? item.createdAt : undefined,
+          }))
+          .filter((item) => item.content.length > 0)
+      : undefined,
+  }
+}
+
+const requestPetHistoryFromCloud = async () => {
+  const result = await callWechatCloudFunction<{ history?: PetDialogueHistoryMessage[] }>('pet-dialogue', {
+    action: 'loadHistory',
+  })
+
+  if (!Array.isArray(result.history)) {
+    return []
+  }
+
+  return result.history
+    .map((item) => ({
+      role: item?.role === 'assistant' ? 'assistant' : 'user',
+      content: limitText(typeof item?.content === 'string' ? item.content : '', 280),
+      createdAt: typeof item?.createdAt === 'string' ? item.createdAt : undefined,
+    }))
+    .filter((item) => item.content.length > 0)
+}
+
+export const loadPetChatHistoryFromCloud = async () => {
+  if (!isWechatCloudConfigured()) {
+    return [] as PetDialogueHistoryMessage[]
+  }
+
+  try {
+    return await requestPetHistoryFromCloud()
+  } catch {
+    return [] as PetDialogueHistoryMessage[]
+  }
+}
+
+export const clearPetChatHistoryFromCloud = async () => {
+  if (!isWechatCloudConfigured()) {
+    return
+  }
+
+  try {
+    await callWechatCloudFunction('pet-dialogue', {
+      action: 'clearHistory',
+    })
+  } catch {
+    // Ignore cloud clear failures, local clear still succeeds.
+  }
 }
 
 export const createPetQuickReply = async (options?: {
@@ -106,6 +168,7 @@ export const createPetQuickReply = async (options?: {
 export const createPetChatReply = async (options: {
   petName?: string
   personaPrompt?: string
+  userMessage: string
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
   fallbackEmotion: EmotionTag
 }) => {
@@ -114,7 +177,9 @@ export const createPetChatReply = async (options: {
   const petName = options.petName?.trim() || '可可'
 
   if (!isWechatCloudConfigured()) {
-    return fallback
+    return {
+      content: fallback,
+    }
   }
 
   try {
@@ -122,11 +187,17 @@ export const createPetChatReply = async (options: {
       action: 'chatReply',
       petName,
       personaPrompt: options.personaPrompt ?? defaultPetPersonaPrompt,
+      userMessage: options.userMessage,
       messages: options.messages.slice(-10),
     })
 
-    return limitText(reply, 60)
+    return {
+      content: limitText(reply.content, 60),
+      history: reply.history,
+    }
   } catch {
-    return fallback
+    return {
+      content: fallback,
+    }
   }
 }

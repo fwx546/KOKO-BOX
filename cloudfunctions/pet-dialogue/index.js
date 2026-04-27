@@ -10,6 +10,10 @@ const QWEN_API_PATH = '/compatible-mode/v1/chat/completions'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus'
 const QWEN_TIMEOUT_MS = 12000
 const MAX_CHAT_MESSAGES = 10
+const MAX_HISTORY_MESSAGES = 100
+const CHAT_HISTORY_COLLECTION = 'pet_dialogue_histories'
+
+const db = cloud.database()
 
 const defaultPetPersonaPrompt = `你是用户在 Koko Box 里养的 AI 宠物，名字是当前传入的宠物名。
 你的语气像亲近、活泼、温柔的小宠物伙伴，不像客服或老师。
@@ -27,6 +31,28 @@ const limitText = (value, maxLength) => {
 
 const sanitizeRole = (value) => (value === 'assistant' ? 'assistant' : 'user')
 
+const safeIsoDate = (value) => {
+  const stamp = typeof value === 'string' ? value : ''
+  return /^\d{4}-\d{2}-\d{2}T/.test(stamp) ? stamp : new Date().toISOString()
+}
+
+const sanitizeStoredHistoryItem = (value) => ({
+  role: sanitizeRole(value?.role),
+  content: limitText(value?.content, 280),
+  createdAt: safeIsoDate(value?.createdAt),
+})
+
+const sanitizeStoredHistory = (value) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => sanitizeStoredHistoryItem(item))
+    .filter((item) => item.content.length > 0)
+    .slice(-MAX_HISTORY_MESSAGES)
+}
+
 const sanitizeMessages = (value) => {
   if (!Array.isArray(value)) {
     return []
@@ -39,6 +65,72 @@ const sanitizeMessages = (value) => {
     }))
     .filter((item) => item.content.length > 0)
     .slice(-MAX_CHAT_MESSAGES)
+}
+
+const loadUserChatHistoryRecord = async (openid) => {
+  const result = await db
+    .collection(CHAT_HISTORY_COLLECTION)
+    .where({
+      _openid: openid,
+    })
+    .limit(1)
+    .get()
+
+  const record = result?.data?.[0]
+  if (!record) {
+    return null
+  }
+
+  return {
+    id: record._id,
+    messages: sanitizeStoredHistory(record.messages),
+  }
+}
+
+const saveUserChatHistory = async (openid, messages) => {
+  const sanitized = sanitizeStoredHistory(messages)
+  const record = await loadUserChatHistoryRecord(openid)
+
+  if (!record) {
+    await db.collection(CHAT_HISTORY_COLLECTION).add({
+      data: {
+        messages: sanitized,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    })
+
+    return sanitized
+  }
+
+  await db
+    .collection(CHAT_HISTORY_COLLECTION)
+    .doc(record.id)
+    .update({
+      data: {
+        messages: sanitized,
+        updatedAt: new Date().toISOString(),
+      },
+    })
+
+  return sanitized
+}
+
+const clearUserChatHistory = async (openid) => {
+  const record = await loadUserChatHistoryRecord(openid)
+  if (!record) {
+    return
+  }
+
+  await db
+    .collection(CHAT_HISTORY_COLLECTION)
+    .doc(record.id)
+    .update({
+      data: {
+        messages: [],
+        updatedAt: new Date().toISOString(),
+      },
+    })
 }
 
 // Wrap DashScope request so cloud function never exposes API key to client.
@@ -121,10 +213,24 @@ exports.main = async (event = {}) => {
     throw new Error('QWEN_API_KEY is not configured for cloud function pet-dialogue.')
   }
 
-  const action = event.action === 'quickReply' || event.action === 'chatReply' ? event.action : 'chatReply'
+  const action = ['quickReply', 'chatReply', 'loadHistory', 'clearHistory'].includes(event.action) ? event.action : 'chatReply'
   const petName = limitText(event.petName, 24) || '可可'
   const personaPrompt = limitText(event.personaPrompt, 800) || defaultPetPersonaPrompt
   const systemPrompt = `${personaPrompt}\n当前宠物名：${petName}`
+
+  if (action === 'loadHistory') {
+    const record = await loadUserChatHistoryRecord(OPENID)
+    return {
+      history: record?.messages ?? [],
+    }
+  }
+
+  if (action === 'clearHistory') {
+    await clearUserChatHistory(OPENID)
+    return {
+      history: [],
+    }
+  }
 
   if (action === 'quickReply') {
     const reply = await requestQwenReply(
@@ -147,7 +253,42 @@ exports.main = async (event = {}) => {
     }
   }
 
-  const chatMessages = sanitizeMessages(event.messages)
+  const userMessage = limitText(event.userMessage, 280)
+  const messageFromContext = sanitizeMessages(event.messages)
+    .reverse()
+    .find((item) => item.role === 'user')?.content
+  const finalUserMessage = userMessage || messageFromContext
+
+  if (!finalUserMessage) {
+    throw new Error('chatReply requires userMessage or messages context.')
+  }
+
+  const historyRecord = await loadUserChatHistoryRecord(OPENID)
+  const contextHistorySeed = sanitizeMessages(event.messages).map((item) => ({
+    role: item.role,
+    content: item.content,
+    createdAt: new Date().toISOString(),
+  }))
+  const baseHistory = historyRecord?.messages?.length ? historyRecord.messages : contextHistorySeed
+  const lastBaseMessage = baseHistory[baseHistory.length - 1]
+  const shouldAppendUserMessage = !(lastBaseMessage?.role === 'user' && lastBaseMessage?.content === finalUserMessage)
+  const nextHistory = [
+    ...baseHistory,
+    ...(shouldAppendUserMessage
+      ? [
+          {
+            role: 'user',
+            content: finalUserMessage,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      : []),
+  ].slice(-MAX_HISTORY_MESSAGES)
+
+  const chatMessages = nextHistory.slice(-MAX_CHAT_MESSAGES).map((item) => ({
+    role: item.role,
+    content: item.content,
+  }))
   const reply = await requestQwenReply(
     [
       {
@@ -160,7 +301,17 @@ exports.main = async (event = {}) => {
     apiKey,
   )
 
+  const savedHistory = await saveUserChatHistory(OPENID, [
+    ...nextHistory,
+    {
+      role: 'assistant',
+      content: limitText(reply, 60),
+      createdAt: new Date().toISOString(),
+    },
+  ])
+
   return {
     content: limitText(reply, 60),
+    history: savedHistory,
   }
 }

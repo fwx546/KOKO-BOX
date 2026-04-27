@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetLottieAvatar from '../components/PetLottieAvatar.vue'
 import PetMiniGameDrawer from '../components/PetMiniGameDrawer.vue'
 import { useKokoState } from '../composables/useKokoState'
@@ -8,7 +8,14 @@ import type { MiniGameResult, PetActionType } from '../types/koko'
 const FRAME_COUNT = 16
 const STEP_PX = 18
 const PET_LOTTIE_SIZE_RPX = 300
-const homeBackgroundSrc = '/static/home/room.webp'
+const homeBackgroundCandidates = [
+  '/static/home/room-fallback.jpg',
+  'static/home/room-fallback.jpg',
+  '/static/home/room.webp',
+  'static/home/room.webp',
+]
+const homeBackgroundSrc = ref(homeBackgroundCandidates[0])
+let homeBackgroundIndex = 0
 const chatPromptHints = [
   'Tell Koko how your day is going',
   'Ask Koko for a small cheer',
@@ -18,6 +25,46 @@ const chatPromptHints = [
 ]
 
 const pickChatPromptHint = () => chatPromptHints[Math.floor(Math.random() * chatPromptHints.length)]
+
+const handleHomeBackgroundError = (event: any) => {
+  console.error('[HomePage] background image load failed:', homeBackgroundSrc.value, event?.detail?.errMsg ?? event)
+  if (homeBackgroundIndex < homeBackgroundCandidates.length - 1) {
+    homeBackgroundIndex += 1
+    homeBackgroundSrc.value = homeBackgroundCandidates[homeBackgroundIndex]
+    console.warn('[HomePage] switch background candidate to:', homeBackgroundSrc.value)
+  }
+}
+
+const checkImageSource = (src: string) =>
+  new Promise<{ ok: boolean; errMsg?: string }>((resolve) => {
+    if (typeof uni === 'undefined' || typeof uni.getImageInfo !== 'function') {
+      resolve({ ok: true })
+      return
+    }
+
+    uni.getImageInfo({
+      src,
+      success: () => resolve({ ok: true }),
+      fail: (err) => {
+        const errMsg = (err as { errMsg?: string })?.errMsg ?? String(err)
+        console.error('[HomePage] getImageInfo failed:', src, errMsg)
+        resolve({ ok: false, errMsg })
+      },
+    })
+  })
+
+const ensureHomeBackground = async () => {
+  for (let index = 0; index < homeBackgroundCandidates.length; index += 1) {
+    const candidate = homeBackgroundCandidates[index]
+    const result = await checkImageSource(candidate)
+    if (result.ok) {
+      homeBackgroundIndex = index
+      homeBackgroundSrc.value = candidate
+      return
+    }
+  }
+  console.error('[HomePage] all background candidates failed:', homeBackgroundCandidates.join(', '))
+}
 
 const {
   pet,
@@ -247,12 +294,16 @@ digestTimer = setInterval(() => {
 onBeforeUnmount(() => {
   clearTimers()
 })
+
+onMounted(() => {
+  void ensureHomeBackground()
+})
 </script>
 
 <template>
   <view class="home-screen">
     <view class="home-screen__background">
-      <image class="home-screen__background-image" :src="homeBackgroundSrc" mode="scaleToFill" />
+      <image class="home-screen__background-image" :src="homeBackgroundSrc" mode="scaleToFill" @error="handleHomeBackgroundError" />
     </view>
 
     <view class="home-screen__content">
@@ -373,9 +424,12 @@ onBeforeUnmount(() => {
 }
 
 .home-screen__background {
-  inset: 0;
+  bottom: 0;
+  left: 0;
   overflow: hidden;
   position: absolute;
+  right: 0;
+  top: 0;
   z-index: 0;
 }
 
@@ -699,10 +753,10 @@ onBeforeUnmount(() => {
 }
 
 .home-stage__chat {
-  bottom: calc(12rpx + env(safe-area-inset-bottom));
-  left: 12rpx;
+  bottom: calc(42rpx + env(safe-area-inset-bottom));
+  left: 10rpx;
   position: absolute;
-  right: 96rpx;
+  right: 10rpx;
   z-index: 9;
 }
 
@@ -1004,6 +1058,8 @@ onBeforeUnmount(() => {
 
 .pet-chat-card {
   background: transparent;
+  display: flex;
+  justify-content: center;
   position: relative;
 }
 
@@ -1014,53 +1070,70 @@ onBeforeUnmount(() => {
 
 .pet-chat-card__bar {
   align-items: center;
+  backdrop-filter: blur(24rpx);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(236, 247, 255, 0.25)),
+    rgba(255, 255, 255, 0.16);
+  border: 2rpx solid rgba(208, 240, 255, 0.58);
+  border-radius: 999rpx;
   display: flex;
-  gap: 8rpx;
+  gap: 0;
   justify-content: center;
+  max-width: 680rpx;
+  padding: 8rpx;
+  width: 100%;
 }
 
 .pet-chat-card__field {
-  backdrop-filter: blur(24rpx);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(238, 249, 255, 0.2)),
-    rgba(255, 255, 255, 0.12);
-  border: 2rpx solid rgba(208, 240, 255, 0.55);
+  background: transparent;
+  border: none;
   border-radius: 999rpx;
   color: #244456;
   flex: 1;
-  font-size: 23rpx;
-  height: 84rpx;
+  font-size: 27rpx;
+  height: 94rpx;
   min-width: 0;
-  padding: 0 24rpx;
+  padding: 0 28rpx;
 }
 
 .pet-chat-card__history,
 .pet-chat-card__send {
   align-items: center;
-  backdrop-filter: blur(18rpx);
-  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(12rpx);
+  background: rgba(255, 255, 255, 0.58);
   border: none;
-  border-radius: 999rpx;
+  border-left: 2rpx solid rgba(189, 222, 238, 0.58);
+  border-radius: 0;
   color: #315b74;
   display: flex;
-  font-size: 19rpx;
+  font-size: 24rpx;
   font-weight: 700;
-  height: 84rpx;
+  height: 94rpx;
   justify-content: center;
-  min-width: 76rpx;
-  padding: 0 14rpx;
+  min-width: 112rpx;
+  padding: 0 18rpx;
+}
+
+.pet-chat-card__send {
+  border-radius: 0 999rpx 999rpx 0;
 }
 
 .chat-history-layer {
-  inset: 0;
+  bottom: 0;
+  left: 0;
   position: fixed;
+  right: 0;
+  top: 0;
   z-index: 40;
 }
 
 .chat-history-layer__mask {
   background: rgba(19, 37, 49, 0.28);
-  inset: 0;
+  bottom: 0;
+  left: 0;
   position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .chat-history-layer__panel {
