@@ -12,10 +12,10 @@
     "pages/settings/index"
   ],
   "tabBar": {
-    "color": "#66708e",
-    "selectedColor": "#253047",
-    "backgroundColor": "#fff7e8",
-    "borderStyle": "black",
+    "color": "#8a7a68",
+    "selectedColor": "#365f56",
+    "backgroundColor": "#fff8ec",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
@@ -25,7 +25,7 @@
       },
       {
         "pagePath": "pages/town/index",
-        "text": "宠物小镇",
+        "text": "小镇",
         "iconPath": "static/tab/tab-grow.png",
         "selectedIconPath": "static/tab/tab-grow-active.png"
       },
@@ -51,9 +51,9 @@
   },
   "window": {
     "navigationBarTitleText": "Koko Box",
-    "navigationBarBackgroundColor": "#fff7e8",
+    "navigationBarBackgroundColor": "#fff8ec",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fff7e8"
+    "backgroundColor": "#fff8ec"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

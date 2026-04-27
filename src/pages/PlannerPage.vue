@@ -17,12 +17,12 @@ type EditorMode = 'create' | 'edit'
 const categoryMeta: Record<TaskCategory, { icon: string; label: string }> = {
   schedule: { icon: '⏰', label: '日程' },
   study: { icon: '✏️', label: '学习' },
-  work: { icon: '📋', label: '工作' },
+  work: { icon: '📋', label: '任务' },
   health: { icon: '🌿', label: '健康' },
   life: { icon: '🏠', label: '生活' },
 }
 
-const iconOptions = ['🌿', '✏️', '📋', '⏰', '🏠', '🍃']
+const iconOptions = ['🌿', '✏️', '📋', '⏰', '🏠', '🍓']
 const colorOptions = ['#d9cff3', '#cfefd7', '#ffe9ad', '#ffd3dc', '#d6e8fa', '#ffd8c9']
 const showCreateChoice = ref(false)
 const editorVisible = ref(false)
@@ -190,7 +190,7 @@ const undoCompleteTask = (taskId: string) => {
             <view class="planner-punch-ddl-item__date">{{ task.dueDate }}</view>
           </button>
         </view>
-        <view v-else class="planner-punch-ddl-empty">暂无临近截止事项</view>
+        <view v-else class="planner-punch-ddl-empty">暂时没有临近截止事项</view>
       </view>
 
       <view class="planner-punch-section">
@@ -210,7 +210,7 @@ const undoCompleteTask = (taskId: string) => {
             </view>
           </view>
         </view>
-        <view v-else class="planner-punch-empty">未完成已经清空，可以休息一下，或者加一个小目标。</view>
+        <view v-else class="planner-punch-empty">未完成已经清空啦，可以休息一下，或加一个小目标。</view>
       </view>
 
       <view class="planner-punch-section">
@@ -226,7 +226,7 @@ const undoCompleteTask = (taskId: string) => {
             <view class="planner-punch-card__body">
               <view class="planner-punch-card__icon">{{ task.categoryIcon }}</view>
               <view class="planner-punch-card__title">{{ task.title }}</view>
-              <button class="planner-punch-undo" aria-label="取消完成" @click.stop="undoCompleteTask(task.id)">↩</button>
+              <button class="planner-punch-undo" aria-label="取消完成" @click.stop="undoCompleteTask(task.id)">↺</button>
             </view>
           </view>
         </view>
@@ -259,7 +259,7 @@ const undoCompleteTask = (taskId: string) => {
       <view class="planner-punch-editor" @click.stop>
         <view class="planner-punch-editor__handle" />
         <view class="planner-punch-editor__title">
-          {{ editorMode === 'create' ? '新建' : '编辑' }}{{ editorKind === 'ddl' ? 'DDL' : '任务' }}
+          {{ editorMode === 'create' ? '新建' : '编辑' }}{{ editorKind === 'ddl' ? ' DDL' : '任务' }}
         </view>
         <input v-model="formTitle" class="planner-punch-editor__input" placeholder="写下标题" />
         <picker v-if="editorKind === 'ddl'" mode="date" :value="formDate" @change="formDate = $event.detail.value">

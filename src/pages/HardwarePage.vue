@@ -6,12 +6,17 @@ import { useLanguage } from '../composables/useLanguage'
 const { t } = useLanguage()
 const { devices, syncEvents, runDemoScenario } = useKokoState()
 
-const accents = ['#7ed9b5', '#ffd37a', '#ff9bb5'] as const
+const accents = ['#5fc7a8', '#f8cb64', '#ff9bb5'] as const
+const deviceTypeLabel = {
+  miniapp: '小程序',
+  desktop: '桌宠',
+  m5: '硬件',
+}
 const bindSteps = [
   '小程序建立宠物主状态。',
   '桌宠和 M5 作为展示终端读取同步日志。',
   '离线时保留缓存，恢复后补同步。',
-  '所有演示都通过这里的一键场景触发。',
+  '演示场景可通过这里一键触发。',
 ]
 </script>
 
@@ -33,7 +38,7 @@ const bindSteps = [
           <DeviceCard
             v-for="(device, index) in devices"
             :key="device.deviceId"
-            :name="device.deviceType"
+            :name="deviceTypeLabel[device.deviceType]"
             :status="device.online ? '在线' : '离线'"
             :detail="`${device.terminalRole} · 电量 ${device.battery}% · ${device.lastSyncAt.slice(11, 16)}`"
             :accent="accents[index % accents.length]"

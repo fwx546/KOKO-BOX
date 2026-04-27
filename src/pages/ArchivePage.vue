@@ -3,6 +3,13 @@ import { useKokoState } from '../composables/useKokoState'
 
 const { archive, metrics } = useKokoState()
 
+const stageLabelMap = {
+  egg: '蛋壳期',
+  baby: '幼崽期',
+  growing: '成长期',
+  adult: '成熟期',
+}
+
 const openChat = () => {
   uni.navigateTo({
     url: '/pages/chat/index',
@@ -15,9 +22,9 @@ const openChat = () => {
     <view class="page-head">
       <view>
         <view class="eyebrow">陪伴记录</view>
-        <view>生命档案</view>
+        <view>成长档案</view>
       </view>
-      <view>这里记录团子的成长阶段、病史和里程碑。</view>
+      <view>这里记录 Koko 的成长阶段、恢复记录和里程碑。</view>
     </view>
 
     <view class="page-grid-2">
@@ -35,7 +42,7 @@ const openChat = () => {
         <view>成长阶段历史</view>
         <view class="simple-list">
           <view v-for="item in archive.stageHistory" :key="`${item.stage}-${item.timestamp}`">
-            <view>{{ item.stage }}</view>
+            <view>{{ stageLabelMap[item.stage] ?? item.stage }}</view>
             <view>{{ item.timestamp }}</view>
           </view>
         </view>
@@ -54,8 +61,8 @@ const openChat = () => {
       </view>
 
       <view class="panel-block panel-block--full">
-        <view class="eyebrow">健康病史</view>
-        <view>最近治疗记录</view>
+        <view class="eyebrow">健康记录</view>
+        <view>最近恢复记录</view>
         <view class="card-list">
           <view v-for="item in archive.medicalLogs" :key="item.id" class="mini-card">
             <view>{{ item.note }}</view>

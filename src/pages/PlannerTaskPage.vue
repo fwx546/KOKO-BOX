@@ -38,7 +38,7 @@ const saveField = <K extends keyof PlannerTask>(key: K, value: PlannerTask[K]) =
 const addSubtask = () => {
   if (!task.value) return
   updateTask(task.value.id, {
-    subtasks: [...task.value.subtasks, { id: `subtask-${Date.now()}`, title: 'New item', completed: false }],
+    subtasks: [...task.value.subtasks, { id: `subtask-${Date.now()}`, title: '新清单项', completed: false }],
   })
 }
 
@@ -71,15 +71,15 @@ onLoad((options) => {
   <view class="page-view" v-if="task">
     <view class="page-head">
       <view>
-        <view class="eyebrow">Task Detail</view>
+        <view class="eyebrow">任务详情</view>
         <view>{{ task.title }}</view>
       </view>
-      <view>Keep long edits on a separate page so the planner overview stays compact.</view>
+      <view>长内容放在这里编辑，待办首页就能保持轻巧。</view>
     </view>
 
     <view class="panel-block planner-form-page">
       <input class="input-field" :value="task.title" @blur="saveField('title', $event.detail.value)" />
-      <textarea class="planner-textarea" :value="task.notes" @blur="saveField('notes', $event.detail.value)" />
+      <textarea class="planner-textarea" :value="task.notes" placeholder="备注" @blur="saveField('notes', $event.detail.value)" />
       <view class="planner-inline-fields">
         <input class="input-field" type="date" :value="task.dueDate" @change="saveField('dueDate', $event.detail.value)" />
         <input class="input-field" type="time" :value="task.time" @change="saveField('time', $event.detail.value)" />
@@ -89,21 +89,21 @@ onLoad((options) => {
         <input class="input-field" :value="task.priority" @blur="saveField('priority', $event.detail.value)" />
       </view>
       <view class="planner-inline-fields">
-        <button class="quick-action-button" @click="setTaskStatus(task.id, 'completed')">Complete</button>
-        <button class="quick-action-button quick-action-button--ghost" @click="setTaskStatus(task.id, 'delayed')">Later</button>
+        <button class="quick-action-button" @click="setTaskStatus(task.id, 'completed')">完成</button>
+        <button class="quick-action-button quick-action-button--ghost" @click="setTaskStatus(task.id, 'delayed')">稍后</button>
       </view>
       <view class="planner-checklist">
         <view class="planner-section-head">
-          <view>Checklist</view>
-          <button class="profile-shortcut-button" @click="addSubtask">Add</button>
+          <view>清单</view>
+          <button class="profile-shortcut-button" @click="addSubtask">添加</button>
         </view>
         <view class="planner-subtask-row" v-for="subtask in task.subtasks" :key="subtask.id">
           <checkbox :checked="subtask.completed" @click="updateSubtask(subtask.id, { completed: !subtask.completed })" />
           <input class="input-field" :value="subtask.title" @blur="updateSubtask(subtask.id, { title: $event.detail.value })" />
-          <button class="profile-shortcut-button" @click="removeSubtask(subtask.id)">Remove</button>
+          <button class="profile-shortcut-button" @click="removeSubtask(subtask.id)">移除</button>
         </view>
       </view>
-      <button class="quick-action-button quick-action-button--ghost" @click="removeCurrentTask">Delete Task</button>
+      <button class="quick-action-button quick-action-button--ghost" @click="removeCurrentTask">删除任务</button>
     </view>
   </view>
 </template>

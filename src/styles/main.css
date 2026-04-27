@@ -87,7 +87,7 @@ button {
 }
 
 .page-shell--planner-fixed {
-  background: #fff7e8;
+  background: #fff8ec;
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -96,7 +96,7 @@ button {
 }
 
 .page-shell--planner-fixed .app-card {
-  background: #fff7e8;
+  background: #fff8ec;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -108,7 +108,7 @@ button {
 }
 
 .page-shell--planner-fixed .view-container {
-  background: #fff7e8;
+  background: #fff8ec;
   min-height: 100vh;
   margin-top: 0;
   overflow: visible;
@@ -2783,7 +2783,7 @@ button {
 }
 
 .planner-punch-page {
-  background: #fff7e8;
+  background: #fff8ec;
   border-radius: 0;
   color: #2d2b35;
   display: block;
@@ -2829,7 +2829,7 @@ button {
 }
 
 .planner-punch-board {
-  background: #fff7e8;
+  background: #fff8ec;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -3265,7 +3265,7 @@ button {
 }
 
 .planner-schedule-importer__ghost {
-  background: #fff7e8;
+  background: #fff8ec;
   color: #8a785f;
   min-height: 38px;
 }
@@ -3351,7 +3351,7 @@ button {
 }
 
 .planner-punch-choice button {
-  background: #fff7e8;
+  background: #fff8ec;
   color: #805d2c;
 }
 
@@ -3423,7 +3423,7 @@ button {
 .planner-punch-icon-option,
 .planner-punch-color-option {
   align-items: center;
-  background: #fff7e8;
+  background: #fff8ec;
   border: 2px solid transparent;
   border-radius: 999px;
   display: flex;
@@ -4334,4 +4334,175 @@ button {
   .home-grow-bubble view:last-child {
     font-size: 18rpx;
   }
+}
+
+/* Koko unified cute-minimal theme overrides */
+:root {
+  --bg: #fff8ec;
+  --surface: rgba(255, 253, 248, 0.96);
+  --surface-strong: #ffffff;
+  --text: #253047;
+  --muted: #867565;
+  --border: rgba(176, 143, 102, 0.18);
+  --shadow: 0 18rpx 42rpx rgba(167, 124, 72, 0.12);
+  --mint: #bfe8d7;
+  --sun: #ffe39a;
+  --peach: #ffd1bd;
+  --sky: #cdeeff;
+  --rose: #ffd4df;
+  --lime: #dff1c7;
+  --koko-primary: #5fc7a8;
+  --koko-primary-dark: #365f56;
+  --koko-warm: #fff8ec;
+  --koko-card: #fffdf8;
+  --koko-danger: #d96b6b;
+  --koko-radius-sm: 16rpx;
+  --koko-radius-md: 22rpx;
+  --koko-radius-lg: 30rpx;
+  --koko-radius-pill: 999rpx;
+}
+
+html,
+body,
+#app {
+  color: var(--text);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 227, 154, 0.32), transparent 34%),
+    linear-gradient(180deg, #fffaf1 0%, #f7fbf0 100%);
+}
+
+button {
+  font: inherit;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-shell {
+  background:
+    radial-gradient(circle at 10% 4%, rgba(255, 226, 157, 0.36), transparent 32%),
+    linear-gradient(180deg, #fff8ec 0%, #f7fbf0 100%);
+  padding: 16rpx;
+}
+
+.app-card {
+  border-color: var(--border);
+  border-radius: var(--koko-radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.page-head,
+.panel-block,
+.chat-panel,
+.summary-card,
+.hero-card,
+.mini-card,
+.task-card,
+.log-item,
+.trend-card,
+.archive-item,
+.planner-kpi-card,
+.planner-task-card {
+  border: 2rpx solid var(--border);
+  border-radius: var(--koko-radius-md);
+  background: var(--koko-card);
+  box-shadow: 0 12rpx 28rpx rgba(167, 124, 72, 0.08);
+}
+
+.page-head {
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 232, 0.92)),
+    var(--koko-card);
+}
+
+.page-head > view:first-child > view:last-child,
+.panel-block > view:nth-child(2),
+.chat-panel > view:nth-child(2),
+.summary-card__metric > view:nth-child(2),
+.planner-task-card__title,
+.planner-detail__title,
+.mini-card > view:first-child,
+.log-item > view:first-child,
+.trend-card > view:first-child {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.eyebrow,
+.current-page-label,
+.muted-line,
+.task-card__meta,
+.task-card__status,
+.planner-empty,
+.mini-card > view:nth-child(2),
+.log-item > view:nth-child(2),
+.trend-card > view:not(:first-child),
+.archive-item > view:last-child,
+.panel-block > view:last-child {
+  color: var(--muted);
+}
+
+.eyebrow {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.input-field,
+.planner-textarea,
+.planner-picker,
+.toggle-row,
+.bullet-list > view,
+.ordered-list > view,
+.simple-list > view {
+  border: 2rpx solid rgba(176, 143, 102, 0.14);
+  border-radius: var(--koko-radius-sm);
+  background: rgba(255, 248, 236, 0.82);
+  color: var(--text);
+}
+
+.quick-action-button,
+.profile-shortcut-button,
+.planner-check-button,
+.chat-fab {
+  border-radius: var(--koko-radius-pill);
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  color: #173f38;
+  font-weight: 800;
+  box-shadow: 0 12rpx 24rpx rgba(95, 199, 168, 0.2);
+}
+
+.quick-action-button--ghost,
+.chip-button,
+.language-switch__button {
+  border: 2rpx solid rgba(176, 143, 102, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.chip-button--active,
+.language-switch__button--active {
+  background: #e8f7ef;
+  color: var(--koko-primary-dark);
+  box-shadow: 0 10rpx 20rpx rgba(95, 199, 168, 0.14);
+}
+
+.language-switch {
+  border-color: rgba(176, 143, 102, 0.14);
+  background: rgba(255, 248, 236, 0.8);
+}
+
+.planner-progress-track,
+.profile-stat-item__bar,
+.home-progress-card__track,
+.status-card__track {
+  background: rgba(228, 213, 194, 0.64);
+}
+
+.page-shell--planner-fixed,
+.page-shell--planner-fixed .app-card,
+.page-shell--planner-fixed .view-container {
+  background: #fff8ec;
 }

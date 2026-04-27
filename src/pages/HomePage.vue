@@ -17,11 +17,11 @@ const homeBackgroundCandidates = [
 const homeBackgroundSrc = ref(homeBackgroundCandidates[0])
 let homeBackgroundIndex = 0
 const chatPromptHints = [
-  'Tell Koko how your day is going',
-  'Ask Koko for a small cheer',
-  'Share one tiny happy thing',
-  'Ask what Koko wants to do next',
-  'Say hello to your pet friend',
+  '和 Koko 说说今天',
+  '让 Koko 给你一点鼓励',
+  '分享一件小开心',
+  '问问 Koko 想做什么',
+  '和毛茸茸打个招呼',
 ]
 
 const pickChatPromptHint = () => chatPromptHints[Math.floor(Math.random() * chatPromptHints.length)]
@@ -116,7 +116,7 @@ const recentMessages = computed(() =>
 
 const lastAssistantMessage = computed(() => {
   const assistant = [...messages.value].reverse().find((item) => item.role === 'assistant')
-  return assistant?.content ?? 'Stay with me for a while.'
+  return assistant?.content ?? '陪我待一会儿吧。'
 })
 
 const petBubbleSizeClass = computed(() => ({
@@ -133,10 +133,10 @@ const careActions: Array<{
   label: string
   action: PetActionType
 }> = [
-  { key: 'feedMeal', label: 'Feed', action: 'munch' },
-  { key: 'feedWater', label: 'Water', action: 'sip' },
-  { key: 'play', label: 'Play', action: 'sparkle' },
-  { key: 'clean', label: 'Clean', action: 'stretch' },
+  { key: 'feedMeal', label: '喂食', action: 'munch' },
+  { key: 'feedWater', label: '喝水', action: 'sip' },
+  { key: 'play', label: '玩耍', action: 'sparkle' },
+  { key: 'clean', label: '清洁', action: 'stretch' },
 ]
 
 const actionDisplayLabel = (action: (typeof careActions)[number]) =>
@@ -281,8 +281,8 @@ const submitOverlayChat = async () => {
 const handleGameComplete = (result: MiniGameResult) => {
   const message =
     result.gameType === 'catch'
-      ? `Catch score ${result.score}. Nice teamwork.`
-      : `Bubble score ${result.score}. I had fun.`
+      ? `接球得分 ${result.score}，配合得真好。`
+      : `泡泡得分 ${result.score}，玩得很开心。`
   triggerPetAction('sparkle', message, 2600)
 }
 
@@ -316,7 +316,7 @@ onMounted(() => {
     <view class="home-screen__content">
       <view class="home-topbar">
         <view class="home-topbar__title-block">
-          <view class="home-topbar__eyebrow">PET HOME</view>
+          <view class="home-topbar__eyebrow">KOKO HOME</view>
           <view class="home-topbar__title">{{ pet.name }}</view>
         </view>
       </view>
@@ -372,9 +372,9 @@ onMounted(() => {
                 confirm-type="send"
                 @confirm="submitOverlayChat"
               />
-              <button class="pet-chat-card__history" @click="historyOpen = true">Log</button>
+              <button class="pet-chat-card__history" @click="historyOpen = true">记录</button>
               <button class="pet-chat-card__send" :disabled="overlayChatCollapsed || sending" @click="submitOverlayChat">
-                {{ sending ? 'Sending' : 'Send' }}
+                {{ sending ? '发送中' : '发送' }}
               </button>
             </view>
           </view>
@@ -387,12 +387,12 @@ onMounted(() => {
       <view class="chat-history-layer__panel">
         <view class="chat-history-layer__head">
           <view>
-            <view class="chat-history-layer__eyebrow">CHAT LOG</view>
-            <view class="chat-history-layer__title">Messages with {{ pet.name }}</view>
+            <view class="chat-history-layer__eyebrow">聊天记录</view>
+            <view class="chat-history-layer__title">和 {{ pet.name }} 的消息</view>
           </view>
           <view class="chat-history-layer__actions">
-            <button class="chat-history-layer__ghost" @click="clearMessages">Clear</button>
-            <button class="chat-history-layer__ghost" @click="historyOpen = false">Close</button>
+            <button class="chat-history-layer__ghost" @click="clearMessages">清空</button>
+            <button class="chat-history-layer__ghost" @click="historyOpen = false">关闭</button>
           </view>
         </view>
 
@@ -403,7 +403,7 @@ onMounted(() => {
             class="chat-history-layer__bubble"
             :class="message.role === 'assistant' ? 'chat-history-layer__bubble--assistant' : 'chat-history-layer__bubble--user'"
           >
-            <view class="chat-history-layer__role">{{ message.role === 'assistant' ? pet.name : 'You' }}</view>
+            <view class="chat-history-layer__role">{{ message.role === 'assistant' ? pet.name : '你' }}</view>
             <view class="chat-history-layer__content">{{ message.displayContent }}</view>
           </view>
         </scroll-view>
@@ -420,7 +420,7 @@ onMounted(() => {
 
 <style scoped>
 .home-screen {
-  background: linear-gradient(180deg, #dff5ff 0%, #dff5fd 42%, #f3f9eb 100%);
+  background: linear-gradient(180deg, #e8f8ff 0%, #fff8ec 52%, #f3f9eb 100%);
   box-sizing: border-box;
   height: 100vh;
   left: 0;
@@ -615,11 +615,11 @@ onMounted(() => {
 }
 
 .home-topbar__title-block {
-  color: #1e3945;
+  color: #253047;
 }
 
 .home-topbar__eyebrow {
-  color: #5c8a78;
+  color: #5f8c78;
   font-size: 22rpx;
   letter-spacing: 4rpx;
 }
@@ -639,10 +639,11 @@ onMounted(() => {
 
 .pet-bubble {
   align-items: flex-start;
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 28rpx;
-  box-shadow: 0 18rpx 42rpx rgba(63, 104, 123, 0.16);
-  color: #305163;
+  background: rgba(255, 253, 248, 0.94);
+  border: 2rpx solid rgba(176, 143, 102, 0.14);
+  border-radius: 30rpx;
+  box-shadow: 0 18rpx 42rpx rgba(167, 124, 72, 0.14);
+  color: #253047;
   display: inline-flex;
   font-size: 24rpx;
   height: auto;
@@ -695,13 +696,14 @@ onMounted(() => {
 
 .home-progress-card {
   backdrop-filter: blur(10rpx);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 253, 248, 0.74);
+  border: 2rpx solid rgba(176, 143, 102, 0.12);
   border-radius: 22rpx;
   padding: 14rpx 16rpx 16rpx;
 }
 
 .home-progress-card__label {
-  color: #54707a;
+  color: #8a7a68;
   font-size: 20rpx;
 }
 
@@ -754,11 +756,12 @@ onMounted(() => {
 
 .home-action-pill {
   align-items: center;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 253, 248, 0.9);
   border: none;
   border-radius: 50%;
-  box-shadow: 0 16rpx 30rpx rgba(84, 143, 110, 0.12);
-  color: #31586b;
+  border: 2rpx solid rgba(95, 199, 168, 0.18);
+  box-shadow: 0 16rpx 30rpx rgba(95, 199, 168, 0.14);
+  color: #365f56;
   display: flex;
   height: 110rpx;
   justify-content: center;
@@ -1102,9 +1105,9 @@ onMounted(() => {
   align-items: center;
   backdrop-filter: blur(24rpx);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(236, 247, 255, 0.25)),
-    rgba(255, 255, 255, 0.16);
-  border: 2rpx solid rgba(208, 240, 255, 0.58);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.62), rgba(255, 248, 236, 0.4)),
+    rgba(255, 253, 248, 0.28);
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
   border-radius: 999rpx;
   display: flex;
   gap: 0;
@@ -1118,7 +1121,7 @@ onMounted(() => {
   background: transparent;
   border: none;
   border-radius: 999rpx;
-  color: #244456;
+  color: #253047;
   flex: 1;
   font-size: 27rpx;
   height: 94rpx;
@@ -1130,11 +1133,11 @@ onMounted(() => {
 .pet-chat-card__send {
   align-items: center;
   backdrop-filter: blur(12rpx);
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.68);
   border: none;
-  border-left: 2rpx solid rgba(189, 222, 238, 0.58);
+  border-left: 2rpx solid rgba(176, 143, 102, 0.14);
   border-radius: 0;
-  color: #315b74;
+  color: #365f56;
   display: flex;
   font-size: 24rpx;
   font-weight: 700;
@@ -1167,10 +1170,10 @@ onMounted(() => {
 }
 
 .chat-history-layer__panel {
-  background: linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%);
+  background: linear-gradient(180deg, #fffdf8 0%, #fff8ec 100%);
   border-radius: 32rpx 32rpx 0 0;
   bottom: 0;
-  box-shadow: 0 -18rpx 56rpx rgba(56, 99, 138, 0.24);
+  box-shadow: 0 -18rpx 56rpx rgba(167, 124, 72, 0.18);
   left: 0;
   max-height: 70vh;
   padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
@@ -1186,13 +1189,13 @@ onMounted(() => {
 }
 
 .chat-history-layer__eyebrow {
-  color: #6b98b3;
+  color: #5f8c78;
   font-size: 21rpx;
   letter-spacing: 3rpx;
 }
 
 .chat-history-layer__title {
-  color: #213e52;
+  color: #253047;
   font-size: 32rpx;
   font-weight: 700;
   margin-top: 4rpx;
@@ -1207,7 +1210,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.78);
   border: none;
   border-radius: 999rpx;
-  color: #4b7591;
+  color: #365f56;
   font-size: 24rpx;
   padding: 14rpx 22rpx;
 }

@@ -20,7 +20,7 @@ useWechatShare({
 
 <style>
 page {
-  background: #fff7e8;
+  background: #fff8ec;
   min-height: 100%;
   overflow-y: auto;
 }

@@ -17,7 +17,7 @@ const quickEmotions: Array<{ value: EmotionTag; label: string; prompt: string }>
   { value: 'bored', label: '无聊', prompt: '有点无聊，我们来点轻互动吧。' },
   { value: 'stressed', label: '压力大', prompt: '事情有点多，我有些压力。' },
   { value: 'lonely', label: '孤独', prompt: '现在有点想找人说说话。' },
-  { value: 'proud', label: '自豪', prompt: '我刚完成了一件值得夸奖的事。' },
+  { value: 'proud', label: '自豪', prompt: '我刚完成了一件值得夸夸的事。' },
   { value: 'angry', label: '生气', prompt: '我现在情绪有点上头，想冷静一下。' },
 ]
 

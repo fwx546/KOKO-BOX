@@ -6,12 +6,20 @@ import { useKokoState } from '../composables/useKokoState'
 const { user, pet: authPet, authMode, isGuestSession, loading, importWechatProfile, login } = useAuth()
 const { pet, weeklyCompletionRate, syncPetFromAuth, syncCourseScheduleFromCloud } = useKokoState()
 
+const stageLabelMap = {
+  egg: '蛋壳期',
+  baby: '幼崽期',
+  growing: '成长期',
+  adult: '成熟期',
+}
+
 const displayName = computed(() => user.value?.nickName || (isGuestSession.value ? '游客' : 'Koko Friend'))
 const accountModeLabel = computed(() => (isGuestSession.value ? '游客模式' : '微信账号'))
 const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
 const accountHint = computed(() =>
-  isGuestSession.value ? '游客模式不会连接微信头像和账号信息。' : '账号信息已和当前微信小程序账号同步。',
+  isGuestSession.value ? '游客模式不会同步微信头像和账号信息。' : '账号信息已和当前微信小程序账号同步。',
 )
+const petStageLabel = computed(() => stageLabelMap[pet.value.stage] ?? pet.value.stage)
 
 const openSettings = () => {
   uni.navigateTo({
@@ -79,7 +87,7 @@ onMounted(async () => {
         <view class="profile-mode-pill">{{ isGuestSession ? 'Guest' : 'WeChat' }}</view>
       </view>
 
-      <view class="profile-pet-pill">宠物：{{ pet.name }} · {{ pet.stage }}</view>
+      <view class="profile-pet-pill">宠物：{{ pet.name }} · {{ petStageLabel }}</view>
       <view class="profile-hero__hint">{{ accountHint }}</view>
     </view>
 
@@ -95,7 +103,7 @@ onMounted(async () => {
         <view class="profile-stat-item__bar"><view class="profile-stat-item__fill profile-stat-item__fill--bond" :style="{ width: `${pet.intimacy}%` }" /></view>
       </view>
       <view class="profile-stat-item">
-        <view class="profile-stat-item__label">本周完成度</view>
+        <view class="profile-stat-item__label">本周完成</view>
         <view class="profile-stat-item__value">{{ weeklyCompletionRate }}%</view>
         <view class="profile-stat-item__bar"><view class="profile-stat-item__fill profile-stat-item__fill--done" :style="{ width: `${weeklyCompletionRate}%` }" /></view>
       </view>
@@ -103,7 +111,7 @@ onMounted(async () => {
 
     <view class="profile-summary">
       <view class="profile-summary__title">{{ pet.name }} 当前状态</view>
-      <view class="profile-summary__copy">处于 {{ pet.stage }} 阶段，继续保持互动和任务完成可以提升亲密度。</view>
+      <view class="profile-summary__copy">处于 {{ petStageLabel }}，继续互动和完成任务可以提升亲密度。</view>
     </view>
 
     <button class="profile-settings-entry" :disabled="loading" @click="openSettings">
@@ -124,10 +132,12 @@ onMounted(async () => {
 }
 
 .profile-hero {
-  background: linear-gradient(155deg, #ffffff, #f8fcfb);
-  border: 2rpx solid #e9ddd0;
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 236, 0.94)),
+    #fffdf8;
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
   border-radius: 30rpx;
-  box-shadow: 0 12rpx 26rpx rgba(137, 120, 97, 0.08);
+  box-shadow: 0 16rpx 34rpx rgba(167, 124, 72, 0.1);
   display: flex;
   flex-direction: column;
   gap: 10rpx;
@@ -141,8 +151,8 @@ onMounted(async () => {
 }
 
 .profile-avatar {
-  background: linear-gradient(160deg, #ffdca7, #ffc59f);
-  border-radius: 22rpx;
+  background: linear-gradient(160deg, #ffe39a, #ffc9b6);
+  border-radius: 24rpx;
   height: 108rpx;
   overflow: hidden;
   width: 108rpx;
@@ -178,36 +188,36 @@ onMounted(async () => {
 }
 
 .profile-mode-pill {
-  background: #edf7f2;
+  background: #e8f7ef;
   border-radius: 999rpx;
-  color: #5f9579;
+  color: #365f56;
   font-size: 20rpx;
   font-weight: 700;
   padding: 8rpx 16rpx;
 }
 
 .profile-hero__eyebrow {
-  color: #a18972;
+  color: #8a7a68;
   font-size: 22rpx;
   font-weight: 700;
 }
 
 .profile-hero__name {
-  color: #26324f;
+  color: #253047;
   font-size: 52rpx;
   font-weight: 800;
   line-height: 1.16;
 }
 
 .profile-hero__meta {
-  color: #6f8b7c;
+  color: #5f8c78;
   font-size: 30rpx;
   font-weight: 600;
 }
 
 .profile-pet-pill {
   align-self: flex-start;
-  background: #f8efe4;
+  background: #fff0ca;
   border-radius: 999rpx;
   color: #7d644f;
   font-size: 24rpx;
@@ -215,7 +225,7 @@ onMounted(async () => {
 }
 
 .profile-hero__hint {
-  color: #8d7a68;
+  color: #8a7a68;
   font-size: 23rpx;
 }
 
@@ -225,27 +235,38 @@ onMounted(async () => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.profile-stat-item {
+.profile-stat-item,
+.profile-summary,
+.profile-settings-entry {
   background: #fffdf8;
-  border: 2rpx solid #efe5d8;
-  border-radius: 18rpx;
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
+  border-radius: 22rpx;
+  box-shadow: 0 12rpx 26rpx rgba(167, 124, 72, 0.08);
+}
+
+.profile-stat-item {
   padding: 16rpx;
 }
 
+.profile-stat-item__label,
+.profile-summary__copy,
+.profile-settings-entry__hint {
+  color: #8a7a68;
+}
+
 .profile-stat-item__label {
-  color: #9b846e;
   font-size: 22rpx;
 }
 
 .profile-stat-item__value {
-  color: #2a3553;
+  color: #253047;
   font-size: 34rpx;
   font-weight: 700;
   margin-top: 8rpx;
 }
 
 .profile-stat-item__bar {
-  background: #efe8db;
+  background: rgba(228, 213, 194, 0.64);
   border-radius: 999rpx;
   height: 10rpx;
   margin-top: 10rpx;
@@ -258,21 +279,18 @@ onMounted(async () => {
 }
 
 .profile-stat-item__fill--mood {
-  background: linear-gradient(90deg, #f3c764, #ecb54c);
+  background: linear-gradient(90deg, #f8cb64, #f0b94a);
 }
 
 .profile-stat-item__fill--bond {
-  background: linear-gradient(90deg, #7ccfb7, #61c89d);
+  background: linear-gradient(90deg, #8adfb0, #5fc7a8);
 }
 
 .profile-stat-item__fill--done {
-  background: linear-gradient(90deg, #80c8e9, #62b4df);
+  background: linear-gradient(90deg, #8ad8ff, #6ebfea);
 }
 
 .profile-summary {
-  background: #fff;
-  border: 2rpx solid #ece2d6;
-  border-radius: 20rpx;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
@@ -280,23 +298,19 @@ onMounted(async () => {
 }
 
 .profile-summary__title {
-  color: #2c3653;
+  color: #253047;
   font-size: 30rpx;
   font-weight: 700;
 }
 
 .profile-summary__copy {
-  color: #8b7765;
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .profile-settings-entry {
   align-items: flex-start;
-  background: linear-gradient(150deg, #ffffff, #f5faf8);
-  border: 2rpx solid #efe5d8;
-  border-radius: 20rpx;
-  color: #2a3553;
+  color: #253047;
   display: flex;
   flex-direction: column;
   font-size: 32rpx;
@@ -313,7 +327,6 @@ onMounted(async () => {
 }
 
 .profile-settings-entry__hint {
-  color: #8f7a66;
   font-size: 24rpx;
   font-weight: 500;
 }

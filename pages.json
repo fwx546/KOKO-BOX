@@ -19,7 +19,7 @@
     {
       "path": "pages/chat/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "聊天",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -27,7 +27,7 @@
     {
       "path": "pages/stats/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "统计",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -35,7 +35,7 @@
     {
       "path": "pages/profile/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "我的",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -43,7 +43,7 @@
     {
       "path": "pages/archive/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "成长档案",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -51,7 +51,7 @@
     {
       "path": "pages/town/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "宠物小镇",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -59,7 +59,7 @@
     {
       "path": "pages/planner/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "待办",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -76,25 +76,25 @@
     {
       "path": "pages/planner-create/index",
       "style": {
-        "navigationBarTitleText": "New Task"
+        "navigationBarTitleText": "新建任务"
       }
     },
     {
       "path": "pages/planner-task/index",
       "style": {
-        "navigationBarTitleText": "Task Detail"
+        "navigationBarTitleText": "任务详情"
       }
     },
     {
       "path": "pages/planner-list/index",
       "style": {
-        "navigationBarTitleText": "Task List"
+        "navigationBarTitleText": "任务列表"
       }
     },
     {
       "path": "pages/pet-game-catch/index",
       "style": {
-        "navigationBarTitleText": "Catch Game",
+        "navigationBarTitleText": "接球小游戏",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -102,7 +102,7 @@
     {
       "path": "pages/pet-game-bubble/index",
       "style": {
-        "navigationBarTitleText": "Bubble Game",
+        "navigationBarTitleText": "泡泡小游戏",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -110,7 +110,7 @@
     {
       "path": "pages/hardware/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "设备联动",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
@@ -118,17 +118,17 @@
     {
       "path": "pages/settings/index",
       "style": {
-        "navigationBarTitleText": "Koko Box",
+        "navigationBarTitleText": "设置",
         "enableShareAppMessage": true,
         "enableShareTimeline": true
       }
     }
   ],
   "tabBar": {
-    "color": "#66708e",
-    "selectedColor": "#253047",
-    "backgroundColor": "#fff7e8",
-    "borderStyle": "black",
+    "color": "#8a7a68",
+    "selectedColor": "#365f56",
+    "backgroundColor": "#fff8ec",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
@@ -144,7 +144,7 @@
       },
       {
         "pagePath": "pages/town/index",
-        "text": "宠物小镇",
+        "text": "小镇",
         "iconPath": "static/tab/tab-talk.png",
         "selectedIconPath": "static/tab/tab-talk-active.png"
       },
@@ -159,7 +159,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "Koko Box",
-    "navigationBarBackgroundColor": "#fff7e8",
-    "backgroundColor": "#fff7e8"
+    "navigationBarBackgroundColor": "#fff8ec",
+    "backgroundColor": "#fff8ec"
   }
 }

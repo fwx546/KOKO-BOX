@@ -32,13 +32,11 @@ const PET_MAX_Y = 92
 
 const { pet } = useKokoState()
 
-// Coordinates are based on the original map.webp pixel grid (941x1672).
-// Fine-tune these values after previewing in WeChat DevTools.
 const hotspots: BuildingHotspot[] = [
   {
     id: 'home',
-    name: '家',
-    description: '这是你和团子的温馨小屋，可以在这里休息和互动。',
+    name: '小屋',
+    description: '这是你和 Koko 的温暖小屋，可以在这里休息和互动。',
     x: 200,
     y: 560,
     width: 180,
@@ -47,7 +45,7 @@ const hotspots: BuildingHotspot[] = [
   {
     id: 'playground',
     name: '宠物乐园',
-    description: '团子最喜欢的活动区，可以玩小游戏和互动设施。',
+    description: 'Koko 最喜欢的活动区，可以玩小游戏和互动设施。',
     x: 630,
     y: 560,
     width: 180,
@@ -55,8 +53,8 @@ const hotspots: BuildingHotspot[] = [
   },
   {
     id: 'shop',
-    name: '商店',
-    description: '可以买零食和装饰道具，给团子更好的生活体验。',
+    name: '小商店',
+    description: '可以准备零食和装饰道具，让 Koko 的生活更丰富。',
     x: 120,
     y: 900,
     width: 220,
@@ -73,8 +71,8 @@ const hotspots: BuildingHotspot[] = [
   },
   {
     id: 'talk-house',
-    name: '倾诉小屋',
-    description: '想放松时可以来这里和团子聊聊天，记录心情。',
+    name: '聊天小屋',
+    description: '想放松时可以来这里和 Koko 聊聊天，记录心情。',
     x: 360,
     y: 1180,
     width: 190,
@@ -269,105 +267,105 @@ onBeforeUnmount(() => {
 <style scoped>
 .town-page {
   bottom: 0;
+  height: 100vh;
   left: 0;
+  min-height: 100vh;
+  overflow: hidden;
   position: fixed;
   right: 0;
   top: 0;
   width: 100vw;
-  height: 100vh;
-  min-height: 100vh;
-  overflow: hidden;
 }
 
-.town-map-wrap {
-  width: 100vw;
+.town-map-wrap,
+.town-map {
   height: 100vh;
   overflow: hidden;
+  width: 100vw;
 }
 
 .town-map {
-  position: relative;
   line-height: 0;
-  width: 100%;
-  height: 100%;
+  position: relative;
 }
 
 .town-map__image {
-  width: 100%;
-  height: 100%;
   display: block;
+  height: 100%;
+  width: 100%;
 }
 
 .town-hotspot {
-  position: absolute;
   box-sizing: border-box;
+  position: absolute;
   z-index: 4;
 }
 
 .town-hotspot__label {
-  position: absolute;
+  background: rgba(255, 253, 248, 0.88);
+  border: 2rpx solid rgba(95, 199, 168, 0.42);
+  border-radius: 999rpx;
+  box-shadow: 0 10rpx 22rpx rgba(73, 112, 88, 0.14);
+  color: #365f56;
+  font-size: 25rpx;
+  font-weight: 800;
   left: 50%;
+  line-height: 1.4;
+  padding: 8rpx 24rpx;
+  position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  padding: 8rpx 24rpx;
-  border-radius: 999rpx;
-  border: 2rpx solid #111111;
-  background: rgba(128, 128, 128, 0.28);
-  color: #111111;
-  font-size: 26rpx;
-  font-weight: 700;
-  line-height: 1.4;
   white-space: nowrap;
 }
 
 .town-popup-mask {
+  align-items: center;
+  background: rgba(47, 67, 58, 0.42);
   bottom: 0;
+  display: flex;
+  justify-content: center;
   left: 0;
+  padding: 32rpx;
   position: fixed;
   right: 0;
   top: 0;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32rpx;
-  background: rgba(15, 23, 42, 0.52);
 }
 
 .town-pet {
+  pointer-events: auto;
   position: absolute;
-  z-index: 3;
   transform: translate(-50%, -100%);
   transition-property: left, top;
   transition-timing-function: linear;
-  pointer-events: auto;
+  z-index: 3;
 }
 
 .town-pet__name {
-  position: absolute;
+  background: rgba(255, 253, 248, 0.9);
+  border-radius: 999rpx;
+  color: #365f56;
+  font-size: 22rpx;
+  font-weight: 800;
   left: 50%;
+  line-height: 1.2;
+  padding: 8rpx 20rpx;
+  position: absolute;
   top: -42rpx;
   transform: translateX(-50%);
-  padding: 8rpx 20rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.88);
-  color: #1f3551;
-  font-size: 22rpx;
-  font-weight: 700;
-  line-height: 1.2;
   white-space: nowrap;
 }
 
 .town-pet__shadow {
-  position: absolute;
-  left: 50%;
-  bottom: 24rpx;
-  width: 150rpx;
-  height: 40rpx;
-  border-radius: 50%;
   background: rgba(37, 72, 54, 0.18);
-  transform: translateX(-50%);
+  border-radius: 50%;
+  bottom: 24rpx;
   filter: blur(3rpx);
+  height: 40rpx;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 150rpx;
 }
 
 .town-pet--idle {
@@ -389,37 +387,38 @@ onBeforeUnmount(() => {
 }
 
 .town-popup {
-  width: 100%;
+  background: #fffdf8;
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
+  border-radius: 30rpx;
+  box-shadow: 0 24rpx 48rpx rgba(47, 67, 58, 0.22);
   max-width: 600rpx;
   padding: 32rpx 30rpx 28rpx;
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 24rpx 48rpx rgba(15, 23, 42, 0.25);
+  width: 100%;
 }
 
 .town-popup__title {
-  color: #243047;
+  color: #253047;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .town-popup__description {
-  margin-top: 14rpx;
-  color: #55657f;
+  color: #8a7a68;
   font-size: 28rpx;
   line-height: 1.6;
+  margin-top: 14rpx;
 }
 
 .town-popup__button {
-  margin-top: 26rpx;
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  border: none;
+  border-radius: 999rpx;
+  color: #173f38;
+  font-size: 28rpx;
+  font-weight: 800;
   height: 80rpx;
   line-height: 80rpx;
-  border: none;
-  border-radius: 16rpx;
-  background: linear-gradient(135deg, #7c89ff 0%, #9f7dff 100%);
-  color: #ffffff;
-  font-size: 28rpx;
-  font-weight: 600;
+  margin-top: 26rpx;
 }
 
 .town-popup__button::after {
@@ -429,30 +428,30 @@ onBeforeUnmount(() => {
 :deep(.page-shell) {
   bottom: 0;
   left: 0;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 0;
   position: fixed;
   right: 0;
   top: 0;
-  min-height: 100vh;
-  padding: 0;
-  overflow: hidden;
 }
 
 :deep(.app-card) {
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
+  background: transparent;
   border: none;
   border-radius: 0;
-  background: transparent;
   box-shadow: none;
+  height: 100%;
+  margin: 0;
+  max-width: none;
+  padding: 0;
+  width: 100%;
 }
 
 :deep(.view-container) {
-  width: 100%;
   height: 100%;
   margin-top: 0;
+  width: 100%;
 }
 
 @keyframes town-pet-float {
@@ -478,12 +477,12 @@ onBeforeUnmount(() => {
 @keyframes town-pet-shadow {
   0%,
   100% {
-    transform: translateX(-50%) scaleX(1);
     opacity: 0.22;
+    transform: translateX(-50%) scaleX(1);
   }
   50% {
-    transform: translateX(-50%) scaleX(0.88);
     opacity: 0.14;
+    transform: translateX(-50%) scaleX(0.88);
   }
 }
 </style>

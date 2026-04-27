@@ -2,9 +2,9 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useKokoState } from '../composables/useKokoState'
-import type { Task, TaskCategory, TaskPriority, TaskStatus } from '../types/koko'
+import type { Task, TaskCategory, TaskPriority } from '../types/koko'
 
-const { tasks, todayTasks, inboxTasks, upcomingTasks, completedTasks, setTaskStatus } = useKokoState()
+const { todayTasks, inboxTasks, upcomingTasks, completedTasks, setTaskStatus } = useKokoState()
 
 const mode = ref<'today' | 'inbox' | 'upcoming' | 'done'>('today')
 const keyword = ref('')
@@ -49,10 +49,10 @@ const visibleTasks = computed(() =>
 )
 
 const titleMap: Record<typeof mode.value, string> = {
-  today: 'Today',
-  inbox: 'Inbox',
-  upcoming: 'Upcoming',
-  done: 'Done',
+  today: '今天',
+  inbox: '收件箱',
+  upcoming: '即将到来',
+  done: '已完成',
 }
 
 const openTask = (taskId: string) => {
@@ -71,20 +71,20 @@ onLoad((options) => {
   <view class="page-view">
     <view class="page-head">
       <view>
-        <view class="eyebrow">Task List</view>
+        <view class="eyebrow">任务列表</view>
         <view>{{ titleMap[mode] }}</view>
       </view>
-      <view>Browse a single list at a time so this page stays focused and easy to scan.</view>
+      <view>一次只看一个列表，任务会更容易扫读。</view>
     </view>
 
     <view class="panel-block planner-list-page">
-      <input v-model="keyword" class="input-field" placeholder="Search in this list" />
+      <input v-model="keyword" class="input-field" placeholder="搜索当前列表" />
       <view class="pill-row">
-        <button class="chip-button" :class="{ 'chip-button--active': selectedCategory === 'all' }" @click="selectedCategory = 'all'">Any</button>
-        <button class="chip-button" @click="selectedCategory = 'work'">Work</button>
-        <button class="chip-button" @click="selectedCategory = 'study'">Study</button>
-        <button class="chip-button" @click="selectedCategory = 'life'">Life</button>
-        <button class="chip-button" @click="selectedCategory = 'health'">Health</button>
+        <button class="chip-button" :class="{ 'chip-button--active': selectedCategory === 'all' }" @click="selectedCategory = 'all'">全部</button>
+        <button class="chip-button" @click="selectedCategory = 'work'">任务</button>
+        <button class="chip-button" @click="selectedCategory = 'study'">学习</button>
+        <button class="chip-button" @click="selectedCategory = 'life'">生活</button>
+        <button class="chip-button" @click="selectedCategory = 'health'">健康</button>
       </view>
 
       <view class="planner-list-compact">
@@ -96,12 +96,12 @@ onLoad((options) => {
               class="planner-check-button"
               @click.stop="setTaskStatus(task.id, 'completed')"
             >
-              Done
+              完成
             </button>
           </view>
-          <view class="planner-list-card__meta">{{ task.dueDate || 'No date' }} · {{ task.priority }} · {{ task.subtasks.filter((item) => item.completed).length }}/{{ task.subtasks.length }}</view>
+          <view class="planner-list-card__meta">{{ task.dueDate || '暂无日期' }} · {{ task.priority }} · {{ task.subtasks.filter((item) => item.completed).length }}/{{ task.subtasks.length }}</view>
         </button>
-        <view v-if="!visibleTasks.length" class="planner-empty-state">No tasks in this list.</view>
+        <view v-if="!visibleTasks.length" class="planner-empty-state">这个列表暂时空空的。</view>
       </view>
     </view>
   </view>

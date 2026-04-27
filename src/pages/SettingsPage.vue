@@ -13,8 +13,8 @@ const renaming = ref(false)
 
 const renameHint = computed(() =>
   isGuestSession.value
-    ? '游客模式下宠物名固定为 koko。'
-    : '改名会同步到云端，换设备登录后仍保持一致。',
+    ? '游客模式下，宠物名会固定为 koko。'
+    : '改名会同步到云端，换设备登录后也会保持一致。',
 )
 
 watch(
@@ -125,7 +125,7 @@ const handleLogout = async () => {
   <view class="settings-page">
     <view class="settings-panel">
       <view class="settings-title">设置</view>
-      <view class="settings-subtitle">仅保留核心操作，减少干扰。</view>
+      <view class="settings-subtitle">保留核心操作，让 Koko 的体验更轻巧。</view>
 
       <view class="settings-block">
         <view class="settings-block__label">切换语言</view>
@@ -177,9 +177,10 @@ const handleLogout = async () => {
 }
 
 .settings-panel {
-  background: #fff;
-  border: 2rpx solid #ece2d7;
-  border-radius: 24rpx;
+  background: #fffdf8;
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
+  border-radius: 28rpx;
+  box-shadow: 0 16rpx 34rpx rgba(167, 124, 72, 0.1);
   display: flex;
   flex-direction: column;
   gap: 22rpx;
@@ -187,34 +188,36 @@ const handleLogout = async () => {
 }
 
 .settings-title {
-  color: #2a3553;
+  color: #253047;
   font-size: 40rpx;
   font-weight: 800;
 }
 
 .settings-subtitle {
-  color: #8f7a66;
+  color: #8a7a68;
   font-size: 24rpx;
 }
 
 .settings-block {
-  background: #fcf8f2;
-  border-radius: 18rpx;
+  background: rgba(255, 248, 236, 0.82);
+  border: 2rpx solid rgba(176, 143, 102, 0.12);
+  border-radius: 22rpx;
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 12rpx;
   padding: 18rpx;
 }
 
 .settings-block__label {
-  color: #2c3653;
+  color: #253047;
   font-size: 30rpx;
   font-weight: 700;
 }
 
 .settings-block__hint {
-  color: #907d69;
+  color: #8a7a68;
   font-size: 24rpx;
+  line-height: 1.45;
 }
 
 .language-switch {
@@ -223,13 +226,13 @@ const handleLogout = async () => {
 }
 
 .language-switch__button {
-  background: #efe4d7;
-  border-radius: 14rpx;
-  color: #7d634d;
+  background: rgba(255, 255, 255, 0.74);
+  border-radius: 999rpx;
+  color: #8a7a68;
   font-size: 26rpx;
   line-height: 1;
   margin: 0;
-  padding: 16rpx 18rpx;
+  padding: 16rpx 22rpx;
 }
 
 .language-switch__button::after {
@@ -237,28 +240,28 @@ const handleLogout = async () => {
 }
 
 .language-switch__button--active {
-  background: #2f3d5f;
-  color: #fff;
+  background: #e8f7ef;
+  color: #365f56;
 }
 
 .settings-input {
   background: #fff;
-  border: 2rpx solid #e7d8c7;
-  border-radius: 12rpx;
-  color: #2a3553;
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
+  border-radius: 18rpx;
+  color: #253047;
   font-size: 28rpx;
   padding: 14rpx 16rpx;
 }
 
 .settings-button {
-  background: #2f3d5f;
-  border-radius: 14rpx;
-  color: #fff;
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  border-radius: 999rpx;
+  color: #173f38;
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
   margin: 0;
-  padding: 18rpx 20rpx;
+  padding: 20rpx;
 }
 
 .settings-button::after {
@@ -266,6 +269,7 @@ const handleLogout = async () => {
 }
 
 .settings-button--danger {
-  background: #b34747;
+  background: #ffe4df;
+  color: #b85454;
 }
 </style>

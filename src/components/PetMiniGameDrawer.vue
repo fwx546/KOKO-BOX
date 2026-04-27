@@ -39,7 +39,7 @@ const activeGame = ref<MiniGameType>(props.defaultGame)
 const isRunning = ref(false)
 const score = ref(0)
 const timeLeft = ref(0)
-const summary = ref('点击开始，和可可一起玩一会儿。')
+const summary = ref('点击开始，和 Koko 一起玩一会儿。')
 const balls = ref<FallingBall[]>([])
 const bubbles = ref<BubbleItem[]>([])
 
@@ -52,14 +52,14 @@ const gameCopy = computed(() =>
     ? {
         title: '接球小游戏',
         target: '16+',
-        startHint: '点击开始，帮可可把落下来的小球接住。',
-        runningHint: '快点点住下落的小球，帮可可接住它们。',
+        startHint: '点击开始，帮 Koko 接住落下来的小球。',
+        runningHint: '快点点住下落的小球，帮 Koko 接住它们。',
       }
     : {
         title: '戳泡泡小游戏',
         target: '18+',
-        startHint: '点击开始后，戳破可可吹起来的泡泡。',
-        runningHint: '泡泡越靠上消失得越快，出手也要更快。',
+        startHint: '点击开始后，戳破 Koko 吹起来的泡泡。',
+        runningHint: '泡泡越靠上消失得越快，出手要更快一点。',
       },
 )
 
@@ -112,10 +112,10 @@ const finishGame = () => {
   summary.value =
     activeGame.value === 'catch'
       ? score.value >= 14
-        ? '接得很稳，可可高兴得想转圈。'
+        ? '接得很稳，Koko 高兴得想转圈。'
         : '这一局结束啦，再来一次会更熟练。'
       : score.value >= 18
-        ? '泡泡都被你戳破了，可可开心得直晃尾巴。'
+        ? '泡泡都被你戳破了，Koko 开心得直晃尾巴。'
         : '这一轮已经结束，下一局可以再快一点。'
 }
 
@@ -134,38 +134,38 @@ const startGame = () => {
       balls.value = [
         ...balls.value,
         {
-          id: `ball-${Math.random().toString(36).slice(2, 8)}`,
-          left: Math.floor(Math.random() * 76) + 4,
-          top: 0,
-          speed: 4 + Math.random() * 3,
+          id: `ball-${Date.now()}-${Math.random()}`,
+          left: 8 + Math.random() * 78,
+          top: -8,
+          speed: 1.8 + Math.random() * 2.1,
         },
       ].slice(-10)
-    }, 650)
+    }, 620)
 
     moveTimer = setInterval(() => {
       balls.value = balls.value
         .map((ball) => ({ ...ball, top: ball.top + ball.speed }))
-        .filter((ball) => ball.top < 88)
-    }, 120)
+        .filter((ball) => ball.top < 96)
+    }, 80)
   } else {
     spawnTimer = setInterval(() => {
       bubbles.value = [
         ...bubbles.value,
         {
-          id: `bubble-${Math.random().toString(36).slice(2, 8)}`,
-          left: Math.floor(Math.random() * 72) + 8,
-          bottom: 18,
-          speed: 4 + Math.random() * 2,
-          size: 62 + Math.floor(Math.random() * 18),
+          id: `bubble-${Date.now()}-${Math.random()}`,
+          left: 8 + Math.random() * 78,
+          bottom: -8,
+          speed: 1.2 + Math.random() * 1.6,
+          size: 46 + Math.round(Math.random() * 34),
         },
       ].slice(-12)
-    }, 550)
+    }, 520)
 
     moveTimer = setInterval(() => {
       bubbles.value = bubbles.value
-        .map((item) => ({ ...item, bottom: item.bottom + item.speed }))
-        .filter((item) => item.bottom < 92)
-    }, 140)
+        .map((bubble) => ({ ...bubble, bottom: bubble.bottom + bubble.speed }))
+        .filter((bubble) => bubble.bottom < 96)
+    }, 80)
   }
 
   countdownTimer = setInterval(() => {
@@ -179,12 +179,12 @@ const startGame = () => {
 const hitCatch = (id: string) => {
   if (!isRunning.value || activeGame.value !== 'catch') return
   balls.value = balls.value.filter((ball) => ball.id !== id)
-  score.value += 2
+  score.value += 1
 }
 
 const hitBubble = (id: string) => {
   if (!isRunning.value || activeGame.value !== 'bubble') return
-  bubbles.value = bubbles.value.filter((item) => item.id !== id)
+  bubbles.value = bubbles.value.filter((bubble) => bubble.id !== id)
   score.value += 1
 }
 
@@ -207,7 +207,6 @@ watch(
       setActiveMiniGame(null)
     }
   },
-  { immediate: true },
 )
 
 onBeforeUnmount(() => {
@@ -310,234 +309,195 @@ onBeforeUnmount(() => {
 }
 
 .mini-game-drawer__backdrop {
-  background: rgba(25, 42, 56, 0.16);
+  background: rgba(47, 67, 58, 0.22);
   inset: 0;
   position: absolute;
 }
 
 .mini-game-drawer__panel {
-  background:
-    linear-gradient(180deg, rgba(247, 255, 255, 0.98), rgba(235, 247, 255, 0.95)),
-    #f4fbff;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff8ec 100%);
+  border: 2rpx solid rgba(176, 143, 102, 0.16);
   border-radius: 32rpx 32rpx 0 0;
   bottom: 0;
-  box-shadow: 0 -18rpx 56rpx rgba(65, 114, 140, 0.2);
+  box-shadow: 0 -20rpx 48rpx rgba(167, 124, 72, 0.18);
+  box-sizing: border-box;
   left: 0;
-  min-height: 760rpx;
-  padding: 20rpx 28rpx calc(30rpx + env(safe-area-inset-bottom));
+  padding: 14rpx 22rpx calc(22rpx + env(safe-area-inset-bottom));
   position: absolute;
   right: 0;
-  transform: translateY(100%);
-  transition: transform 0.28s ease;
-}
-
-.mini-game-drawer--open .mini-game-drawer__panel {
-  transform: translateY(0);
 }
 
 .mini-game-drawer__handle {
-  background: rgba(98, 144, 173, 0.35);
+  background: rgba(176, 143, 102, 0.3);
   border-radius: 999rpx;
-  height: 10rpx;
-  margin: 0 auto 22rpx;
-  width: 96rpx;
+  height: 6rpx;
+  margin: 0 auto 16rpx;
+  width: 56rpx;
+}
+
+.mini-game-drawer__head,
+.mini-game-tabs,
+.mini-game-scorebar,
+.mini-game-actions {
+  align-items: center;
+  display: flex;
 }
 
 .mini-game-drawer__head {
-  align-items: center;
-  display: flex;
   justify-content: space-between;
-  margin-bottom: 20rpx;
 }
 
 .mini-game-drawer__eyebrow {
   color: #5f8c78;
   font-size: 22rpx;
-  letter-spacing: 2rpx;
+  font-weight: 800;
 }
 
 .mini-game-drawer__title {
-  color: #20394b;
+  color: #253047;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 900;
+  margin-top: 4rpx;
 }
 
 .mini-game-drawer__close,
 .mini-game-tabs__item,
 .mini-game-actions__primary,
-.mini-game-actions__ghost,
-.mini-game-ball,
-.mini-game-bubble {
-  border: none;
+.mini-game-actions__ghost {
+  border: 0;
+  border-radius: 999rpx;
+  font-weight: 800;
   margin: 0;
-  padding: 0;
-}
-
-.mini-game-drawer__close::after,
-.mini-game-tabs__item::after,
-.mini-game-actions__primary::after,
-.mini-game-actions__ghost::after,
-.mini-game-ball::after,
-.mini-game-bubble::after {
-  border: none;
 }
 
 .mini-game-drawer__close {
-  background: rgba(255, 255, 255, 0.76);
-  border-radius: 999rpx;
-  color: #3e6678;
+  background: rgba(255, 255, 255, 0.78);
+  color: #8a7a68;
   font-size: 24rpx;
-  padding: 14rpx 22rpx;
+  padding: 12rpx 22rpx;
 }
 
 .mini-game-tabs {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.62);
   border-radius: 999rpx;
-  display: flex;
-  gap: 12rpx;
-  margin-bottom: 22rpx;
-  padding: 10rpx;
+  gap: 8rpx;
+  margin-top: 18rpx;
+  padding: 8rpx;
 }
 
 .mini-game-tabs__item {
   background: transparent;
-  border-radius: 999rpx;
-  color: #5f7f8d;
+  color: #8a7a68;
   flex: 1;
   font-size: 25rpx;
-  padding: 16rpx 0;
+  padding: 14rpx 0;
 }
 
 .mini-game-tabs__item--active {
-  background: linear-gradient(135deg, #8adfb0, #66c6de);
-  color: #173949;
-  font-weight: 700;
+  background: #e8f7ef;
+  color: #365f56;
 }
 
 .mini-game-scorebar {
-  display: grid;
-  gap: 16rpx;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 20rpx;
+  gap: 12rpx;
+  margin-top: 16rpx;
 }
 
 .mini-game-scorecard {
-  background: rgba(255, 255, 255, 0.72);
-  border: 2rpx solid rgba(148, 205, 211, 0.35);
-  border-radius: 24rpx;
-  color: #30536b;
-  padding: 18rpx;
+  background: rgba(255, 255, 255, 0.8);
+  border: 2rpx solid rgba(176, 143, 102, 0.12);
+  border-radius: 22rpx;
+  flex: 1;
+  padding: 16rpx;
 }
 
 .mini-game-scorecard__label {
-  font-size: 22rpx;
-  opacity: 0.78;
+  color: #8a7a68;
+  font-size: 21rpx;
 }
 
 .mini-game-scorecard__value {
+  color: #253047;
   font-size: 34rpx;
-  font-weight: 700;
-  margin-top: 8rpx;
+  font-weight: 900;
+  margin-top: 6rpx;
 }
 
 .mini-game-stage {
-  background: linear-gradient(180deg, #dff4ff 0%, #dff5da 70%, #bde7ad 100%);
   border-radius: 30rpx;
-  height: 420rpx;
-  margin-bottom: 18rpx;
+  height: 430rpx;
+  margin-top: 16rpx;
   overflow: hidden;
   position: relative;
 }
 
+.mini-game-stage--catch {
+  background: linear-gradient(180deg, #e6f7ff 0%, #edf9de 100%);
+}
+
 .mini-game-stage--bubble {
-  background: linear-gradient(180deg, #dff5ff 0%, #d7f0ff 46%, #cfeec9 100%);
+  background: linear-gradient(180deg, #e8f8ff 0%, #fff2cf 100%);
 }
 
-.mini-game-stage::before {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), transparent 48%);
-  content: '';
-  inset: 0;
+.mini-game-ball,
+.mini-game-bubble {
+  border: 0;
+  margin: 0;
+  padding: 0;
   position: absolute;
-}
-
-.mini-game-pet {
-  background: linear-gradient(180deg, #fffdf3 0%, #fff1cf 100%);
-  border-radius: 46% 46% 42% 42%;
-  bottom: 42rpx;
-  box-shadow: 0 16rpx 28rpx rgba(136, 121, 66, 0.16);
-  height: 128rpx;
-  left: 50%;
-  position: absolute;
-  transform: translateX(-50%);
-  width: 118rpx;
-}
-
-.mini-game-pet::before,
-.mini-game-pet::after {
-  background: #ffe2a5;
-  border-radius: 18rpx 18rpx 6rpx 6rpx;
-  content: '';
-  height: 34rpx;
-  position: absolute;
-  top: -10rpx;
-  width: 22rpx;
-}
-
-.mini-game-pet::before {
-  left: 22rpx;
-  transform: rotate(-18deg);
-}
-
-.mini-game-pet::after {
-  right: 22rpx;
-  transform: rotate(18deg);
 }
 
 .mini-game-ball {
-  background: radial-gradient(circle at 30% 30%, #fff 0%, #fff8e9 18%, #ffbd6f 52%, #ff8f4d 100%);
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fff5d3 24%, #ffbc68 62%, #ff9163 100%);
   border-radius: 50%;
-  box-shadow: 0 8rpx 16rpx rgba(245, 138, 72, 0.3);
-  height: 44rpx;
-  position: absolute;
-  width: 44rpx;
+  box-shadow: 0 10rpx 22rpx rgba(231, 153, 77, 0.22);
+  height: 56rpx;
+  width: 56rpx;
 }
 
 .mini-game-bubble {
-  background: radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.98), rgba(177, 241, 255, 0.68) 52%, rgba(89, 195, 228, 0.44) 100%);
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.98), rgba(177, 241, 255, 0.7) 54%, rgba(95, 199, 168, 0.4) 100%);
   border-radius: 50%;
-  box-shadow: inset -6rpx -6rpx 14rpx rgba(72, 166, 196, 0.16), 0 12rpx 22rpx rgba(78, 167, 203, 0.18);
+  box-shadow: 0 8rpx 20rpx rgba(95, 199, 168, 0.18);
+}
+
+.mini-game-pet {
+  background: linear-gradient(180deg, #fffdf0 0%, #ffe3af 100%);
+  border-radius: 46% 46% 42% 42%;
+  bottom: 26rpx;
+  height: 108rpx;
+  left: 50%;
   position: absolute;
+  transform: translateX(-50%);
+  width: 148rpx;
 }
 
 .mini-game-summary {
-  color: #3b6277;
-  font-size: 24rpx;
-  line-height: 1.6;
-  min-height: 76rpx;
+  color: #6f7c72;
+  font-size: 25rpx;
+  line-height: 1.55;
+  margin-top: 16rpx;
 }
 
 .mini-game-actions {
-  display: grid;
   gap: 14rpx;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 18rpx;
+  margin-top: 16rpx;
 }
 
 .mini-game-actions__primary,
 .mini-game-actions__ghost {
-  border-radius: 999rpx;
+  flex: 1;
   font-size: 27rpx;
-  padding: 20rpx 0;
+  padding: 18rpx 0;
 }
 
 .mini-game-actions__primary {
-  background: linear-gradient(135deg, #f8cf6a, #ff9667);
-  color: #51351f;
-  font-weight: 700;
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  color: #173f38;
 }
 
 .mini-game-actions__ghost {
-  background: rgba(255, 255, 255, 0.72);
-  color: #4a7084;
+  background: rgba(255, 255, 255, 0.76);
+  color: #8a7a68;
 }
 </style>

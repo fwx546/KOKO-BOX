@@ -40,10 +40,10 @@ watch(
     <view class="pet-chat-card__glow" />
     <view class="pet-chat-card__head">
       <view>
-        <view class="pet-chat-card__eyebrow">AI PET LINK</view>
-        <view class="pet-chat-card__title">Talk to your pet</view>
+        <view class="pet-chat-card__eyebrow">KOKO LINK</view>
+        <view class="pet-chat-card__title">和 Koko 聊聊</view>
       </view>
-      <button class="pet-chat-card__history" @click="emit('openHistory')">Log</button>
+      <button class="pet-chat-card__history" @click="emit('openHistory')">记录</button>
     </view>
 
     <view class="pet-chat-card__preview">{{ latestMessage }}</view>
@@ -53,12 +53,12 @@ watch(
         v-model="draft"
         class="pet-chat-card__field"
         :disabled="collapsed"
-        placeholder="Type a message"
+        placeholder="输入一句话"
         confirm-type="send"
         @confirm="submit"
       />
       <button class="pet-chat-card__send" :disabled="collapsed || sending" @click="submit">
-        {{ sending ? 'Sending' : 'Send' }}
+        {{ sending ? '发送中' : '发送' }}
       </button>
     </view>
   </view>
@@ -68,11 +68,11 @@ watch(
 .pet-chat-card {
   backdrop-filter: blur(18rpx);
   background:
-    linear-gradient(180deg, rgba(240, 251, 255, 0.18), rgba(227, 242, 255, 0.08)),
-    rgba(232, 246, 255, 0.05);
-  border: 2rpx solid rgba(190, 233, 255, 0.38);
+    linear-gradient(180deg, rgba(255, 253, 248, 0.62), rgba(255, 248, 236, 0.36)),
+    rgba(255, 253, 248, 0.18);
+  border: 2rpx solid rgba(176, 143, 102, 0.18);
   border-radius: 30rpx;
-  box-shadow: 0 14rpx 34rpx rgba(44, 96, 130, 0.08);
+  box-shadow: 0 14rpx 34rpx rgba(167, 124, 72, 0.1);
   overflow: hidden;
   padding: 18rpx 20rpx;
   position: relative;
@@ -85,7 +85,7 @@ watch(
 }
 
 .pet-chat-card__glow {
-  background: linear-gradient(90deg, rgba(109, 213, 255, 0), rgba(109, 213, 255, 0.5), rgba(109, 213, 255, 0));
+  background: linear-gradient(90deg, rgba(95, 199, 168, 0), rgba(95, 199, 168, 0.5), rgba(95, 199, 168, 0));
   height: 2rpx;
   left: 0;
   position: absolute;
@@ -100,15 +100,15 @@ watch(
 }
 
 .pet-chat-card__eyebrow {
-  color: #8bb6d0;
+  color: #5f8c78;
   font-size: 20rpx;
   letter-spacing: 3rpx;
 }
 
 .pet-chat-card__title {
-  color: #214457;
+  color: #253047;
   font-size: 28rpx;
-  font-weight: 700;
+  font-weight: 800;
   margin-top: 4rpx;
 }
 
@@ -125,9 +125,9 @@ watch(
 }
 
 .pet-chat-card__history {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.68);
   border-radius: 999rpx;
-  color: #4d7694;
+  color: #365f56;
   font-size: 21rpx;
   padding: 10rpx 18rpx;
 }
@@ -135,7 +135,7 @@ watch(
 .pet-chat-card__preview {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: rgba(31, 62, 82, 0.8);
+  color: #6f7c72;
   display: -webkit-box;
   font-size: 22rpx;
   line-height: 1.55;
@@ -152,10 +152,10 @@ watch(
 }
 
 .pet-chat-card__field {
-  background: rgba(255, 255, 255, 0.14);
-  border: 2rpx solid rgba(198, 233, 255, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  border: 2rpx solid rgba(176, 143, 102, 0.16);
   border-radius: 999rpx;
-  color: #244456;
+  color: #253047;
   flex: 1;
   font-size: 23rpx;
   height: 66rpx;
@@ -163,11 +163,11 @@ watch(
 }
 
 .pet-chat-card__send {
-  background: rgba(109, 183, 255, 0.18);
+  background: #e8f7ef;
   border-radius: 999rpx;
-  color: #24557d;
+  color: #365f56;
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 800;
   padding: 14rpx 22rpx;
 }
 </style>
