@@ -112,6 +112,7 @@ export const normalizeCompanionEconomy = (value: unknown, fallbackCoins = 0): Co
     purchaseHistory: normalizePurchaseHistory(source.purchaseHistory),
     rewardLedger: normalizeRewardLedger(source.rewardLedger),
     dailyChatRewards: normalizeDailyChatRewards(source.dailyChatRewards),
+    starterResourcesGranted: Boolean(source.starterResourcesGranted),
     updatedAt: normalizeText(source.updatedAt, 40) || new Date().toISOString(),
   }
 }

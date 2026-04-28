@@ -125,10 +125,9 @@ const shopItemCopy = (item: (typeof shopItems)[number]) => {
   }
 
   const zhCopy = {
-    'snack-pack': { name: '零食包', description: '让 Koko 心情更好，也补充一点饱腹感。' },
-    'toy-ball': { name: '玩具球', description: '陪 Koko 玩一会儿，提升心情和亲密度。' },
-    'clean-kit': { name: '清洁套装', description: '保持清爽，提升清洁、健康和心情。' },
-    'home-decor': { name: '小屋装饰', description: '给小屋添一点亮色，让 Koko 更开心。' },
+    meal: { name: '主食', description: '购买后进入库存，可在首页喂食时使用。' },
+    water: { name: '水', description: '购买后进入库存，可在首页喂水时使用。' },
+    'clean-kit': { name: '清洁用品', description: '购买后进入库存，可在首页清洁时使用。' },
   } as const
 
   return zhCopy[item.id]
@@ -289,7 +288,7 @@ onBeforeUnmount(() => {
             <view>
               <view class="town-shop__name">{{ shopItemCopy(item).name }}</view>
               <view class="town-shop__copy">{{ shopItemCopy(item).description }}</view>
-              <view class="town-shop__owned">{{ shopText.owned }} {{ economy.inventory[item.id] ?? 0 }}</view>
+              <view class="town-shop__owned">{{ shopText.owned }} {{ economy.inventory[item.resourceKey] ?? 0 }}</view>
             </view>
             <button class="town-shop__buy" @click="buyShopItem(item.id)">
               <view class="town-coin-icon town-coin-icon--small" />

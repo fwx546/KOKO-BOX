@@ -10,7 +10,7 @@ const companionRecords = db.collection('user_companion_state')
 const now = () => new Date().toISOString()
 
 const rewardSources = ['task', 'chat', 'mini-game', 'system']
-const shopItemIds = ['snack-pack', 'toy-ball', 'clean-kit', 'home-decor']
+const shopItemIds = ['meal', 'water', 'clean-kit']
 
 const clampNumber = (value, min, max, fallback = 0) => {
   const numeric = Number(value)
@@ -107,6 +107,7 @@ const sanitizeEconomy = (value = {}) => ({
   purchaseHistory: sanitizePurchaseHistory(value.purchaseHistory),
   rewardLedger: sanitizeRewardLedger(value.rewardLedger),
   dailyChatRewards: sanitizeDailyChatRewards(value.dailyChatRewards),
+  starterResourcesGranted: Boolean(value.starterResourcesGranted),
   updatedAt: normalizeText(value.updatedAt, 40) || now(),
 })
 

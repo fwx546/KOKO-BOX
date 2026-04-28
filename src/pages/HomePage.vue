@@ -65,7 +65,9 @@ const ensureHomeBackground = async () => {
 
 const {
   pet,
-  carePet,
+  getCareResource,
+  useCareResource,
+  canUseCareAction,
   getPetQuickReply,
   getDigestStatus,
   messages,
@@ -84,6 +86,8 @@ const chatPromptHint = ref(pickChatPromptHint())
 const sending = ref(false)
 const gameDrawerOpen = ref(false)
 const historyOpen = ref(false)
+const careResourcePanelOpen = ref(false)
+const activeCareResourceAction = ref<'feedMeal' | 'feedWater' | 'clean' | null>(null)
 const activeGame = ref<'catch' | 'bubble'>('catch')
 const nowMs = ref(Date.now())
 const rotationFrame = ref(pet.value.rotationFrame ?? 0)
@@ -122,9 +126,23 @@ const petBubbleSizeClass = computed(() => ({
   'pet-bubble--long': petBubble.value.length > 54,
 }))
 
-const overlayChatCollapsed = computed(() => historyOpen.value || gameDrawerOpen.value)
-const shouldShowPetLottie = computed(() => !gameDrawerOpen.value && !historyOpen.value)
+const overlayChatCollapsed = computed(() => historyOpen.value || gameDrawerOpen.value || careResourcePanelOpen.value)
+const shouldShowPetLottie = computed(() => !gameDrawerOpen.value && !historyOpen.value && !careResourcePanelOpen.value)
 const petFacingMirrored = computed(() => rotationFrame.value > 7)
+const selectedCareResource = computed(() =>
+  activeCareResourceAction.value ? getCareResource(activeCareResourceAction.value) : null,
+)
+const careResourcePanelCopy = computed(() => {
+  const isZh = settings.value.language === 'zh'
+  return {
+    title: isZh ? '使用资源' : 'Use resource',
+    available: isZh ? '可用数量' : 'Available',
+    use: isZh ? '使用' : 'Use',
+    cancel: isZh ? '取消' : 'Cancel',
+    empty: isZh ? '库存不足，请前往小镇商店兑换。' : 'Out of stock. Redeem more in the town shop.',
+    digesting: isZh ? 'Koko 还在消化，稍后再喂食。' : 'Koko is still digesting. Feed later.',
+  }
+})
 
 const careActions: Array<{
   key: 'feedMeal' | 'feedWater' | 'play' | 'clean'
@@ -141,6 +159,9 @@ const actionDisplayLabel = (action: (typeof careActions)[number]) =>
   action.key === 'feedMeal' && digestStatus.value.isDigesting
     ? digestStatus.value.digestCountdownLabel
     : t.value.home.care[action.key]
+
+const careActionDisabled = (action: (typeof careActions)[number]) =>
+  action.key !== 'play' && !canUseCareAction(action.key)
 
 const clearTimers = () => {
   if (tapTimer) clearTimeout(tapTimer)
@@ -255,8 +276,25 @@ const performCare = (action: (typeof careActions)[number]) => {
     return
   }
 
-  const result = carePet(action.key)
-  triggerPetAction(result.success ? action.action : 'greet', result.message, result.success ? 2200 : 2600)
+  activeCareResourceAction.value = action.key
+  careResourcePanelOpen.value = true
+}
+
+const closeCareResourcePanel = () => {
+  careResourcePanelOpen.value = false
+}
+
+const confirmUseCareResource = () => {
+  const actionKey = activeCareResourceAction.value
+  if (!actionKey) return
+  const action = careActions.find((item) => item.key === actionKey)
+  const result = useCareResource(actionKey)
+  triggerPetAction(result.success ? (action?.action ?? 'sparkle') : 'greet', result.message, result.success ? 2200 : 2600)
+  if (!result.success) {
+    uni.showToast({ title: result.message, icon: 'none' })
+    return
+  }
+  careResourcePanelOpen.value = false
 }
 
 const submitChat = async (content: string) => {
@@ -364,7 +402,7 @@ onMounted(() => {
             v-for="action in careActions"
             :key="action.key"
             class="home-action-pill"
-            :class="{ 'home-action-pill--disabled': action.key === 'feedMeal' && !digestStatus.canFeedMeal }"
+            :class="{ 'home-action-pill--disabled': careActionDisabled(action) }"
             @click="performCare(action)"
           >
             <view class="home-action-pill__title">{{ actionDisplayLabel(action) }}</view>
@@ -388,6 +426,39 @@ onMounted(() => {
               </button>
             </view>
           </view>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="careResourcePanelOpen && selectedCareResource" class="care-resource-layer">
+      <view class="care-resource-layer__mask" @click="closeCareResourcePanel" />
+      <view class="care-resource-panel">
+        <view class="care-resource-panel__handle" />
+        <view class="care-resource-panel__head">
+          <view>
+            <view class="care-resource-panel__eyebrow">{{ careResourcePanelCopy.title }}</view>
+            <view class="care-resource-panel__title">{{ selectedCareResource.name }}</view>
+          </view>
+          <view class="care-resource-panel__icon">{{ activeCareResourceAction === 'feedMeal' ? '🍚' : activeCareResourceAction === 'feedWater' ? '💧' : '🧼' }}</view>
+        </view>
+        <view class="care-resource-panel__meta">
+          <view class="care-resource-panel__count">
+            <text>{{ careResourcePanelCopy.available }}</text>
+            <text>{{ selectedCareResource.count }}</text>
+          </view>
+          <view class="care-resource-panel__effect">{{ selectedCareResource.effect }}</view>
+          <view v-if="activeCareResourceAction === 'feedMeal' && digestStatus.isDigesting" class="care-resource-panel__warning">
+            {{ careResourcePanelCopy.digesting }}
+          </view>
+          <view v-else-if="selectedCareResource.count <= 0" class="care-resource-panel__warning">
+            {{ careResourcePanelCopy.empty }}
+          </view>
+        </view>
+        <view class="care-resource-panel__actions">
+          <button class="care-resource-panel__ghost" @click="closeCareResourcePanel">{{ careResourcePanelCopy.cancel }}</button>
+          <button class="care-resource-panel__primary" :disabled="!canUseCareAction(selectedCareResource.action)" @click="confirmUseCareResource">
+            {{ careResourcePanelCopy.use }}
+          </button>
         </view>
       </view>
     </view>
@@ -1200,6 +1271,140 @@ onMounted(() => {
 
 .pet-chat-card__send {
   border-radius: 0 999rpx 999rpx 0;
+}
+
+.care-resource-layer {
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 42;
+}
+
+.care-resource-layer__mask {
+  background: rgba(19, 37, 49, 0.24);
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.care-resource-panel {
+  background: linear-gradient(180deg, #fffdf8 0%, #fff8ec 100%);
+  border-radius: 32rpx 32rpx 0 0;
+  bottom: 0;
+  box-shadow: 0 -18rpx 56rpx rgba(167, 124, 72, 0.18);
+  box-sizing: border-box;
+  left: 0;
+  padding: 18rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  position: absolute;
+  right: 0;
+}
+
+.care-resource-panel__handle {
+  background: rgba(138, 122, 104, 0.22);
+  border-radius: 999rpx;
+  height: 8rpx;
+  margin: 0 auto 22rpx;
+  width: 82rpx;
+}
+
+.care-resource-panel__head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.care-resource-panel__eyebrow {
+  color: #5f8c78;
+  font-size: 21rpx;
+  letter-spacing: 3rpx;
+}
+
+.care-resource-panel__title {
+  color: #253047;
+  font-size: 34rpx;
+  font-weight: 800;
+  margin-top: 6rpx;
+}
+
+.care-resource-panel__icon {
+  align-items: center;
+  background: rgba(255, 232, 173, 0.66);
+  border-radius: 50%;
+  display: flex;
+  font-size: 42rpx;
+  height: 88rpx;
+  justify-content: center;
+  width: 88rpx;
+}
+
+.care-resource-panel__meta {
+  margin-top: 22rpx;
+}
+
+.care-resource-panel__count {
+  align-items: center;
+  background: rgba(245, 250, 238, 0.82);
+  border: 2rpx solid rgba(95, 199, 168, 0.16);
+  border-radius: 22rpx;
+  color: #365f56;
+  display: flex;
+  font-size: 27rpx;
+  font-weight: 800;
+  justify-content: space-between;
+  padding: 20rpx 22rpx;
+}
+
+.care-resource-panel__effect,
+.care-resource-panel__warning {
+  color: #7d8a74;
+  font-size: 25rpx;
+  line-height: 1.5;
+  margin-top: 16rpx;
+}
+
+.care-resource-panel__warning {
+  color: #b86b3d;
+  font-weight: 700;
+}
+
+.care-resource-panel__actions {
+  display: grid;
+  gap: 16rpx;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 24rpx;
+}
+
+.care-resource-panel__ghost,
+.care-resource-panel__primary {
+  border: none;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+  height: 84rpx;
+  line-height: 84rpx;
+}
+
+.care-resource-panel__ghost {
+  background: rgba(255, 255, 255, 0.82);
+  color: #365f56;
+}
+
+.care-resource-panel__primary {
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  color: #173f38;
+}
+
+.care-resource-panel__primary[disabled] {
+  opacity: 0.48;
+}
+
+.care-resource-panel__ghost::after,
+.care-resource-panel__primary::after {
+  border: none;
 }
 
 .chat-history-layer {

@@ -272,41 +272,37 @@ const defaultEconomy = (coins = 0): CompanionEconomy => ({
   purchaseHistory: [],
   rewardLedger: {},
   dailyChatRewards: {},
+  starterResourcesGranted: false,
   updatedAt: nowIso(),
 })
 
+const starterResources = {
+  meal: 3,
+  water: 3,
+  'clean-kit': 3,
+}
+
 const shopItems: ShopItem[] = [
   {
-    id: 'snack-pack',
-    name: 'Snack Pack',
-    description: 'A cozy snack that lifts mood and hunger.',
+    id: 'meal',
+    name: 'Meal',
+    description: 'A filling meal resource for home feeding.',
     price: 8,
-    moodDelta: 6,
-    hungerDelta: 6,
+    resourceKey: 'meal',
   },
   {
-    id: 'toy-ball',
-    name: 'Toy Ball',
-    description: 'A playful ball for better mood and bonding.',
-    price: 18,
-    moodDelta: 10,
-    intimacyDelta: 4,
+    id: 'water',
+    name: 'Water',
+    description: 'A fresh water resource for home hydration.',
+    price: 5,
+    resourceKey: 'water',
   },
   {
     id: 'clean-kit',
     name: 'Clean Kit',
-    description: 'Fresh care for cleanliness, health, and mood.',
-    price: 20,
-    cleanDelta: 10,
-    healthDelta: 4,
-    moodDelta: 3,
-  },
-  {
-    id: 'home-decor',
-    name: 'Home Decor',
-    description: 'A soft decoration that makes home feel brighter.',
-    price: 30,
-    moodDelta: 8,
+    description: 'A clean care resource for home grooming.',
+    price: 12,
+    resourceKey: 'clean-kit',
   },
 ]
 
@@ -430,6 +426,26 @@ const setEconomy = (nextEconomy: Partial<CompanionEconomy> | CompanionEconomy) =
   syncMetricsCoins()
 }
 
+const grantStarterResourcesIfNeeded = () => {
+  if (economy.value.starterResourcesGranted) {
+    return false
+  }
+
+  setEconomy({
+    ...economy.value,
+    inventory: {
+      ...economy.value.inventory,
+      meal: (economy.value.inventory.meal ?? 0) + starterResources.meal,
+      water: (economy.value.inventory.water ?? 0) + starterResources.water,
+      'clean-kit': (economy.value.inventory['clean-kit'] ?? 0) + starterResources['clean-kit'],
+    },
+    starterResourcesGranted: true,
+    updatedAt: nowIso(),
+  })
+
+  return true
+}
+
 const persistState = () => {
   if (!hasUniStorage()) return
 
@@ -472,6 +488,7 @@ const applySnapshot = (snapshot?: Partial<PersistedState>) => {
   metrics.value = snapshot?.metrics ?? defaultMetrics()
   economy.value = normalizeCompanionEconomy(snapshot?.economy ?? defaultEconomy(), 0)
   syncMetricsCoins()
+  grantStarterResourcesIfNeeded()
   petPersonaPrompt.value =
     snapshot?.petPersonaPromptVersion === PET_PERSONA_PROMPT_VERSION && snapshot?.petPersonaPrompt?.trim()
       ? snapshot.petPersonaPrompt.trim()
@@ -493,6 +510,7 @@ const hydrateState = () => {
     }
   }
 
+  grantStarterResourcesIfNeeded()
   hydrated.value = true
   persistState()
 }
@@ -676,11 +694,15 @@ const hydrateEconomyFromCloud = async () => {
         })
       }
       setEconomy(cloudSnapshot.economy)
+      const grantedStarterResources = grantStarterResourcesIfNeeded()
       logSyncEvent(settings.value.language === 'zh' ? '已从云端加载金币、库存和宠物状态。' : 'Coins, inventory, and pet state loaded from cloud.', {
         target: 'miniapp',
         actionType: 'companion-cloud-load',
       })
       persistState()
+      if (grantedStarterResources) {
+        await persistEconomyToCloud()
+      }
     } else {
       await persistEconomyToCloud()
     }
@@ -869,6 +891,103 @@ const carePet = (action: CareActionKey): CareActionResult => {
   }
 }
 
+const careResourceMeta = (isZh: boolean): Record<'feedMeal' | 'feedWater' | 'clean', {
+  key: string
+  name: string
+  effect: string
+}> => ({
+  feedMeal: {
+    key: 'meal',
+    name: isZh ? '主食' : 'Meal',
+    effect: isZh ? '提升饱腹、心情和少量精力。' : 'Improves hunger, mood, and a little energy.',
+  },
+  feedWater: {
+    key: 'water',
+    name: isZh ? '水' : 'Water',
+    effect: isZh ? '补充水分，提升清洁、心情和精力。' : 'Hydrates Koko and improves clean, mood, and energy.',
+  },
+  clean: {
+    key: 'clean-kit',
+    name: isZh ? '清洁用品' : 'Clean Kit',
+    effect: isZh ? '提升清洁、健康和心情。' : 'Improves clean, health, and mood.',
+  },
+})
+
+const getCareResource = (action: CareActionKey) => {
+  hydrateState()
+  if (action !== 'feedMeal' && action !== 'feedWater' && action !== 'clean') {
+    return null
+  }
+
+  const meta = careResourceMeta(settings.value.language === 'zh')[action]
+  return {
+    action,
+    ...meta,
+    count: economy.value.inventory[meta.key] ?? 0,
+  }
+}
+
+const canUseCareAction = (action: CareActionKey) => {
+  const resource = getCareResource(action)
+  if (!resource) return true
+  if (action === 'feedMeal' && !getDigestStatus().canFeedMeal) return false
+  return resource.count > 0
+}
+
+const useCareResource = (action: CareActionKey): CareActionResult & { resourceCount?: number } => {
+  hydrateState()
+  const isZh = settings.value.language === 'zh'
+  const resource = getCareResource(action)
+
+  if (!resource) {
+    return carePet(action)
+  }
+
+  if (action === 'feedMeal' && !getDigestStatus().canFeedMeal) {
+    return carePet(action)
+  }
+
+  if (resource.count <= 0) {
+    return {
+      action,
+      success: false,
+      message: isZh ? `${resource.name}库存不足，请前往小镇商店兑换。` : `${resource.name} is out of stock. Redeem more in the town shop.`,
+      resourceCount: 0,
+    }
+  }
+
+  setEconomy({
+    ...economy.value,
+    inventory: {
+      ...economy.value.inventory,
+      [resource.key]: resource.count - 1,
+    },
+  })
+  persistEconomy()
+
+  const result = carePet(action)
+  if (!result.success) {
+    setEconomy({
+      ...economy.value,
+      inventory: {
+        ...economy.value.inventory,
+        [resource.key]: resource.count,
+      },
+    })
+    persistEconomy()
+    return {
+      ...result,
+      resourceCount: resource.count,
+    }
+  }
+
+  void persistEconomyToCloud()
+  return {
+    ...result,
+    resourceCount: Math.max(0, resource.count - 1),
+  }
+}
+
 const createTask = (payload: {
   title: string
   kind?: Task['kind']
@@ -970,10 +1089,9 @@ const purchaseShopItem = (itemId: ShopItemId) => {
   const itemName = item
     ? isZh
       ? ({
-          'snack-pack': '零食包',
-          'toy-ball': '玩具球',
+          meal: '主食',
+          water: '水',
           'clean-kit': '清洁套装',
-          'home-decor': '小屋装饰',
         } satisfies Record<ShopItemId, string>)[item.id]
       : item.name
     : ''
@@ -999,7 +1117,7 @@ const purchaseShopItem = (itemId: ShopItemId) => {
     coins: economy.value.coins - item.price,
     inventory: {
       ...economy.value.inventory,
-      [item.id]: (economy.value.inventory[item.id] ?? 0) + 1,
+      [item.resourceKey]: (economy.value.inventory[item.resourceKey] ?? 0) + 1,
     },
     purchaseHistory: [
       ...economy.value.purchaseHistory,
@@ -1012,13 +1130,6 @@ const purchaseShopItem = (itemId: ShopItemId) => {
     ].slice(-100),
   })
 
-  applyPetImpactDelta({
-    mood: item.moodDelta,
-    hunger: item.hungerDelta,
-    intimacy: item.intimacyDelta,
-    clean: item.cleanDelta,
-    health: item.healthDelta,
-  })
   logSyncEvent(isZh ? `已在小镇商店兑换 ${itemName}。` : `${itemName} redeemed in the town shop.`, {
     target: 'miniapp',
     actionType: 'shop-purchase',
@@ -1028,7 +1139,7 @@ const purchaseShopItem = (itemId: ShopItemId) => {
   return {
     success: true,
     item,
-    message: isZh ? `${itemName} 已兑换，Koko 很开心。` : `${itemName} redeemed. Koko feels happier.`,
+    message: isZh ? `${itemName} 已加入库存。` : `${itemName} added to inventory.`,
     coins: economy.value.coins,
   }
 }
@@ -1687,6 +1798,9 @@ export const useKokoState = () => ({
   overviewStats,
   hydrateState,
   carePet,
+  getCareResource,
+  useCareResource,
+  canUseCareAction,
   applyMiniGameReward,
   createTask,
   updateTask,

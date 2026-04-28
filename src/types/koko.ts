@@ -33,7 +33,7 @@ export type CareActionKey = 'feedMeal' | 'feedSnack' | 'feedWater' | 'clean' | '
 export type DeviceType = 'miniapp' | 'desktop' | 'm5'
 export type SyncStatus = 'success' | 'offline' | 'retrying'
 export type EconomyRewardSource = 'task' | 'chat' | 'mini-game' | 'system'
-export type ShopItemId = 'snack-pack' | 'toy-ball' | 'clean-kit' | 'home-decor'
+export type ShopItemId = 'meal' | 'water' | 'clean-kit'
 export type FacingDirection =
   | 'front'
   | 'front-left'
@@ -208,6 +208,7 @@ export interface CompanionEconomy {
   purchaseHistory: ShopPurchaseRecord[]
   rewardLedger: Record<string, EconomyRewardLedgerEntry>
   dailyChatRewards: Record<string, number>
+  starterResourcesGranted?: boolean
   updatedAt: string
 }
 
@@ -216,6 +217,7 @@ export interface ShopItem {
   name: string
   description: string
   price: number
+  resourceKey: string
   moodDelta?: number
   hungerDelta?: number
   intimacyDelta?: number
