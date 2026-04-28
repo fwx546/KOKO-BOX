@@ -78,6 +78,7 @@ const normalizeReplyText = (value: string) => value.replace(/\s+/g, ' ').trim()
 
 interface WechatCloudApi {
   callFunction?: (options: unknown) => Promise<{ result: unknown }>
+  uploadFile?: (options: unknown) => Promise<{ fileID?: string }>
 }
 
 export interface PetDialogueHistoryMessage {
@@ -154,6 +155,27 @@ const requestPetReplyFromCloud = async (payload: {
   }
 }
 
+const uploadPetVoiceFile = async (tempFilePath: string) => {
+  const wxCloud = getWechatCloudApi()
+
+  if (!wxCloud?.uploadFile) {
+    throw new Error('WeChat cloud upload is not available in this environment.')
+  }
+
+  const ext = tempFilePath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)?.[1]?.toLowerCase() || 'mp3'
+  const cloudPath = `voice-turns/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const response = await wxCloud.uploadFile({
+    cloudPath,
+    filePath: tempFilePath,
+  })
+
+  if (!response.fileID) {
+    throw new Error('Voice upload returned no fileID.')
+  }
+
+  return response.fileID
+}
+
 const requestPetHistoryFromCloud = async () => {
   const result = await callWechatCloudFunction<{ history?: PetDialogueHistoryMessage[] }>('pet-dialogue', {
     action: 'loadHistory',
@@ -211,6 +233,66 @@ export const recognizeScheduleFromImage = async (fileID: string): Promise<Schedu
   }
 
   return courses
+}
+
+export const sendPetVoiceTurn = async (options: {
+  tempFilePath: string
+  petName?: string
+  personaPrompt?: string
+  language?: Language
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+}) => {
+  const language = pickLanguage(options.language)
+  const petName = options.petName?.trim() || (language === 'zh' ? '鍙彲' : 'Koko')
+
+  if (!options.tempFilePath.trim() || !isWechatCloudConfigured()) {
+    throw new Error('Voice chat is unavailable.')
+  }
+
+  const fileID = await uploadPetVoiceFile(options.tempFilePath)
+  const personaPrompt = `${options.personaPrompt ?? defaultPetPersonaPrompt}\n${languageInstruction(language)}`
+  const result = await callWechatCloudFunction<{
+    transcript?: string
+    reply?: string
+    content?: string
+    audioFileID?: string
+    audioTempUrl?: string
+    history?: PetDialogueHistoryMessage[]
+  }>(
+    'pet-dialogue',
+    {
+      action: 'voiceTurn',
+      fileID,
+      petName,
+      personaPrompt,
+      language,
+      messages: options.messages.slice(-10),
+    },
+    120000,
+  )
+
+  const transcript = normalizeReplyText(result.transcript ?? '')
+  const reply = normalizeReplyText(result.reply ?? result.content ?? '')
+
+  if (!transcript || !reply) {
+    throw new Error('Voice turn returned an empty transcript or reply.')
+  }
+
+  return {
+    transcript,
+    reply,
+    audioFileID: result.audioFileID,
+    audioTempUrl: result.audioTempUrl,
+    history: Array.isArray(result.history)
+      ? result.history
+          .map((item) => ({
+            role: item?.role === 'assistant' ? 'assistant' : 'user',
+            content: limitText(typeof item?.content === 'string' ? item.content : '', 2000),
+            createdAt: typeof item?.createdAt === 'string' ? item.createdAt : undefined,
+          }))
+          .filter((item) => item.content.length > 0)
+      : undefined,
+  }
 }
 
 export const createPetQuickReply = async (options?: {

@@ -73,7 +73,6 @@ const {
   messages,
   economy,
   sendChatMessage,
-  clearMessages,
   settings,
   setPetRotationFrame,
 } = useKokoState()
@@ -85,7 +84,6 @@ const chatDraft = ref('')
 const chatPromptHint = ref(pickChatPromptHint())
 const sending = ref(false)
 const gameDrawerOpen = ref(false)
-const historyOpen = ref(false)
 const careResourcePanelOpen = ref(false)
 const activeCareResourceAction = ref<'feedMeal' | 'feedWater' | 'clean' | null>(null)
 const activeGame = ref<'catch' | 'bubble'>('catch')
@@ -109,13 +107,6 @@ const compactStats = computed(() => [
   { label: t.value.home.stats.bond, value: pet.value.intimacy, tint: 'sky' },
 ])
 
-const recentMessages = computed(() =>
-  messages.value.slice(-18).map((item) => ({
-    ...item,
-    displayContent: settings.value.hideChats && item.role === 'user' ? t.value.home.hiddenUserMessage : item.content,
-  })),
-)
-
 const lastAssistantMessage = computed(() => {
   const assistant = [...messages.value].reverse().find((item) => item.role === 'assistant')
   return assistant?.content ?? t.value.home.assistantFallback
@@ -126,8 +117,8 @@ const petBubbleSizeClass = computed(() => ({
   'pet-bubble--long': petBubble.value.length > 54,
 }))
 
-const overlayChatCollapsed = computed(() => historyOpen.value || gameDrawerOpen.value || careResourcePanelOpen.value)
-const shouldShowPetLottie = computed(() => !gameDrawerOpen.value && !historyOpen.value && !careResourcePanelOpen.value)
+const overlayChatCollapsed = computed(() => gameDrawerOpen.value || careResourcePanelOpen.value)
+const shouldShowPetLottie = computed(() => !gameDrawerOpen.value && !careResourcePanelOpen.value)
 const petFacingMirrored = computed(() => rotationFrame.value > 7)
 const selectedCareResource = computed(() =>
   activeCareResourceAction.value ? getCareResource(activeCareResourceAction.value) : null,
@@ -322,6 +313,14 @@ const submitOverlayChat = async () => {
   await submitChat(value)
 }
 
+const openVoiceCall = () => {
+  uni.navigateTo({ url: '/pages/voice-call/index' })
+}
+
+const openChatPage = () => {
+  uni.navigateTo({ url: '/pages/chat/index' })
+}
+
 const handleGameComplete = (result: MiniGameResult) => {
   const message =
     result.gameType === 'catch'
@@ -363,9 +362,11 @@ onMounted(() => {
           <view class="home-topbar__eyebrow">KOKO HOME</view>
           <view class="home-topbar__title">{{ pet.name }}</view>
         </view>
-        <view class="home-topbar__coins">
-          <view class="home-coin-icon" />
-          <text>{{ economy.coins }}</text>
+        <view class="home-topbar__actions">
+          <view class="home-topbar__coins">
+            <view class="home-coin-icon" />
+            <text>{{ economy.coins }}</text>
+          </view>
         </view>
       </view>
 
@@ -420,7 +421,10 @@ onMounted(() => {
                 confirm-type="send"
                 @confirm="submitOverlayChat"
               />
-              <button class="pet-chat-card__history" @click="historyOpen = true">{{ t.home.history }}</button>
+              <button class="pet-chat-card__voice" :aria-label="t.home.voiceCall" @click="openVoiceCall">
+                <view class="pet-chat-card__mic" />
+              </button>
+              <button class="pet-chat-card__history" @click="openChatPage">{{ t.home.openChat }}</button>
               <button class="pet-chat-card__send" :disabled="overlayChatCollapsed || sending" @click="submitOverlayChat">
                 {{ sending ? t.home.sending : t.home.send }}
               </button>
@@ -460,34 +464,6 @@ onMounted(() => {
             {{ careResourcePanelCopy.use }}
           </button>
         </view>
-      </view>
-    </view>
-
-    <view v-if="historyOpen" class="chat-history-layer">
-      <view class="chat-history-layer__mask" @click="historyOpen = false" />
-      <view class="chat-history-layer__panel">
-        <view class="chat-history-layer__head">
-          <view>
-            <view class="chat-history-layer__eyebrow">{{ t.home.history }}</view>
-            <view class="chat-history-layer__title">{{ t.home.chatTitle }}</view>
-          </view>
-          <view class="chat-history-layer__actions">
-            <button class="chat-history-layer__ghost" @click="clearMessages">{{ t.chatPage.clear }}</button>
-            <button class="chat-history-layer__ghost" @click="historyOpen = false">{{ t.settings.cancel }}</button>
-          </view>
-        </view>
-
-        <scroll-view scroll-y class="chat-history-layer__body">
-          <view
-            v-for="message in recentMessages"
-            :key="message.id"
-            class="chat-history-layer__bubble"
-            :class="message.role === 'assistant' ? 'chat-history-layer__bubble--assistant' : 'chat-history-layer__bubble--user'"
-          >
-            <view class="chat-history-layer__role">{{ message.role === 'assistant' ? pet.name : t.chatPage.me }}</view>
-            <view class="chat-history-layer__content">{{ message.displayContent }}</view>
-          </view>
-        </scroll-view>
       </view>
     </view>
 
@@ -712,6 +688,12 @@ onMounted(() => {
   margin-top: 6rpx;
 }
 
+.home-topbar__actions {
+  align-items: center;
+  display: flex;
+  gap: 12rpx;
+}
+
 .home-topbar__coins {
   align-items: center;
   background: rgba(255, 253, 248, 0.88);
@@ -892,7 +874,7 @@ onMounted(() => {
 }
 
 .home-action-pill::after,
-.chat-history-layer__ghost::after,
+.pet-chat-card__voice::after,
 .pet-chat-card__history::after,
 .pet-chat-card__send::after {
   border: none;
@@ -1251,6 +1233,7 @@ onMounted(() => {
   padding: 0 28rpx;
 }
 
+.pet-chat-card__voice,
 .pet-chat-card__history,
 .pet-chat-card__send {
   align-items: center;
@@ -1265,8 +1248,55 @@ onMounted(() => {
   font-weight: 700;
   height: 94rpx;
   justify-content: center;
-  min-width: 112rpx;
-  padding: 0 18rpx;
+  min-width: 94rpx;
+  padding: 0 12rpx;
+}
+
+.pet-chat-card__voice {
+  min-width: 86rpx;
+  padding: 0;
+}
+
+.pet-chat-card__mic {
+  border: 5rpx solid #365f56;
+  border-radius: 18rpx;
+  border-top-width: 7rpx;
+  box-sizing: border-box;
+  height: 34rpx;
+  position: relative;
+  width: 22rpx;
+}
+
+.pet-chat-card__mic::before {
+  border: 4rpx solid #365f56;
+  border-left: 0;
+  border-radius: 0 0 18rpx 18rpx;
+  border-right: 0;
+  border-top: 0;
+  bottom: -12rpx;
+  content: '';
+  height: 13rpx;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 34rpx;
+}
+
+.pet-chat-card__mic::after {
+  background: #365f56;
+  border-radius: 999rpx;
+  bottom: -18rpx;
+  content: '';
+  height: 10rpx;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 5rpx;
+}
+
+.pet-chat-card__history,
+.pet-chat-card__send {
+  min-width: 88rpx;
 }
 
 .pet-chat-card__send {
@@ -1405,100 +1435,6 @@ onMounted(() => {
 .care-resource-panel__ghost::after,
 .care-resource-panel__primary::after {
   border: none;
-}
-
-.chat-history-layer {
-  bottom: 0;
-  left: 0;
-  position: fixed;
-  right: 0;
-  top: 0;
-  z-index: 40;
-}
-
-.chat-history-layer__mask {
-  background: rgba(19, 37, 49, 0.28);
-  bottom: 0;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
-}
-
-.chat-history-layer__panel {
-  background: linear-gradient(180deg, #fffdf8 0%, #fff8ec 100%);
-  border-radius: 32rpx 32rpx 0 0;
-  bottom: 0;
-  box-shadow: 0 -18rpx 56rpx rgba(167, 124, 72, 0.18);
-  left: 0;
-  max-height: 70vh;
-  padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
-  position: absolute;
-  right: 0;
-}
-
-.chat-history-layer__head {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 18rpx;
-}
-
-.chat-history-layer__eyebrow {
-  color: #5f8c78;
-  font-size: 21rpx;
-  letter-spacing: 3rpx;
-}
-
-.chat-history-layer__title {
-  color: #253047;
-  font-size: 32rpx;
-  font-weight: 700;
-  margin-top: 4rpx;
-}
-
-.chat-history-layer__actions {
-  display: flex;
-  gap: 12rpx;
-}
-
-.chat-history-layer__ghost {
-  background: rgba(255, 255, 255, 0.78);
-  border: none;
-  border-radius: 999rpx;
-  color: #365f56;
-  font-size: 24rpx;
-  padding: 14rpx 22rpx;
-}
-
-.chat-history-layer__body {
-  max-height: 52vh;
-}
-
-.chat-history-layer__bubble {
-  border-radius: 26rpx;
-  margin-bottom: 16rpx;
-  padding: 18rpx 20rpx;
-}
-
-.chat-history-layer__bubble--assistant {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.chat-history-layer__bubble--user {
-  background: rgba(110, 205, 255, 0.14);
-}
-
-.chat-history-layer__role {
-  color: #64849b;
-  font-size: 21rpx;
-}
-
-.chat-history-layer__content {
-  color: #26485b;
-  font-size: 25rpx;
-  line-height: 1.6;
-  margin-top: 8rpx;
 }
 
 @keyframes pet-float {

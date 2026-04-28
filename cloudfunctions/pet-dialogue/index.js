@@ -1,4 +1,5 @@
 const https = require('node:https')
+const http = require('node:http')
 const cloud = require('wx-server-sdk')
 
 cloud.init({
@@ -10,6 +11,15 @@ const QWEN_API_PATH = '/compatible-mode/v1/chat/completions'
 const QWEN_MODEL = process.env.QWEN_MODEL || 'qwen-plus'
 const QWEN_VL_MODEL = process.env.QWEN_VL_MODEL || 'qwen-vl-plus'
 const QWEN_TIMEOUT_MS = Number(process.env.QWEN_TIMEOUT_MS || 50000)
+const DASHSCOPE_API_HOST = 'dashscope.aliyuncs.com'
+const DASHSCOPE_TASK_PATH = '/api/v1/tasks'
+const DASHSCOPE_ASR_PATH = '/api/v1/services/audio/asr/transcription'
+const DASHSCOPE_TTS_PATH = '/api/v1/services/audio/tts/SpeechSynthesizer'
+const DASHSCOPE_ASR_MODEL = process.env.DASHSCOPE_ASR_MODEL || 'paraformer-v2'
+const DASHSCOPE_TTS_MODEL = process.env.DASHSCOPE_TTS_MODEL || 'cosyvoice-v3-flash'
+const DASHSCOPE_TTS_VOICE = process.env.DASHSCOPE_TTS_VOICE || 'longyingjing_v3'
+const DASHSCOPE_POLL_INTERVAL_MS = Number(process.env.DASHSCOPE_POLL_INTERVAL_MS || 1200)
+const DASHSCOPE_MAX_POLLS = Number(process.env.DASHSCOPE_MAX_POLLS || 45)
 const MAX_CHAT_MESSAGES = 10
 const MAX_HISTORY_MESSAGES = 100
 const MAX_STORED_MESSAGE_CONTENT = 2000
@@ -288,6 +298,119 @@ const parseJsonObject = (raw) => {
   }
 }
 
+const parseJsonText = (raw, fallbackMessage) => {
+  if (!raw) {
+    throw new Error(fallbackMessage || 'Empty JSON response.')
+  }
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    throw new Error(fallbackMessage || `Invalid JSON response: ${limitText(raw, 240)}`)
+  }
+}
+
+const delay = (ms) => new Promise((resolve) => {
+  setTimeout(resolve, ms)
+})
+
+const requestJson = async ({ hostname, path, method = 'GET', headers = {}, body, timeout = QWEN_TIMEOUT_MS }) => {
+  const payload = body === undefined ? undefined : JSON.stringify(body)
+
+  return await new Promise((resolve, reject) => {
+    const request = https.request(
+      {
+        hostname,
+        path,
+        method,
+        timeout,
+        headers: {
+          ...(payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
+          ...headers,
+        },
+      },
+      (response) => {
+        let raw = ''
+
+        response.on('data', (chunk) => {
+          raw += chunk
+        })
+
+        response.on('end', () => {
+          let data
+          try {
+            data = parseJsonText(raw, 'Remote service returned invalid JSON.')
+          } catch (error) {
+            reject(error)
+            return
+          }
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(data)
+            return
+          }
+
+          reject(new Error(data?.message || data?.error?.message || `Remote service failed with status ${response.statusCode}`))
+        })
+      },
+    )
+
+    request.on('timeout', () => {
+      request.destroy(new Error('Remote service request timeout.'))
+    })
+
+    request.on('error', (error) => {
+      reject(error)
+    })
+
+    if (payload) request.write(payload)
+    request.end()
+  })
+}
+
+const requestBuffer = async (url) => {
+  const target = new URL(url)
+  const transport = target.protocol === 'http:' ? http : https
+
+  return await new Promise((resolve, reject) => {
+    const request = transport.request(
+      {
+        hostname: target.hostname,
+        port: target.port || undefined,
+        path: `${target.pathname}${target.search}`,
+        method: 'GET',
+        timeout: QWEN_TIMEOUT_MS,
+      },
+      (response) => {
+        const chunks = []
+
+        response.on('data', (chunk) => {
+          chunks.push(chunk)
+        })
+
+        response.on('end', () => {
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(Buffer.concat(chunks))
+            return
+          }
+
+          reject(new Error(`File download failed with status ${response.statusCode}`))
+        })
+      },
+    )
+
+    request.on('timeout', () => {
+      request.destroy(new Error('File download timeout.'))
+    })
+
+    request.on('error', (error) => {
+      reject(error)
+    })
+
+    request.end()
+  })
+}
+
 const extractFieldValue = (chunk, fieldName) => {
   const pattern = new RegExp(`"${fieldName}"\\s*:\\s*("(?:\\\\.|[^"])*"|\\d+)`, 'i')
   const match = chunk.match(pattern)
@@ -559,6 +682,213 @@ const recognizeScheduleFromImage = async (fileID, apiKey) => {
   return courses
 }
 
+const submitAsrTask = async (audioUrl, apiKey) => {
+  const result = await requestJson({
+    hostname: DASHSCOPE_API_HOST,
+    path: DASHSCOPE_ASR_PATH,
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'X-DashScope-Async': 'enable',
+    },
+    body: {
+      model: DASHSCOPE_ASR_MODEL,
+      input: {
+        file_urls: [audioUrl],
+      },
+    },
+  })
+
+  const taskId = normalizeText(result?.output?.task_id || result?.task_id)
+  if (!taskId) {
+    throw new Error('DashScope ASR returned no task_id.')
+  }
+
+  return taskId
+}
+
+const pollDashScopeTask = async (taskId, apiKey) => {
+  for (let index = 0; index < DASHSCOPE_MAX_POLLS; index += 1) {
+    const result = await requestJson({
+      hostname: DASHSCOPE_API_HOST,
+      path: `${DASHSCOPE_TASK_PATH}/${encodeURIComponent(taskId)}`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    })
+    const status = normalizeText(result?.output?.task_status || result?.task_status || result?.status).toUpperCase()
+
+    if (status === 'SUCCEEDED' || status === 'SUCCESS') {
+      return result
+    }
+
+    if (status === 'FAILED' || status === 'CANCELED' || status === 'UNKNOWN') {
+      throw new Error(result?.output?.message || result?.message || `DashScope task ${taskId} failed.`)
+    }
+
+    await delay(DASHSCOPE_POLL_INTERVAL_MS)
+  }
+
+  throw new Error(`DashScope task ${taskId} timed out.`)
+}
+
+const extractTranscript = async (taskResult) => {
+  const directText = normalizeText(
+    taskResult?.output?.text ||
+    taskResult?.output?.sentence?.text ||
+    taskResult?.output?.results?.[0]?.text ||
+    taskResult?.output?.results?.[0]?.transcript,
+  )
+  if (directText) return directText
+
+  const transcriptionUrl = normalizeText(
+    taskResult?.output?.results?.[0]?.transcription_url ||
+    taskResult?.output?.results?.[0]?.url ||
+    taskResult?.output?.transcription_url,
+  )
+  if (!transcriptionUrl) {
+    throw new Error('DashScope ASR returned no transcript.')
+  }
+
+  const raw = (await requestBuffer(transcriptionUrl)).toString('utf8')
+  const data = parseJsonText(raw, 'ASR transcript URL returned invalid JSON.')
+  const sentences = Array.isArray(data?.transcripts)
+    ? data.transcripts
+    : Array.isArray(data?.sentences)
+      ? data.sentences
+      : Array.isArray(data)
+        ? data
+        : []
+  const text = normalizeText(
+    data?.text ||
+    data?.transcript ||
+    sentences.map((item) => normalizeText(item?.text || item?.transcript)).filter(Boolean).join(' '),
+  )
+
+  if (!text) {
+    throw new Error('DashScope ASR transcript is empty.')
+  }
+
+  return text
+}
+
+const recognizeVoiceFromFile = async (fileID, apiKey) => {
+  const audioUrl = await getTempImageUrl(fileID)
+  const taskId = await submitAsrTask(audioUrl, apiKey)
+  const taskResult = await pollDashScopeTask(taskId, apiKey)
+  return limitText(await extractTranscript(taskResult), MAX_USER_MESSAGE_CONTENT)
+}
+
+const synthesizeSpeech = async (text, apiKey) => {
+  const result = await requestJson({
+    hostname: DASHSCOPE_API_HOST,
+    path: DASHSCOPE_TTS_PATH,
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: {
+      model: DASHSCOPE_TTS_MODEL,
+      input: {
+        text: limitText(text, 1000),
+        voice: DASHSCOPE_TTS_VOICE,
+      },
+      parameters: {
+        format: 'mp3',
+        sample_rate: 24000,
+        rate: 1.08,
+        pitch: 1.12,
+      },
+    },
+  })
+
+  const audioUrl = normalizeText(
+    result?.output?.audio?.url ||
+    result?.output?.audio_url ||
+    result?.output?.url ||
+    result?.audio_url,
+  )
+  if (!audioUrl) {
+    throw new Error('DashScope TTS returned no audio url.')
+  }
+
+  const fileContent = await requestBuffer(audioUrl)
+  const cloudPath = `voice-replies/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`
+  const upload = await cloud.uploadFile({
+    cloudPath,
+    fileContent,
+  })
+  const audioFileID = normalizeText(upload?.fileID)
+  if (!audioFileID) {
+    throw new Error('Voice reply upload returned no fileID.')
+  }
+
+  const tempUrlResult = await cloud.getTempFileURL({
+    fileList: [audioFileID],
+  })
+  const audioTempUrl = normalizeText(tempUrlResult?.fileList?.[0]?.tempFileURL)
+
+  return {
+    audioFileID,
+    audioTempUrl,
+  }
+}
+
+const appendChatReply = async ({ openid, finalUserMessage, contextMessages, systemPrompt, apiKey }) => {
+  const historyRecord = await loadUserChatHistoryRecord(openid)
+  const contextHistorySeed = sanitizeMessages(contextMessages).map((item) => ({
+    role: item.role,
+    content: item.content,
+    createdAt: new Date().toISOString(),
+  }))
+  const baseHistory = historyRecord?.messages?.length ? historyRecord.messages : contextHistorySeed
+  const lastBaseMessage = baseHistory[baseHistory.length - 1]
+  const shouldAppendUserMessage = !(lastBaseMessage?.role === 'user' && lastBaseMessage?.content === finalUserMessage)
+  const nextHistory = [
+    ...baseHistory,
+    ...(shouldAppendUserMessage
+      ? [
+          {
+            role: 'user',
+            content: finalUserMessage,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      : []),
+  ].slice(-MAX_HISTORY_MESSAGES)
+
+  const chatMessages = nextHistory.slice(-MAX_CHAT_MESSAGES).map((item) => ({
+    role: item.role,
+    content: item.content,
+  }))
+  const reply = await requestQwenReply(
+    [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...chatMessages,
+    ],
+    130,
+    apiKey,
+  )
+
+  const savedHistory = await saveUserChatHistory(openid, [
+    ...nextHistory,
+    {
+      role: 'assistant',
+      content: limitText(reply, MAX_STORED_MESSAGE_CONTENT),
+      createdAt: new Date().toISOString(),
+    },
+  ])
+
+  return {
+    reply: normalizeText(reply),
+    history: savedHistory,
+  }
+}
+
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext()
 
@@ -566,7 +896,7 @@ exports.main = async (event = {}) => {
     throw new Error('Unable to identify current WeChat user.')
   }
 
-  const action = ['quickReply', 'chatReply', 'loadHistory', 'clearHistory', 'recognizeSchedule'].includes(event.action) ? event.action : 'chatReply'
+  const action = ['quickReply', 'chatReply', 'voiceTurn', 'loadHistory', 'clearHistory', 'recognizeSchedule'].includes(event.action) ? event.action : 'chatReply'
   const language = normalizeLanguage(event.language)
   const petName = limitText(event.petName, 24) || (language === 'zh' ? '可可' : 'Koko')
   const personaPrompt = limitText(event.personaPrompt, MAX_PERSONA_PROMPT_CONTENT) || defaultPetPersonaPrompt
@@ -594,6 +924,31 @@ exports.main = async (event = {}) => {
   if (action === 'recognizeSchedule') {
     return {
       courses: await recognizeScheduleFromImage(event.fileID, apiKey),
+    }
+  }
+
+  if (action === 'voiceTurn') {
+    const transcript = await recognizeVoiceFromFile(event.fileID, apiKey)
+    if (!transcript) {
+      throw new Error('voiceTurn requires a recognizable audio file.')
+    }
+
+    const chatResult = await appendChatReply({
+      openid: OPENID,
+      finalUserMessage: transcript,
+      contextMessages: event.messages,
+      systemPrompt,
+      apiKey,
+    })
+    const audio = await synthesizeSpeech(chatResult.reply, apiKey)
+
+    return {
+      transcript,
+      reply: chatResult.reply,
+      content: chatResult.reply,
+      audioFileID: audio.audioFileID,
+      audioTempUrl: audio.audioTempUrl,
+      history: chatResult.history,
     }
   }
 
@@ -631,55 +986,16 @@ exports.main = async (event = {}) => {
     throw new Error('chatReply requires userMessage or messages context.')
   }
 
-  const historyRecord = await loadUserChatHistoryRecord(OPENID)
-  const contextHistorySeed = sanitizeMessages(event.messages).map((item) => ({
-    role: item.role,
-    content: item.content,
-    createdAt: new Date().toISOString(),
-  }))
-  const baseHistory = historyRecord?.messages?.length ? historyRecord.messages : contextHistorySeed
-  const lastBaseMessage = baseHistory[baseHistory.length - 1]
-  const shouldAppendUserMessage = !(lastBaseMessage?.role === 'user' && lastBaseMessage?.content === finalUserMessage)
-  const nextHistory = [
-    ...baseHistory,
-    ...(shouldAppendUserMessage
-      ? [
-          {
-            role: 'user',
-            content: finalUserMessage,
-            createdAt: new Date().toISOString(),
-          },
-        ]
-      : []),
-  ].slice(-MAX_HISTORY_MESSAGES)
-
-  const chatMessages = nextHistory.slice(-MAX_CHAT_MESSAGES).map((item) => ({
-    role: item.role,
-    content: item.content,
-  }))
-  const reply = await requestQwenReply(
-    [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
-      ...chatMessages,
-    ],
-    130,
+  const chatResult = await appendChatReply({
+    openid: OPENID,
+    finalUserMessage,
+    contextMessages: event.messages,
+    systemPrompt,
     apiKey,
-  )
-
-  const savedHistory = await saveUserChatHistory(OPENID, [
-    ...nextHistory,
-    {
-      role: 'assistant',
-      content: limitText(reply, MAX_STORED_MESSAGE_CONTENT),
-      createdAt: new Date().toISOString(),
-    },
-  ])
+  })
 
   return {
-    content: normalizeText(reply),
-    history: savedHistory,
+    content: chatResult.reply,
+    history: chatResult.history,
   }
 }

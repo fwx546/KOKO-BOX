@@ -35,6 +35,7 @@ import {
   createPetQuickReply,
   defaultPetPersonaPrompt,
   loadPetChatHistoryFromCloud,
+  sendPetVoiceTurn,
   type PetDialogueHistoryMessage,
 } from '../services/petDialogue'
 import {
@@ -1574,6 +1575,109 @@ const sendChatMessage = async (content: string, forcedEmotion?: EmotionTag) => {
   }
 }
 
+const applyChatTurnEffects = (emotionTag: EmotionTag, createdAt: string, rewardId: string, reply: string) => {
+  metrics.value = {
+    ...metrics.value,
+    interactions: metrics.value.interactions + 1,
+    companionMinutes: metrics.value.companionMinutes + 8,
+  }
+
+  const chatImpact: Record<EmotionTag, Partial<Pet>> = {
+    happy: { mood: pet.value.mood + 6, intimacy: pet.value.intimacy + 2 },
+    proud: { mood: pet.value.mood + 8, intimacy: pet.value.intimacy + 4 },
+    upset: { mood: pet.value.mood + 5, intimacy: pet.value.intimacy + 3 },
+    tired: { mood: pet.value.mood + 4, energy: pet.value.energy + 3 },
+    bored: { mood: pet.value.mood + 6 },
+    stressed: { mood: pet.value.mood + 5, intimacy: pet.value.intimacy + 3 },
+    lonely: { mood: pet.value.mood + 7, intimacy: pet.value.intimacy + 5 },
+    angry: { mood: pet.value.mood + 4, health: pet.value.health + 2 },
+  }
+
+  updatePet(chatImpact[emotionTag])
+  const todayKey = createdAt.slice(0, 10)
+  const chatRewardRemaining = Math.max(0, 20 - (economy.value.dailyChatRewards[todayKey] ?? 0))
+  const chatRewardAmount = Math.min(2, chatRewardRemaining)
+  const chatReward = chatRewardAmount > 0
+    ? awardCoins('chat', chatRewardAmount, `chat:${todayKey}:${rewardId}`)
+    : { awarded: false, amount: 0, coins: economy.value.coins }
+
+  if (chatReward.awarded) {
+    setEconomy({
+      ...economy.value,
+      dailyChatRewards: {
+        ...economy.value.dailyChatRewards,
+        [todayKey]: (economy.value.dailyChatRewards[todayKey] ?? 0) + chatReward.amount,
+      },
+    })
+    persistEconomy()
+  }
+
+  logSyncEvent(settings.value.language === 'zh' ? `聊天摘要已写入联动队列：${reply}` : `Chat summary written to sync queue: ${reply}`, {
+    target: settings.value.allowCrossDeviceSummary ? 'desktop' : 'miniapp',
+    actionType: 'chat-summary',
+    status: settings.value.allowCrossDeviceSummary ? 'success' : 'offline',
+  })
+
+  return chatReward
+}
+
+const sendVoiceChatTurn = async (tempFilePath: string) => {
+  hydrateState()
+  await hydrateCloudChatHistory()
+
+  const conversation = messages.value
+    .slice(-8)
+    .map((item) => ({
+      role: item.role,
+      content: item.content,
+    })) as Array<{ role: 'user' | 'assistant'; content: string }>
+
+  const result = await sendPetVoiceTurn({
+    tempFilePath,
+    petName: pet.value.name,
+    personaPrompt: petPersonaPrompt.value,
+    language: settings.value.language,
+    messages: conversation,
+  })
+
+  const createdAt = nowIso()
+  const emotionTag = inferEmotion(result.transcript)
+
+  if (result.history?.length) {
+    messages.value = mapCloudHistoryToMessages(result.history)
+  } else {
+    messages.value = [
+      ...messages.value,
+      {
+        id: createId('msg'),
+        sessionId: CHAT_SESSION_ID,
+        role: 'user',
+        content: result.transcript,
+        emotionTag,
+        encrypted: settings.value.hideChats,
+        createdAt,
+      },
+      {
+        id: createId('msg'),
+        sessionId: CHAT_SESSION_ID,
+        role: 'assistant',
+        content: result.reply,
+        emotionTag,
+        encrypted: false,
+        createdAt: nowIso(),
+      },
+    ].slice(-MAX_CHAT_HISTORY)
+  }
+
+  const coinReward = applyChatTurnEffects(emotionTag, createdAt, `voice:${createId('voice')}`, result.reply)
+  persistState()
+
+  return {
+    ...result,
+    coinReward,
+  }
+}
+
 const clearMessages = () => {
   hydrateState()
   if (!settings.value.allowChatClear) return
@@ -1830,6 +1934,7 @@ export const useKokoState = () => ({
   setTaskStatus,
   getPetQuickReply,
   sendChatMessage,
+  sendVoiceChatTurn,
   clearMessages,
   updateSettings,
   setPetPersonaPrompt,

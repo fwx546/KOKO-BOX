@@ -19,6 +19,13 @@
       }
     },
     {
+      "path": "pages/voice-call/index",
+      "style": {
+        "navigationBarTitleText": "Voice Call",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "Stats"

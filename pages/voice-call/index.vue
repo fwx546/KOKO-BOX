@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { useWechatShare } from '../../src/composables/useWechatShare'
-import ChatPage from '../../src/pages/ChatPage.vue'
+import VoiceCallPage from '../../src/pages/VoiceCallPage.vue'
 
 useWechatShare({
-  path: '/pages/chat/index',
+  path: '/pages/voice-call/index',
   query: {
     from: 'share',
-    page: 'chat',
+    page: 'voice-call',
   },
 })
 </script>
 
 <template>
-  <ChatPage />
+  <VoiceCallPage />
 </template>
