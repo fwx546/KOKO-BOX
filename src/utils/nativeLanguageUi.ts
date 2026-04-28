@@ -18,6 +18,7 @@ const pageTitleKeyByRoute: Record<string, keyof (typeof copy)['en']['nav']> = {
   'pages/pet-game-bubble/index': 'petGameBubble',
   'pages/hardware/index': 'hardware',
   'pages/settings/index': 'settings',
+  'pages/feedback/index': 'feedback',
 }
 
 const currentRoute = () => {

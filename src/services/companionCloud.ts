@@ -14,6 +14,7 @@ export interface CompanionCloudSnapshot {
   pet?: Partial<Pet>
   economy: CompanionEconomy
   updatedAt: string
+  exists?: boolean
 }
 
 const getWechatCloudApi = () =>
@@ -118,9 +119,10 @@ export const normalizeCompanionEconomy = (value: unknown, fallbackCoins = 0): Co
 }
 
 const normalizeSnapshot = (value: unknown, fallbackCoins = 0): CompanionCloudSnapshot => {
-  const source = (value ?? {}) as { pet?: Partial<Pet>; economy?: unknown; updatedAt?: unknown }
+  const source = (value ?? {}) as { exists?: unknown; pet?: Partial<Pet>; economy?: unknown; updatedAt?: unknown }
   const economy = normalizeCompanionEconomy(source.economy, fallbackCoins)
   return {
+    exists: Boolean(source.exists),
     pet: source.pet && typeof source.pet === 'object' ? source.pet : undefined,
     economy,
     updatedAt: normalizeText(source.updatedAt, 40) || economy.updatedAt,

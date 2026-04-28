@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
       <view class="town-map">
         <image class="town-map__image" :src="townMapSrc" mode="scaleToFill" @error="handleTownMapError" />
 
-        <view class="town-pet" :class="`town-pet--${petAction}`" :style="petStyle" @click.stop>
+        <view v-if="!activeBuilding" class="town-pet" :class="`town-pet--${petAction}`" :style="petStyle" @click.stop>
           <view class="town-pet__name">{{ pet.name }}</view>
           <PetLottieAvatar :size-rpx="PET_SIZE_RPX" :mirror="petMirror" />
           <view class="town-pet__shadow" />

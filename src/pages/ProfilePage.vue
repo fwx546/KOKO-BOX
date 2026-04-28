@@ -5,8 +5,8 @@ import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 
 const { user, pet: authPet, authMode, isGuestSession, loading, importWechatProfile, login } = useAuth()
-const { pet, weeklyCompletionRate, syncPetFromAuth, syncCourseScheduleFromCloud, syncTasksFromCloud } = useKokoState()
-const { t } = useLanguage()
+const { pet, weeklyCompletionRate, syncPetFromAuth, syncCourseScheduleFromCloud, syncTasksFromCloud, syncEconomyFromCloud } = useKokoState()
+const { language, t } = useLanguage()
 
 const avatarLoadFailed = ref(false)
 const displayName = computed(() => user.value?.nickName || (isGuestSession.value ? t.value.profile.guest : 'Koko Friend'))
@@ -15,10 +15,27 @@ const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpper
 const accountHint = computed(() => (isGuestSession.value ? t.value.profile.guestHint : t.value.profile.accountHint))
 const petStageLabel = computed(() => t.value.profile.stages[pet.value.stage] ?? pet.value.stage)
 const shouldShowAvatarImage = computed(() => Boolean(user.value?.avatarUrl && !avatarLoadFailed.value))
+const feedbackEntryCopy = computed(() =>
+  language.value === 'zh'
+    ? {
+        title: '投诉与建议',
+        hint: '提交后仅本人和管理员可见，发送后不可编辑',
+      }
+    : {
+        title: 'Complaints & Suggestions',
+        hint: 'Only you and administrators can view submitted feedback',
+      },
+)
 
 const openSettings = () => {
   uni.navigateTo({
     url: '/pages/settings/index',
+  })
+}
+
+const openFeedback = () => {
+  uni.navigateTo({
+    url: '/pages/feedback/index',
   })
 }
 
@@ -64,6 +81,7 @@ onMounted(async () => {
   syncPetFromAuth(result.pet)
   if (authMode.value !== 'guest') {
     await syncTasksFromCloud()
+    await syncEconomyFromCloud()
     await syncCourseScheduleFromCloud()
   }
 })
@@ -131,6 +149,11 @@ onMounted(async () => {
     <button class="profile-settings-entry" :disabled="loading" @click="openSettings">
       <view>{{ t.profile.settings }}</view>
       <view class="profile-settings-entry__hint">{{ t.profile.settingsHint }}</view>
+    </button>
+
+    <button class="profile-settings-entry" :disabled="loading" @click="openFeedback">
+      <view>{{ feedbackEntryCopy.title }}</view>
+      <view class="profile-settings-entry__hint">{{ feedbackEntryCopy.hint }}</view>
     </button>
   </view>
 </template>

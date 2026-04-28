@@ -1,4 +1,5 @@
 ﻿import { computed, ref } from 'vue'
+import { watch } from 'vue'
 import type {
   AppMetrics,
   CareActionKey,
@@ -686,7 +687,7 @@ const hydrateEconomyFromCloud = async () => {
     const cloudUpdatedAt = new Date(cloudSnapshot?.updatedAt || 0).getTime() || 0
     const localUpdatedAt = new Date(economy.value.updatedAt || 0).getTime() || 0
 
-    if (cloudSnapshot && cloudUpdatedAt >= localUpdatedAt) {
+    if (cloudSnapshot?.exists || (cloudSnapshot && cloudUpdatedAt >= localUpdatedAt)) {
       if (cloudSnapshot.pet) {
         pet.value = sanitizePet({
           ...pet.value,
@@ -1771,6 +1772,16 @@ void hydrateCloudChatHistory()
 void hydrateCloudTasks()
 void hydrateCloudCourseSchedule()
 void hydrateEconomyFromCloud()
+
+watch(
+  () => [authMode.value, isMockSession.value] as const,
+  ([mode, mock]) => {
+    if (mode === 'wechat' && !mock) {
+      void syncEconomyFromCloud()
+    }
+  },
+  { immediate: true },
+)
 
 export const useKokoState = () => ({
   pet,

@@ -151,6 +151,7 @@ exports.main = async (event = {}) => {
 
   if (action === 'load') {
     return {
+      exists: Boolean(existing),
       pet: existing?.pet ? sanitizePet(existing.pet) : undefined,
       economy: sanitizeEconomy(existing?.economy),
       updatedAt: normalizeText(existing?.updatedAt, 40),

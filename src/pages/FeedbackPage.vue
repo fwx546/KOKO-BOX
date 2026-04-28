@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
+import { useLanguage } from '../composables/useLanguage'
 import {
   canUseFeedbackCloud,
   listAdminFeedback,
@@ -13,23 +14,128 @@ import {
 } from '../services/feedbackCloud'
 
 const { authMode, isGuestSession, isMockSession, login } = useAuth()
+const { language } = useLanguage()
 
-const typeOptions: Array<{ value: FeedbackType; label: string }> = [
-  { value: 'suggestion', label: '建议' },
-  { value: 'complaint', label: '投诉' },
-]
+const feedbackCopy = computed(() =>
+  language.value === 'zh'
+    ? {
+        title: '投诉与建议',
+        heroTitle: '向管理员发送私密反馈',
+        heroCopy: '发送后不可编辑，仅本人和管理员可见。',
+        mine: '我的反馈',
+        admin: '管理处理',
+        newFeedback: '新建反馈',
+        records: '我的记录',
+        adminReply: '管理员回复',
+        noReply: '暂未回复',
+        noTime: '暂无时间',
+        noRecords: '暂无提交记录。',
+        noAdminRecords: '暂无匹配记录。',
+        textareaPlaceholder: '请写下你想投诉或建议的内容，至少 10 个字。',
+        adminReplyPlaceholder: '填写管理员回复',
+        remaining: '字可用',
+        send: '发送',
+        sending: '发送中...',
+        refresh: '刷新',
+        loading: '加载中',
+        filter: '筛选',
+        state: '状态',
+        unknownUser: '未知用户',
+        saveResult: '保存处理结果',
+        saving: '保存中...',
+        confirmTitle: '确认发送',
+        confirmContent: '发送后内容不可编辑或删除，仅你本人和管理员可见。',
+        cancel: '取消',
+        sent: '已发送',
+        updated: '已更新',
+        loadFailed: '加载失败',
+        sendFailed: '发送失败',
+        updateFailed: '更新失败',
+        cannotSubmit: '当前无法提交',
+        minLength: '请至少输入 10 个字',
+        cloudUnavailable: '当前环境未配置微信云开发，无法保证仅本人和管理员可见。',
+        guestDisabled: '游客模式无法提交投诉与建议，请使用微信登录。',
+        mockDisabled: '当前为本地模拟登录，无法提交私密反馈。',
+        types: {
+          suggestion: '建议',
+          complaint: '投诉',
+        },
+        statuses: {
+          all: '全部',
+          submitted: '已提交',
+          reviewing: '处理中',
+          resolved: '已处理',
+          rejected: '不采纳',
+        },
+      }
+    : {
+        title: 'Complaints & Suggestions',
+        heroTitle: 'Send private feedback to administrators',
+        heroCopy: 'Submitted content cannot be edited and is only visible to you and administrators.',
+        mine: 'My Feedback',
+        admin: 'Admin Review',
+        newFeedback: 'New Feedback',
+        records: 'My Records',
+        adminReply: 'Admin Reply',
+        noReply: 'No reply yet',
+        noTime: 'No time',
+        noRecords: 'No submitted records yet.',
+        noAdminRecords: 'No matching records.',
+        textareaPlaceholder: 'Write your complaint or suggestion, at least 10 characters.',
+        adminReplyPlaceholder: 'Write an administrator reply',
+        remaining: 'characters left',
+        send: 'Send',
+        sending: 'Sending...',
+        refresh: 'Refresh',
+        loading: 'Loading',
+        filter: 'Filter',
+        state: 'Status',
+        unknownUser: 'Unknown user',
+        saveResult: 'Save Review Result',
+        saving: 'Saving...',
+        confirmTitle: 'Confirm Send',
+        confirmContent: 'After sending, the content cannot be edited or deleted. Only you and administrators can view it.',
+        cancel: 'Cancel',
+        sent: 'Sent',
+        updated: 'Updated',
+        loadFailed: 'Load failed',
+        sendFailed: 'Send failed',
+        updateFailed: 'Update failed',
+        cannotSubmit: 'Cannot submit now',
+        minLength: 'Please enter at least 10 characters',
+        cloudUnavailable: 'WeChat cloud is not configured, so private visibility cannot be guaranteed.',
+        guestDisabled: 'Guest mode cannot submit feedback. Please sign in with WeChat.',
+        mockDisabled: 'Local mock login cannot submit private feedback.',
+        types: {
+          suggestion: 'Suggestion',
+          complaint: 'Complaint',
+        },
+        statuses: {
+          all: 'All',
+          submitted: 'Submitted',
+          reviewing: 'Reviewing',
+          resolved: 'Resolved',
+          rejected: 'Rejected',
+        },
+      },
+)
 
-const statusOptions: Array<{ value: FeedbackStatus; label: string }> = [
-  { value: 'submitted', label: '已提交' },
-  { value: 'reviewing', label: '处理中' },
-  { value: 'resolved', label: '已处理' },
-  { value: 'rejected', label: '不采纳' },
-]
+const typeOptions = computed<Array<{ value: FeedbackType; label: string }>>(() => [
+  { value: 'suggestion', label: feedbackCopy.value.types.suggestion },
+  { value: 'complaint', label: feedbackCopy.value.types.complaint },
+])
 
-const adminFilterOptions: Array<{ value: FeedbackStatus | 'all'; label: string }> = [
-  { value: 'all', label: '全部' },
-  ...statusOptions,
-]
+const statusOptions = computed<Array<{ value: FeedbackStatus; label: string }>>(() => [
+  { value: 'submitted', label: feedbackCopy.value.statuses.submitted },
+  { value: 'reviewing', label: feedbackCopy.value.statuses.reviewing },
+  { value: 'resolved', label: feedbackCopy.value.statuses.resolved },
+  { value: 'rejected', label: feedbackCopy.value.statuses.rejected },
+])
+
+const adminFilterOptions = computed<Array<{ value: FeedbackStatus | 'all'; label: string }>>(() => [
+  { value: 'all', label: feedbackCopy.value.statuses.all },
+  ...statusOptions.value,
+])
 
 const activeType = ref<FeedbackType>('suggestion')
 const content = ref('')
@@ -51,28 +157,28 @@ const remainingCharacters = computed(() => Math.max(0, 1000 - content.value.leng
 const submitDisabled = computed(() => submitting.value || !canSubmit.value || trimmedContent.value.length < 10)
 const disabledHint = computed(() => {
   if (!cloudAvailable.value) {
-    return '当前环境未配置微信云开发，无法保证仅本人和管理员可见。'
+    return feedbackCopy.value.cloudUnavailable
   }
 
   if (isGuestSession.value) {
-    return '游客模式无法提交投诉与建议，请使用微信登录。'
+    return feedbackCopy.value.guestDisabled
   }
 
   if (isMockSession.value) {
-    return '当前为本地模拟登录，无法提交私密反馈。'
+    return feedbackCopy.value.mockDisabled
   }
 
   return ''
 })
 
-const typeLabel = (type: FeedbackType) => typeOptions.find((item) => item.value === type)?.label ?? '建议'
-const statusLabel = (status: FeedbackStatus) => statusOptions.find((item) => item.value === status)?.label ?? '已提交'
-const statusIndex = (status: FeedbackStatus) => Math.max(0, statusOptions.findIndex((item) => item.value === status))
-const filterIndex = computed(() => Math.max(0, adminFilterOptions.findIndex((item) => item.value === adminFilter.value)))
+const typeLabel = (type: FeedbackType) => typeOptions.value.find((item) => item.value === type)?.label ?? feedbackCopy.value.types.suggestion
+const statusLabel = (status: FeedbackStatus) => statusOptions.value.find((item) => item.value === status)?.label ?? feedbackCopy.value.statuses.submitted
+const statusIndex = (status: FeedbackStatus) => Math.max(0, statusOptions.value.findIndex((item) => item.value === status))
+const filterIndex = computed(() => Math.max(0, adminFilterOptions.value.findIndex((item) => item.value === adminFilter.value)))
 
 const formatDate = (value: string) => {
   if (!value) {
-    return '暂无时间'
+    return feedbackCopy.value.noTime
   }
 
   return value.slice(0, 16).replace('T', ' ')
@@ -81,10 +187,10 @@ const formatDate = (value: string) => {
 const confirmSubmit = () =>
   new Promise<boolean>((resolve) => {
     uni.showModal({
-      title: '确认发送',
-      content: '发送后内容不可编辑或删除，仅你本人和管理员可见。',
-      confirmText: '发送',
-      cancelText: '取消',
+      title: feedbackCopy.value.confirmTitle,
+      content: feedbackCopy.value.confirmContent,
+      confirmText: feedbackCopy.value.send,
+      cancelText: feedbackCopy.value.cancel,
       success: (result) => {
         resolve(Boolean(result.confirm))
       },
@@ -136,7 +242,7 @@ const refreshRecords = async () => {
     }
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '加载失败',
+      title: error instanceof Error ? error.message : feedbackCopy.value.loadFailed,
       icon: 'none',
     })
   } finally {
@@ -147,7 +253,7 @@ const refreshRecords = async () => {
 const handleSubmit = async () => {
   if (!canSubmit.value) {
     uni.showToast({
-      title: disabledHint.value || '当前无法提交',
+      title: disabledHint.value || feedbackCopy.value.cannotSubmit,
       icon: 'none',
     })
     return
@@ -155,7 +261,7 @@ const handleSubmit = async () => {
 
   if (trimmedContent.value.length < 10) {
     uni.showToast({
-      title: '请至少输入 10 个字',
+      title: feedbackCopy.value.minLength,
       icon: 'none',
     })
     return
@@ -177,12 +283,12 @@ const handleSubmit = async () => {
     isAdmin.value = result.isAdmin
     content.value = ''
     uni.showToast({
-      title: '已发送',
+      title: feedbackCopy.value.sent,
       icon: 'success',
     })
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '发送失败',
+      title: error instanceof Error ? error.message : feedbackCopy.value.sendFailed,
       icon: 'none',
     })
   } finally {
@@ -192,13 +298,13 @@ const handleSubmit = async () => {
 
 const changeAdminFilter = async (event: { detail?: { value?: number | string } }) => {
   const index = Number(event.detail?.value ?? 0)
-  adminFilter.value = adminFilterOptions[index]?.value ?? 'all'
+  adminFilter.value = adminFilterOptions.value[index]?.value ?? 'all'
   await loadAdmin()
 }
 
 const changeAdminStatus = (recordId: string, event: { detail?: { value?: number | string } }) => {
   const index = Number(event.detail?.value ?? 0)
-  adminStatusDrafts[recordId] = statusOptions[index]?.value ?? 'submitted'
+  adminStatusDrafts[recordId] = statusOptions.value[index]?.value ?? 'submitted'
 }
 
 const saveAdminRecord = async (record: FeedbackRecord) => {
@@ -214,12 +320,12 @@ const saveAdminRecord = async (record: FeedbackRecord) => {
     myRecords.value = myRecords.value.map((item) => (item._id === result.record._id ? result.record : item))
     syncAdminDrafts([result.record])
     uni.showToast({
-      title: '已更新',
+      title: feedbackCopy.value.updated,
       icon: 'success',
     })
   } catch (error) {
     uni.showToast({
-      title: error instanceof Error ? error.message : '更新失败',
+      title: error instanceof Error ? error.message : feedbackCopy.value.updateFailed,
       icon: 'none',
     })
   } finally {
@@ -240,10 +346,10 @@ onMounted(async () => {
   <view class="feedback-page">
     <view class="feedback-hero">
       <view>
-        <view class="feedback-hero__eyebrow">投诉与建议</view>
-        <view class="feedback-hero__title">向管理员发送私密反馈</view>
+        <view class="feedback-hero__eyebrow">{{ feedbackCopy.title }}</view>
+        <view class="feedback-hero__title">{{ feedbackCopy.heroTitle }}</view>
       </view>
-      <view class="feedback-hero__copy">发送后不可编辑，仅本人和管理员可见。</view>
+      <view class="feedback-hero__copy">{{ feedbackCopy.heroCopy }}</view>
     </view>
 
     <view v-if="disabledHint" class="feedback-warning">{{ disabledHint }}</view>
@@ -254,20 +360,20 @@ onMounted(async () => {
         :class="{ 'feedback-view-switch__button--active': activeView === 'mine' }"
         @click="activeView = 'mine'"
       >
-        我的反馈
+        {{ feedbackCopy.mine }}
       </button>
       <button
         class="feedback-view-switch__button"
         :class="{ 'feedback-view-switch__button--active': activeView === 'admin' }"
         @click="activeView = 'admin'"
       >
-        管理处理
+        {{ feedbackCopy.admin }}
       </button>
     </view>
 
     <template v-if="activeView === 'mine'">
       <view class="feedback-panel">
-        <view class="feedback-section-title">新建反馈</view>
+        <view class="feedback-section-title">{{ feedbackCopy.newFeedback }}</view>
 
         <view class="feedback-type-switch">
           <button
@@ -285,27 +391,27 @@ onMounted(async () => {
           class="feedback-textarea"
           maxlength="1000"
           :value="content"
-          placeholder="请写下你想投诉或建议的内容，至少 10 个字。"
+          :placeholder="feedbackCopy.textareaPlaceholder"
           @input="(event) => (content = event.detail?.value ?? '')"
         />
 
         <view class="feedback-submit-row">
-          <view class="feedback-counter">{{ remainingCharacters }} 字可用</view>
+          <view class="feedback-counter">{{ remainingCharacters }} {{ feedbackCopy.remaining }}</view>
           <button class="feedback-submit" :disabled="submitDisabled" @click="handleSubmit">
-            {{ submitting ? '发送中...' : '发送' }}
+            {{ submitting ? feedbackCopy.sending : feedbackCopy.send }}
           </button>
         </view>
       </view>
 
       <view class="feedback-panel">
         <view class="feedback-section-header">
-          <view class="feedback-section-title">我的记录</view>
+          <view class="feedback-section-title">{{ feedbackCopy.records }}</view>
           <button class="feedback-refresh" :disabled="loading" @click="refreshRecords">
-            {{ loading ? '加载中' : '刷新' }}
+            {{ loading ? feedbackCopy.loading : feedbackCopy.refresh }}
           </button>
         </view>
 
-        <view v-if="!myRecords.length" class="feedback-empty">暂无提交记录。</view>
+        <view v-if="!myRecords.length" class="feedback-empty">{{ feedbackCopy.noRecords }}</view>
         <view v-for="record in myRecords" :key="record._id" class="feedback-record">
           <view class="feedback-record__top">
             <view class="feedback-record__type">{{ typeLabel(record.type) }}</view>
@@ -314,8 +420,8 @@ onMounted(async () => {
           <view class="feedback-record__time">{{ formatDate(record.createdAt) }}</view>
           <view class="feedback-record__content">{{ record.content }}</view>
           <view class="feedback-record__reply">
-            <view class="feedback-record__reply-label">管理员回复</view>
-            <view>{{ record.adminReply || '暂未回复' }}</view>
+            <view class="feedback-record__reply-label">{{ feedbackCopy.adminReply }}</view>
+            <view>{{ record.adminReply || feedbackCopy.noReply }}</view>
           </view>
         </view>
       </view>
@@ -324,20 +430,20 @@ onMounted(async () => {
     <template v-else>
       <view class="feedback-panel">
         <view class="feedback-section-header">
-          <view class="feedback-section-title">管理处理</view>
+          <view class="feedback-section-title">{{ feedbackCopy.admin }}</view>
           <picker :range="adminFilterOptions.map((item) => item.label)" :value="filterIndex" @change="changeAdminFilter">
-            <view class="feedback-filter">筛选：{{ adminFilterOptions[filterIndex]?.label ?? '全部' }}</view>
+            <view class="feedback-filter">{{ feedbackCopy.filter }}: {{ adminFilterOptions[filterIndex]?.label ?? feedbackCopy.statuses.all }}</view>
           </picker>
         </view>
 
-        <view v-if="!adminRecords.length" class="feedback-empty">暂无匹配记录。</view>
+        <view v-if="!adminRecords.length" class="feedback-empty">{{ feedbackCopy.noAdminRecords }}</view>
         <view v-for="record in adminRecords" :key="record._id" class="feedback-record feedback-record--admin">
           <view class="feedback-record__top">
             <view class="feedback-record__type">{{ typeLabel(record.type) }}</view>
             <view class="feedback-record__status">{{ statusLabel(record.status) }}</view>
           </view>
           <view class="feedback-record__time">
-            {{ formatDate(record.createdAt) }} · {{ record.ownerOpenid || '未知用户' }}
+            {{ formatDate(record.createdAt) }} · {{ record.ownerOpenid || feedbackCopy.unknownUser }}
           </view>
           <view class="feedback-record__content">{{ record.content }}</view>
 
@@ -346,19 +452,19 @@ onMounted(async () => {
             :value="statusIndex(adminStatusDrafts[record._id] ?? record.status)"
             @change="changeAdminStatus(record._id, $event)"
           >
-            <view class="feedback-admin-field">状态：{{ statusLabel(adminStatusDrafts[record._id] ?? record.status) }}</view>
+            <view class="feedback-admin-field">{{ feedbackCopy.state }}: {{ statusLabel(adminStatusDrafts[record._id] ?? record.status) }}</view>
           </picker>
 
           <textarea
             class="feedback-admin-reply"
             maxlength="1000"
             :value="adminReplyDrafts[record._id]"
-            placeholder="填写管理员回复"
+            :placeholder="feedbackCopy.adminReplyPlaceholder"
             @input="(event) => (adminReplyDrafts[record._id] = event.detail?.value ?? '')"
           />
 
           <button class="feedback-submit" :disabled="adminSavingId === record._id" @click="saveAdminRecord(record)">
-            {{ adminSavingId === record._id ? '保存中...' : '保存处理结果' }}
+            {{ adminSavingId === record._id ? feedbackCopy.saving : feedbackCopy.saveResult }}
           </button>
         </view>
       </view>
