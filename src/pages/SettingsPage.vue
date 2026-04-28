@@ -34,6 +34,12 @@ const changeLanguage = (next: 'zh' | 'en') => {
   syncNativeLanguageUi(next)
 }
 
+const openFeedback = () => {
+  uni.navigateTo({
+    url: '/pages/feedback/index',
+  })
+}
+
 const renamePet = async () => {
   if (isGuestSession.value) {
     uni.showToast({
@@ -165,6 +171,12 @@ const handleLogout = async () => {
       </view>
 
       <view class="settings-block">
+        <view class="settings-block__label">投诉与建议</view>
+        <view class="settings-block__hint">提交后仅本人和管理员可见，发送后不可编辑。</view>
+        <button class="settings-button settings-button--secondary" @click="openFeedback">进入投诉与建议</button>
+      </view>
+
+      <view class="settings-block">
         <view class="settings-block__label">{{ t.settings.logoutLabel }}</view>
         <view class="settings-block__hint">
           {{ t.settings.logoutHint.replace('{mode}', authMode || t.settings.notLoggedIn) }}
@@ -275,5 +287,10 @@ const handleLogout = async () => {
 .settings-button--danger {
   background: #ffe4df;
   color: #b85454;
+}
+
+.settings-button--secondary {
+  background: #e8f7ef;
+  color: #365f56;
 }
 </style>

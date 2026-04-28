@@ -96,6 +96,12 @@
       "style": {
         "navigationBarTitleText": "Settings"
       }
+    },
+    {
+      "path": "pages/feedback/index",
+      "style": {
+        "navigationBarTitleText": "投诉与建议"
+      }
     }
   ],
   "tabBar": {
