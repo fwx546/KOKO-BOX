@@ -4,7 +4,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useCourseScheduleImporter } from '../composables/useCourseScheduleImporter'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
-import { useCorgiBle } from '../services/corgiBle'
+import { useCorgiBle, type MiniProgramBleDevice } from '../services/corgiBle'
 import type { Task, TaskCategory, TaskKind } from '../types/koko'
 
 const { tasks, todayTasks, completedTasks, courseSchedule, createTask, updateTask, deleteTask, setTaskStatus, completeTaskWithReward, syncTasksFromCloud, triggerHardwareAction, updatePet } = useKokoState()
@@ -48,6 +48,7 @@ const pomodoroMinutes = ref(25)
 const pomodoroRemainingSeconds = ref(25 * 60)
 const pomodoroRunning = ref(false)
 const pomodoroEnding = ref(false)
+const pomodoroScanningDevices = ref(false)
 const calendarNow = ref(new Date())
 let calendarTimer: ReturnType<typeof setInterval> | undefined
 let pomodoroTimer: ReturnType<typeof setInterval> | undefined
@@ -79,11 +80,18 @@ const pomodoroCopy = computed(() => ({
   buttonIdle: isZh.value ? '未设置番茄钟' : 'Pomodoro not set',
   buttonRunning: isZh.value ? `番茄钟 ${pomodoroCountdownLabel.value}` : `Pomodoro ${pomodoroCountdownLabel.value}`,
   title: isZh.value ? '番茄钟' : 'Pomodoro',
-  subtitle: isZh.value ? '开始后会连接 M5-CORGI-POMO，并让硬件小狗进入睡眠。' : 'Starting connects to M5-CORGI-POMO and puts the hardware corgi to sleep.',
+  subtitle: isZh.value ? '开始后会优先连接已绑定的 group 6 硬件，并让硬件小狗进入睡眠。' : 'Starting connects the bound group 6 hardware and puts the hardware corgi to sleep.',
   duration: isZh.value ? '专注时长' : 'Focus length',
   start: isZh.value ? '开始专注' : 'Start focus',
   stop: isZh.value ? '停止' : 'Stop',
   connect: isZh.value ? '连接硬件' : 'Connect',
+  scan: isZh.value ? '扫描设备' : 'Scan',
+  scanningDevices: isZh.value ? '正在扫描 group 6 设备' : 'Scanning group 6 devices',
+  bound: isZh.value ? '已绑定' : 'Bound',
+  unbound: isZh.value ? '未绑定设备' : 'No device bound',
+  unbind: isZh.value ? '解绑' : 'Unbind',
+  choose: isZh.value ? '选择' : 'Choose',
+  noDevice: isZh.value ? '未发现 group 6 设备' : 'No group 6 devices found',
   ping: isZh.value ? '发送 PING' : 'Send PING',
   connected: isZh.value ? '已连接' : 'Connected',
   scanning: isZh.value ? '扫描中' : 'Scanning',
@@ -95,6 +103,11 @@ const pomodoroCopy = computed(() => ({
 }))
 const pomodoroButtonLabel = computed(() => (pomodoroRunning.value ? pomodoroCopy.value.buttonRunning : pomodoroCopy.value.buttonIdle))
 const pomodoroBleError = computed(() => corgiBle.lastError.value)
+const pomodoroBoundDeviceLabel = computed(() => {
+  const device = corgiBle.boundDevice.value
+  return device ? `${pomodoroCopy.value.bound} ${device.name || device.localName || device.deviceId}` : pomodoroCopy.value.unbound
+})
+const pomodoroDiscoveredDevices = computed(() => corgiBle.discoveredDevices.value)
 const pomodoroLinkLabel = computed(() => {
   if (corgiBle.linkState.value === 'scanning') return pomodoroCopy.value.scanning
   if (corgiBle.linkState.value === 'connecting') return pomodoroCopy.value.connecting
@@ -355,6 +368,25 @@ const connectPomodoroDevice = async () => {
     title: connected ? (isZh.value ? '硬件已连接' : 'Hardware connected') : (isZh.value ? '连接失败' : 'Connection failed'),
     icon: 'none',
   })
+}
+
+const scanPomodoroDevices = async () => {
+  pomodoroScanningDevices.value = true
+  await corgiBle.scanDevices()
+  pomodoroScanningDevices.value = false
+}
+
+const bindPomodoroDevice = async (device: MiniProgramBleDevice) => {
+  const connected = await corgiBle.bindDevice(device)
+  uni.showToast({
+    title: connected ? (isZh.value ? '已绑定并连接' : 'Bound and connected') : (isZh.value ? '绑定后连接失败' : 'Bind failed'),
+    icon: 'none',
+  })
+}
+
+const unbindPomodoroDevice = async () => {
+  await corgiBle.unbindDevice()
+  uni.showToast({ title: isZh.value ? '已解绑' : 'Unbound', icon: 'none' })
 }
 
 const pingPomodoroDevice = async () => {
@@ -702,6 +734,10 @@ onBeforeUnmount(() => {
         <view class="planner-pomodoro-card__subtitle">{{ pomodoroCopy.subtitle }}</view>
         <view class="planner-pomodoro-card__timer">{{ pomodoroRunning ? pomodoroCountdownLabel : `${pomodoroMinutes}:00` }}</view>
         <view class="planner-pomodoro-card__status">{{ pomodoroLinkLabel }}</view>
+        <view class="planner-pomodoro-card__binding">
+          <view>{{ pomodoroBoundDeviceLabel }}</view>
+          <button v-if="corgiBle.boundDevice.value" class="planner-pomodoro-card__mini" @click="unbindPomodoroDevice">{{ pomodoroCopy.unbind }}</button>
+        </view>
 
         <view class="planner-pomodoro-card__label">{{ pomodoroCopy.duration }}</view>
         <picker
@@ -722,6 +758,21 @@ onBeforeUnmount(() => {
           <button class="planner-pomodoro-card__ghost" @click="connectPomodoroDevice">{{ pomodoroCopy.connect }}</button>
           <button class="planner-pomodoro-card__ghost" @click="pingPomodoroDevice">{{ pomodoroCopy.ping }}</button>
         </view>
+        <view class="planner-pomodoro-card__actions planner-pomodoro-card__actions--secondary">
+          <button class="planner-pomodoro-card__ghost planner-pomodoro-card__ghost--wide" :disabled="pomodoroScanningDevices" @click="scanPomodoroDevices">
+            {{ pomodoroScanningDevices ? pomodoroCopy.scanningDevices : pomodoroCopy.scan }}
+          </button>
+        </view>
+        <view v-if="pomodoroDiscoveredDevices.length" class="planner-pomodoro-card__devices">
+          <view v-for="device in pomodoroDiscoveredDevices" :key="device.deviceId" class="planner-pomodoro-card__device">
+            <view>
+              <view class="planner-pomodoro-card__device-name">{{ device.name || device.localName || device.deviceId }}</view>
+              <view class="planner-pomodoro-card__device-id">{{ device.deviceId }}</view>
+            </view>
+            <button class="planner-pomodoro-card__mini" @click="bindPomodoroDevice(device)">{{ pomodoroCopy.choose }}</button>
+          </view>
+        </view>
+        <view v-else-if="!pomodoroScanningDevices && !corgiBle.boundDevice.value" class="planner-pomodoro-card__empty">{{ pomodoroCopy.noDevice }}</view>
         <view v-if="pomodoroBleError" class="planner-pomodoro-card__error">{{ pomodoroBleError }}</view>
       </view>
     </view>

@@ -2871,6 +2871,7 @@ button {
 .planner-pomodoro-card__close::after,
 .planner-pomodoro-card__primary::after,
 .planner-pomodoro-card__ghost::after,
+.planner-pomodoro-card__mini::after,
 .planner-schedule-fab::after,
 .planner-schedule-change::after,
 .planner-schedule-importer__primary::after,
@@ -3984,6 +3985,51 @@ button {
   text-align: center;
 }
 
+.planner-pomodoro-card__binding,
+.planner-pomodoro-card__device {
+  align-items: center;
+  background: rgba(246, 249, 242, 0.94);
+  border: 1px solid rgba(143, 176, 136, 0.18);
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: #365f56;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 10px;
+  justify-content: space-between;
+  line-height: 1.35;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.planner-pomodoro-card__devices {
+  display: grid;
+  gap: 8px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.planner-pomodoro-card__device-name {
+  color: #2f2e36;
+  font-size: 0.82rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.planner-pomodoro-card__device-id,
+.planner-pomodoro-card__empty {
+  color: #8b947f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.planner-pomodoro-card__empty {
+  text-align: center;
+}
+
 .planner-pomodoro-card__label {
   color: #7c5c2c;
   font-size: 0.82rem;
@@ -4014,7 +4060,8 @@ button {
 }
 
 .planner-pomodoro-card__primary,
-.planner-pomodoro-card__ghost {
+.planner-pomodoro-card__ghost,
+.planner-pomodoro-card__mini {
   border-radius: 999px;
   font-size: 0.86rem;
   font-weight: 900;
@@ -4032,8 +4079,23 @@ button {
   color: #7c5c2c;
 }
 
+.planner-pomodoro-card__ghost--wide {
+  grid-column: 1 / -1;
+}
+
+.planner-pomodoro-card__mini {
+  background: rgba(255, 247, 232, 0.95);
+  color: #7c5c2c;
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  min-height: 32px;
+  min-width: 64px;
+  padding: 0 10px;
+}
+
 .planner-pomodoro-card__primary[disabled],
-.planner-pomodoro-card__ghost[disabled] {
+.planner-pomodoro-card__ghost[disabled],
+.planner-pomodoro-card__mini[disabled] {
   opacity: 0.46;
 }
 
