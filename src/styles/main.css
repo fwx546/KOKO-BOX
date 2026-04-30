@@ -2836,11 +2836,41 @@ button {
   top: -2px;
 }
 
+.planner-pomodoro-button {
+  background: #365f56;
+  border: 1px solid rgba(54, 95, 86, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 8px 18px rgba(54, 95, 86, 0.14);
+  color: #ffffff;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 900;
+  justify-content: center;
+  line-height: 1.15;
+  margin: -2px 0 16px;
+  min-height: 48px;
+  overflow: hidden;
+  padding: 0 16px;
+  position: relative;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.planner-pomodoro-button--running {
+  background: #d95c49;
+  border-color: rgba(217, 92, 73, 0.2);
+}
+
 .planner-punch-create::after,
 .planner-punch-check::after,
 .planner-punch-undo::after,
 .planner-punch-pet::after,
 .planner-punch-editor__danger::after,
+.planner-pomodoro-button::after,
+.planner-pomodoro-card__close::after,
+.planner-pomodoro-card__primary::after,
+.planner-pomodoro-card__ghost::after,
 .planner-schedule-fab::after,
 .planner-schedule-change::after,
 .planner-schedule-importer__primary::after,
@@ -3873,6 +3903,146 @@ button {
 .planner-punch-choice-mask {
   align-items: center;
   justify-content: center;
+}
+
+.planner-pomodoro-mask {
+  align-items: flex-end;
+  background: rgba(29, 45, 43, 0.34);
+  bottom: 0;
+  display: flex;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 94;
+}
+
+.planner-pomodoro-card {
+  background: #fffdf8;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -18px 40px rgba(70, 76, 54, 0.18);
+  box-sizing: border-box;
+  display: grid;
+  gap: 12px;
+  padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  position: relative;
+  width: 100%;
+}
+
+.planner-pomodoro-card__close {
+  align-items: center;
+  background: rgba(255, 248, 236, 0.92);
+  border: 1px solid rgba(196, 156, 82, 0.16);
+  border-radius: 50%;
+  color: #365f56;
+  display: flex;
+  font-size: 1rem;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 34px;
+}
+
+.planner-pomodoro-card__title {
+  color: #2f2e36;
+  font-size: 1.12rem;
+  font-weight: 900;
+  line-height: 1.3;
+  padding-right: 44px;
+}
+
+.planner-pomodoro-card__subtitle,
+.planner-pomodoro-card__status,
+.planner-pomodoro-card__error {
+  color: #7d8a74;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.planner-pomodoro-card__timer {
+  color: #365f56;
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.planner-pomodoro-card__status {
+  background: rgba(242, 251, 245, 0.96);
+  border: 1px solid rgba(143, 176, 136, 0.2);
+  border-radius: 14px;
+  color: #365f56;
+  padding: 9px 12px;
+  text-align: center;
+}
+
+.planner-pomodoro-card__label {
+  color: #7c5c2c;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.planner-pomodoro-card__picker {
+  align-items: center;
+  background: rgba(255, 247, 232, 0.86);
+  border: 1px solid rgba(196, 156, 82, 0.14);
+  border-radius: 18px;
+  color: #3d3442;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 900;
+  min-height: 46px;
+  padding: 0 14px;
+}
+
+.planner-pomodoro-card__actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.planner-pomodoro-card__actions--secondary {
+  margin-top: -2px;
+}
+
+.planner-pomodoro-card__primary,
+.planner-pomodoro-card__ghost {
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.2;
+  min-height: 42px;
+}
+
+.planner-pomodoro-card__primary {
+  background: #365f56;
+  color: #ffffff;
+}
+
+.planner-pomodoro-card__ghost {
+  background: rgba(255, 247, 232, 0.9);
+  color: #7c5c2c;
+}
+
+.planner-pomodoro-card__primary[disabled],
+.planner-pomodoro-card__ghost[disabled] {
+  opacity: 0.46;
+}
+
+.planner-pomodoro-card__error {
+  background: rgba(255, 241, 238, 0.96);
+  border-radius: 14px;
+  color: #b84b4b;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
 }
 
 .planner-punch-choice {

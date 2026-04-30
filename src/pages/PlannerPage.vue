@@ -4,10 +4,12 @@ import { onShow } from '@dcloudio/uni-app'
 import { useCourseScheduleImporter } from '../composables/useCourseScheduleImporter'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
+import { useCorgiBle } from '../services/corgiBle'
 import type { Task, TaskCategory, TaskKind } from '../types/koko'
 
-const { tasks, todayTasks, completedTasks, courseSchedule, createTask, updateTask, deleteTask, setTaskStatus, completeTaskWithReward, syncTasksFromCloud } = useKokoState()
+const { tasks, todayTasks, completedTasks, courseSchedule, createTask, updateTask, deleteTask, setTaskStatus, completeTaskWithReward, syncTasksFromCloud, triggerHardwareAction, updatePet } = useKokoState()
 const { t } = useLanguage()
+const corgiBle = useCorgiBle()
 const MARKED_CALENDAR_DATES_KEY = 'koko-planner-marked-dates-v1'
 
 type StyledTaskCard = Task & {
@@ -41,8 +43,14 @@ const formBorderColor = ref(colorOptions[0])
 const deleteLabel = 'Delete'
 const coinLabel = computed(() => (t.value.nav.home === '首页' ? '金币' : 'coins'))
 const rewardClaimedLabel = computed(() => (t.value.nav.home === '首页' ? '奖励已领取' : 'Reward claimed'))
+const pomodoroVisible = ref(false)
+const pomodoroMinutes = ref(25)
+const pomodoroRemainingSeconds = ref(25 * 60)
+const pomodoroRunning = ref(false)
+const pomodoroEnding = ref(false)
 const calendarNow = ref(new Date())
 let calendarTimer: ReturnType<typeof setInterval> | undefined
+let pomodoroTimer: ReturnType<typeof setInterval> | undefined
 
 const todayDate = () => new Date().toISOString().slice(0, 10)
 const toIsoDate = (date: Date) => {
@@ -56,6 +64,44 @@ const parseIsoDate = (iso: string) => {
   return new Date(year, (month || 1) - 1, day || 1)
 }
 const isZh = computed(() => t.value.nav.home === '首页')
+const pomodoroDurationOptions = [5, 10, 15, 25, 45, 60]
+const pomodoroDurationLabels = pomodoroDurationOptions.map((value) => `${value} min`)
+const pomodoroDurationIndex = computed(() => {
+  const index = pomodoroDurationOptions.indexOf(pomodoroMinutes.value)
+  return index >= 0 ? index : 3
+})
+const pomodoroCountdownLabel = computed(() => {
+  const minutes = Math.floor(pomodoroRemainingSeconds.value / 60)
+  const seconds = pomodoroRemainingSeconds.value % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+const pomodoroCopy = computed(() => ({
+  buttonIdle: isZh.value ? '未设置番茄钟' : 'Pomodoro not set',
+  buttonRunning: isZh.value ? `番茄钟 ${pomodoroCountdownLabel.value}` : `Pomodoro ${pomodoroCountdownLabel.value}`,
+  title: isZh.value ? '番茄钟' : 'Pomodoro',
+  subtitle: isZh.value ? '开始后会连接 M5-CORGI-POMO，并让硬件小狗进入睡眠。' : 'Starting connects to M5-CORGI-POMO and puts the hardware corgi to sleep.',
+  duration: isZh.value ? '专注时长' : 'Focus length',
+  start: isZh.value ? '开始专注' : 'Start focus',
+  stop: isZh.value ? '停止' : 'Stop',
+  connect: isZh.value ? '连接硬件' : 'Connect',
+  ping: isZh.value ? '发送 PING' : 'Send PING',
+  connected: isZh.value ? '已连接' : 'Connected',
+  scanning: isZh.value ? '扫描中' : 'Scanning',
+  connecting: isZh.value ? '连接中' : 'Connecting',
+  idle: isZh.value ? '未连接' : 'Not connected',
+  error: isZh.value ? '连接异常' : 'Link error',
+  done: isZh.value ? '倒计时结束，小狗已唤醒。' : 'Timer finished. Corgi is awake.',
+  localStarted: isZh.value ? '番茄钟已开始，本地倒计时继续运行。' : 'Pomodoro started. Local timer keeps running.',
+}))
+const pomodoroButtonLabel = computed(() => (pomodoroRunning.value ? pomodoroCopy.value.buttonRunning : pomodoroCopy.value.buttonIdle))
+const pomodoroBleError = computed(() => corgiBle.lastError.value)
+const pomodoroLinkLabel = computed(() => {
+  if (corgiBle.linkState.value === 'scanning') return pomodoroCopy.value.scanning
+  if (corgiBle.linkState.value === 'connecting') return pomodoroCopy.value.connecting
+  if (corgiBle.linkState.value === 'connected') return `${pomodoroCopy.value.connected} ${corgiBle.connectedDeviceName.value || corgiBle.deviceName}`
+  if (corgiBle.linkState.value === 'error') return pomodoroCopy.value.error
+  return pomodoroCopy.value.idle
+})
 const calendarCursor = ref(new Date())
 const yearCalendarVisible = ref(false)
 const yearCursor = ref(new Date().getFullYear())
@@ -213,6 +259,106 @@ const {
 
 const openCreateChoice = () => {
   showCreateChoice.value = true
+}
+
+const openPomodoro = () => {
+  pomodoroVisible.value = true
+}
+
+const closePomodoro = () => {
+  pomodoroVisible.value = false
+}
+
+const clearPomodoroTimer = () => {
+  if (pomodoroTimer) clearInterval(pomodoroTimer)
+  pomodoroTimer = undefined
+}
+
+const notifyPomodoroCommandFailure = (command: string, error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error || '')
+  uni.showToast({
+    title: isZh.value ? `${command} 发送失败` : `${command} failed`,
+    icon: 'none',
+  })
+  console.warn('[corgi-ble]', command, message)
+}
+
+const sendPomodoroCommand = async (command: 'START' | 'DONE' | 'PING') => {
+  try {
+    await corgiBle.sendCommand(command)
+    return true
+  } catch (error) {
+    notifyPomodoroCommandFailure(command, error)
+    return false
+  }
+}
+
+const finishPomodoro = async () => {
+  if (pomodoroEnding.value) return
+  pomodoroEnding.value = true
+  clearPomodoroTimer()
+  pomodoroRunning.value = false
+  pomodoroRemainingSeconds.value = 0
+  updatePet({ state: 'normal', energy: 76 })
+  triggerHardwareAction('pomodoro-done', { command: 'DONE' })
+  const sent = await sendPomodoroCommand('DONE')
+  if (sent) {
+    uni.showToast({ title: pomodoroCopy.value.done, icon: 'none' })
+  }
+  pomodoroEnding.value = false
+}
+
+const startPomodoroCountdown = () => {
+  clearPomodoroTimer()
+  pomodoroTimer = setInterval(() => {
+    if (pomodoroRemainingSeconds.value <= 1) {
+      void finishPomodoro()
+      return
+    }
+    pomodoroRemainingSeconds.value -= 1
+  }, 1000)
+}
+
+const startPomodoro = async () => {
+  pomodoroRemainingSeconds.value = pomodoroMinutes.value * 60
+  pomodoroRunning.value = true
+  pomodoroEnding.value = false
+  updatePet({ state: 'resting', energy: 48 })
+  triggerHardwareAction('pomodoro-start', { command: 'START', minutes: pomodoroMinutes.value })
+  startPomodoroCountdown()
+  const sent = await sendPomodoroCommand('START')
+  if (sent) {
+    uni.showToast({ title: pomodoroCopy.value.localStarted, icon: 'none' })
+  }
+}
+
+const stopPomodoro = async () => {
+  clearPomodoroTimer()
+  pomodoroRunning.value = false
+  pomodoroRemainingSeconds.value = 0
+  updatePet({ state: 'normal', energy: 70 })
+  triggerHardwareAction('pomodoro-stop', { command: 'DONE' })
+  await sendPomodoroCommand('DONE')
+}
+
+const selectPomodoroDuration = (event: { detail: { value: number | string } }) => {
+  const index = Number(event.detail.value)
+  pomodoroMinutes.value = pomodoroDurationOptions[index] ?? 25
+  if (!pomodoroRunning.value) {
+    pomodoroRemainingSeconds.value = pomodoroMinutes.value * 60
+  }
+}
+
+const connectPomodoroDevice = async () => {
+  const connected = await corgiBle.connect()
+  uni.showToast({
+    title: connected ? (isZh.value ? '硬件已连接' : 'Hardware connected') : (isZh.value ? '连接失败' : 'Connection failed'),
+    icon: 'none',
+  })
+}
+
+const pingPomodoroDevice = async () => {
+  await sendPomodoroCommand('PING')
 }
 
 const closeCreateChoice = () => {
@@ -434,6 +580,7 @@ calendarTimer = setInterval(() => {
 onBeforeUnmount(() => {
   if (calendarTimer) clearInterval(calendarTimer)
   calendarTimer = undefined
+  clearPomodoroTimer()
 })
 </script>
 
@@ -472,6 +619,10 @@ onBeforeUnmount(() => {
         </button>
       </view>
     </view>
+
+    <button class="planner-pomodoro-button" :class="{ 'planner-pomodoro-button--running': pomodoroRunning }" @click="openPomodoro">
+      {{ pomodoroButtonLabel }}
+    </button>
 
     <view class="planner-punch-board">
       <view class="planner-punch-section planner-punch-ddl-section">
@@ -541,6 +692,37 @@ onBeforeUnmount(() => {
       <view class="planner-punch-choice" @click.stop>
         <button @click="chooseCreateKind('ddl')">{{ t.planner.createDdl }}</button>
         <button @click="chooseCreateKind('task')">{{ t.planner.createTask }}</button>
+      </view>
+    </view>
+
+    <view v-if="pomodoroVisible" class="planner-pomodoro-mask" @click="closePomodoro">
+      <view class="planner-pomodoro-card" @click.stop>
+        <button class="planner-pomodoro-card__close" @click="closePomodoro">×</button>
+        <view class="planner-pomodoro-card__title">{{ pomodoroCopy.title }}</view>
+        <view class="planner-pomodoro-card__subtitle">{{ pomodoroCopy.subtitle }}</view>
+        <view class="planner-pomodoro-card__timer">{{ pomodoroRunning ? pomodoroCountdownLabel : `${pomodoroMinutes}:00` }}</view>
+        <view class="planner-pomodoro-card__status">{{ pomodoroLinkLabel }}</view>
+
+        <view class="planner-pomodoro-card__label">{{ pomodoroCopy.duration }}</view>
+        <picker
+          mode="selector"
+          :range="pomodoroDurationLabels"
+          :value="pomodoroDurationIndex"
+          :disabled="pomodoroRunning"
+          @change="selectPomodoroDuration"
+        >
+          <view class="planner-pomodoro-card__picker">{{ pomodoroMinutes }} min</view>
+        </picker>
+
+        <view class="planner-pomodoro-card__actions">
+          <button class="planner-pomodoro-card__primary" :disabled="pomodoroRunning" @click="startPomodoro">{{ pomodoroCopy.start }}</button>
+          <button class="planner-pomodoro-card__ghost" :disabled="!pomodoroRunning" @click="stopPomodoro">{{ pomodoroCopy.stop }}</button>
+        </view>
+        <view class="planner-pomodoro-card__actions planner-pomodoro-card__actions--secondary">
+          <button class="planner-pomodoro-card__ghost" @click="connectPomodoroDevice">{{ pomodoroCopy.connect }}</button>
+          <button class="planner-pomodoro-card__ghost" @click="pingPomodoroDevice">{{ pomodoroCopy.ping }}</button>
+        </view>
+        <view v-if="pomodoroBleError" class="planner-pomodoro-card__error">{{ pomodoroBleError }}</view>
       </view>
     </view>
 
