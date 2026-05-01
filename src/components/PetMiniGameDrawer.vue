@@ -1024,11 +1024,11 @@ const seekSpot = (spotId: string) => {
 }
 
 const switchHideScene = (sceneId: HideSceneId) => {
-  if (activeHideScene.value === sceneId || isRunning.value) return
+  if (activeHideScene.value === sceneId) return
+  if (isRunning.value && !isPaused.value && !gameCompleted.value) return
+
   activeHideScene.value = sceneId
-  hiddenSpot.value = activeHideSpots.value[0]?.id ?? hiddenSpot.value
-  hideWrongSpots.value = []
-  foundSpot.value = null
+  resetBoard()
   hideClue.value = settings.value.language === 'zh'
     ? '已切换藏身场景，点击开始让 Koko 躲起来。'
     : 'Scene switched. Tap Start and Koko will hide here.'
