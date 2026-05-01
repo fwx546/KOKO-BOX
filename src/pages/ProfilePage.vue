@@ -18,6 +18,7 @@ const {
   syncCourseScheduleFromCloud,
   syncTasksFromCloud,
   syncEconomyFromCloud,
+  persistEconomyToCloud,
   updatePet,
   updateSettings,
 } = useKokoState()
@@ -195,6 +196,7 @@ const renamePet = async () => {
         ...(authPet.value ?? {}),
         name: nextName,
       })
+      await persistEconomyToCloud()
     }
     renameInput.value = nextName
     uni.showToast({ title: t.value.settings.nameUpdated, icon: 'success' })
