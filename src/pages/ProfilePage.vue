@@ -4,7 +4,7 @@ import { useAuth } from '../composables/useAuth'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 
-type ProfileSheet = 'rename' | 'petAttributes' | 'about' | 'privacy'
+type ProfileSheet = 'rename' | 'petAttributes' | 'about' | 'privacy' | 'avatar'
 type PrivacySettingKey = 'hideChats' | 'allowChatClear' | 'allowCrossDeviceSummary' | 'lowDisturbanceMode' | 'demoMode'
 
 const { user, pet: authPet, authMode, isGuestSession, loading, importWechatProfile, login, syncUserProfile } = useAuth()
@@ -59,6 +59,10 @@ const profileCopy = computed(() => ({
   renameHint: isZh.value ? '最多 12 个字，保存后会同步到当前宠物资料。' : 'Up to 12 characters. Saving updates the current pet profile.',
   save: isZh.value ? '保存' : 'Save',
   saving: isZh.value ? '保存中...' : 'Saving...',
+  avatarTitle: isZh.value ? '选择头像来源' : 'Choose avatar source',
+  avatarWechat: isZh.value ? '使用微信头像' : 'Use WeChat avatar',
+  avatarAlbum: isZh.value ? '从相册选择' : 'Choose from album',
+  avatarCancel: isZh.value ? '取消' : 'Cancel',
   petAttributeTitle: isZh.value ? '宠物属性' : 'Pet attributes',
   aboutTitle: isZh.value ? '关于 KOKOBOX' : 'About KOKOBOX',
   aboutBody: isZh.value
@@ -144,6 +148,14 @@ const openRenameSheet = () => {
   openSheet('rename')
 }
 
+const openAvatarSheet = () => {
+  if (isGuestSession.value) {
+    return
+  }
+
+  openSheet('avatar')
+}
+
 const closeSheet = () => {
   activeSheet.value = null
 }
@@ -218,6 +230,45 @@ const profileGroups = computed(() => [
   },
 ])
 
+const chooseCustomAvatar = async () => {
+  if (isGuestSession.value) {
+    return
+  }
+
+  try {
+    const result = await new Promise<{ tempFilePaths?: string[] }>((resolve, reject) => {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album'],
+        success: resolve,
+        fail: reject,
+      })
+    })
+
+    const avatarFilePath = result.tempFilePaths?.[0]
+    if (!avatarFilePath) {
+      return
+    }
+
+    closeSheet()
+    await importWechatProfile({
+      nickName: user.value?.nickName,
+      avatarFilePath,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message && message.includes('cancel')) {
+      return
+    }
+
+    uni.showToast({
+      title: isZh.value ? '头像选择失败' : 'Avatar selection failed',
+      icon: 'none',
+    })
+  }
+}
+
 const handleChooseAvatar = (event: { detail?: { avatarUrl?: string } }) => {
   if (isGuestSession.value) {
     return
@@ -228,6 +279,8 @@ const handleChooseAvatar = (event: { detail?: { avatarUrl?: string } }) => {
   if (!avatarFilePath) {
     return
   }
+
+  closeSheet()
 
   void importWechatProfile({
     nickName: user.value?.nickName,
@@ -270,12 +323,7 @@ onMounted(async () => {
   <view class="profile-page">
     <view class="profile-hero">
       <view class="profile-hero__top">
-        <button
-          v-if="!isGuestSession"
-          class="profile-avatar profile-avatar--button"
-          open-type="chooseAvatar"
-          @chooseavatar="handleChooseAvatar"
-        >
+        <button v-if="!isGuestSession" class="profile-avatar profile-avatar--button" @click="openAvatarSheet">
           <image
             v-if="shouldShowAvatarImage"
             class="profile-avatar__image"
@@ -363,6 +411,19 @@ onMounted(async () => {
           <view class="profile-sheet__body">{{ profileCopy.renameHint }}</view>
           <button class="profile-sheet__primary" :disabled="renameSaving" @click="renamePet">
             {{ renameSaving ? profileCopy.saving : profileCopy.save }}
+          </button>
+        </template>
+
+        <template v-else-if="activeSheet === 'avatar'">
+          <view class="profile-sheet__title">{{ profileCopy.avatarTitle }}</view>
+          <button class="profile-sheet__primary" open-type="chooseAvatar" @chooseavatar="handleChooseAvatar">
+            {{ profileCopy.avatarWechat }}
+          </button>
+          <button class="profile-sheet__ghost" @click="chooseCustomAvatar">
+            {{ profileCopy.avatarAlbum }}
+          </button>
+          <button class="profile-sheet__text" @click="closeSheet">
+            {{ profileCopy.avatarCancel }}
           </button>
         </template>
 
@@ -761,6 +822,34 @@ onMounted(async () => {
   height: 82rpx;
   line-height: 82rpx;
   margin: 26rpx 0 0;
+}
+
+.profile-sheet__primary::after,
+.profile-sheet__ghost::after,
+.profile-sheet__text::after {
+  border: 0;
+}
+
+.profile-sheet__ghost {
+  background: rgba(255, 255, 255, 0.78);
+  border: 2rpx solid rgba(107, 138, 120, 0.2);
+  border-radius: 999rpx;
+  color: #315c50;
+  font-size: 26rpx;
+  font-weight: 800;
+  height: 78rpx;
+  line-height: 78rpx;
+  margin: 16rpx 0 0;
+}
+
+.profile-sheet__text {
+  background: transparent;
+  color: #8a7a68;
+  font-size: 24rpx;
+  font-weight: 700;
+  height: 60rpx;
+  line-height: 60rpx;
+  margin: 12rpx 0 0;
 }
 
 .profile-privacy-list {
