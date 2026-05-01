@@ -101,11 +101,31 @@ const sanitizePurchaseHistory = (value) =>
     .filter(Boolean)
     .slice(-100)
 
+const sanitizeCoinLogs = (value) =>
+  (Array.isArray(value) ? value : [])
+    .map((item = {}, index) => {
+      const amount = clampNumber(item.amount, -999999, 999999, 0)
+      if (!amount) return null
+      const type = item.type === 'consume' || amount < 0 ? 'consume' : 'gain'
+      const signedAmount = type === 'consume' ? -Math.abs(amount) : Math.abs(amount)
+      return {
+        id: normalizeText(item.id, 80) || `coin-log-${index + 1}`,
+        type,
+        amount: signedAmount,
+        reason: normalizeText(item.reason, 80) || (type === 'gain' ? 'Reward' : 'Consume'),
+        created_at: normalizeText(item.created_at, 40) || now(),
+      }
+    })
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+    .slice(0, 300)
+
 const sanitizeEconomy = (value = {}) => ({
   coins: clampNumber(value.coins, 0, 999999, 0),
   inventory: sanitizeInventory(value.inventory),
   purchaseHistory: sanitizePurchaseHistory(value.purchaseHistory),
   rewardLedger: sanitizeRewardLedger(value.rewardLedger),
+  coinLogs: sanitizeCoinLogs(value.coinLogs),
   dailyChatRewards: sanitizeDailyChatRewards(value.dailyChatRewards),
   starterResourcesGranted: Boolean(value.starterResourcesGranted),
   updatedAt: normalizeText(value.updatedAt, 40) || now(),
