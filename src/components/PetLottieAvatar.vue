@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import lottie from 'lottie-miniprogram'
+import angryDogAnimation from '../assets/animations/angry-dog.json'
 import happyDogAnimation from '../assets/animations/happy-dog.json'
+
+type PetVariant = 'happy' | 'angry'
+
+const emit = defineEmits<{
+  (event: 'complete'): void
+}>()
 
 const props = withDefaults(
   defineProps<{
@@ -9,12 +16,16 @@ const props = withDefaults(
     paused?: boolean
     still?: boolean
     mirror?: boolean
+    variant?: PetVariant
+    loop?: boolean
   }>(),
   {
     sizeRpx: 600,
     paused: false,
     still: false,
     mirror: false,
+    variant: 'happy',
+    loop: true,
   },
 )
 
@@ -29,94 +40,131 @@ const wrapperStyle = computed(() => ({
   height: `${props.sizeRpx}rpx`,
   transform: `scaleX(${props.mirror ? -1 : 1})`,
 }))
+const animationData = computed(() => (props.variant === 'angry' ? angryDogAnimation : happyDogAnimation))
 
-let lottieAnimation: {
+type LottieInstance = {
   destroy?: () => void
   goToAndStop?: (value: number, isFrame?: boolean) => void
   stop?: () => void
-} | null = null
+  addEventListener?: (event: string, handler: () => void) => void
+  removeEventListener?: (event: string, handler: () => void) => void
+} | null
 
-const clearLottieAnimation = () => {
-  if (!lottieAnimation) return
-  lottieAnimation.destroy?.()
-  lottieAnimation = null
+let lottieInstance: LottieInstance = null
+let onComplete: (() => void) | undefined
+
+const destroyLottie = () => {
+  if (onComplete && lottieInstance?.removeEventListener) {
+    lottieInstance.removeEventListener('complete', onComplete)
+  }
+  onComplete = undefined
+  lottieInstance?.destroy?.()
+  lottieInstance = null
 }
 
 const initPetLottie = () => {
-  if (props.paused) return
+  return new Promise<void>((resolve) => {
+    if (props.paused) {
+      destroyLottie()
+      resolve()
+      return
+    }
 
-  const query = uni.createSelectorQuery()
-  const scope = componentInstance?.proxy
-  if (scope) query.in(scope)
+    const query = uni.createSelectorQuery()
+    const scope = componentInstance?.proxy
+    if (scope) query.in(scope)
 
-  query
-    .select(`#${canvasId}`)
-    .fields({ node: true, size: true }, (result: any) => {
-      const canvas = result?.node
-      if (!canvas) return
+    query
+      .select(`#${canvasId}`)
+      .fields({ node: true, size: true }, (result: any) => {
+        const canvas = result?.node
+        if (!canvas) {
+          resolve()
+          return
+        }
 
-      const context = canvas.getContext('2d')
-      if (!context) return
+        const context = canvas.getContext('2d')
+        if (!context) {
+          resolve()
+          return
+        }
 
-      const windowInfo = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : undefined
-      const dpr = windowInfo?.pixelRatio ?? 1
-      const width = Number(result?.width ?? 0)
-      const height = Number(result?.height ?? 0)
-      const fallbackSizePx = uni.upx2px(props.sizeRpx)
-      const finalWidth = width > 0 ? width : fallbackSizePx
-      const finalHeight = height > 0 ? height : fallbackSizePx
+        const windowInfo = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : undefined
+        const dpr = windowInfo?.pixelRatio ?? 1
+        const width = Number(result?.width ?? 0)
+        const height = Number(result?.height ?? 0)
+        const fallbackSizePx = uni.upx2px(props.sizeRpx)
+        const finalWidth = width > 0 ? width : fallbackSizePx
+        const finalHeight = height > 0 ? height : fallbackSizePx
 
-      canvas.width = finalWidth * dpr
-      canvas.height = finalHeight * dpr
-      if (canvas.style) {
-        canvas.style.width = `${finalWidth}px`
-        canvas.style.height = `${finalHeight}px`
-      }
-      context.scale(dpr, dpr)
+        canvas.width = finalWidth * dpr
+        canvas.height = finalHeight * dpr
+        if (canvas.style) {
+          canvas.style.width = `${finalWidth}px`
+          canvas.style.height = `${finalHeight}px`
+        }
+        context.scale(dpr, dpr)
 
-      clearLottieAnimation()
-      lottie.setup(canvas)
-      lottieAnimation = lottie.loadAnimation({
-        loop: true,
-        autoplay: !props.still,
-        animationData: happyDogAnimation,
-        rendererSettings: {
-          context,
-          preserveAspectRatio: 'xMidYMid meet',
-        },
+        destroyLottie()
+        lottie.setup(canvas)
+        lottieInstance = lottie.loadAnimation({
+          loop: props.loop,
+          autoplay: !props.still,
+          animationData: animationData.value,
+          rendererSettings: {
+            context,
+            preserveAspectRatio: 'xMidYMid meet',
+          },
+        })
+
+        if (props.still) {
+          lottieInstance?.goToAndStop?.(12, true)
+          lottieInstance?.stop?.()
+          resolve()
+          return
+        }
+
+        if (!props.loop && lottieInstance?.addEventListener) {
+          onComplete = () => {
+            destroyLottie()
+            emit('complete')
+          }
+          lottieInstance.addEventListener('complete', onComplete)
+        }
+
+        resolve()
       })
-      if (props.still) {
-        lottieAnimation?.goToAndStop?.(12, true)
-        lottieAnimation?.stop?.()
-      }
-    })
-    .exec()
+      .exec()
+  })
 }
 
 watch(
-  () => [props.paused, props.sizeRpx, props.still],
-  async ([paused]) => {
-    clearLottieAnimation()
-    if (paused) return
+  () => [props.paused, props.sizeRpx, props.still, props.loop, props.variant],
+  async () => {
     await nextTick()
-    initPetLottie()
+    await initPetLottie()
   },
 )
 
-onMounted(() => {
-  nextTick(() => {
-    initPetLottie()
-  })
+onMounted(async () => {
+  await nextTick()
+  await initPetLottie()
 })
 
 onBeforeUnmount(() => {
-  clearLottieAnimation()
+  destroyLottie()
 })
 </script>
 
 <template>
   <view class="pet-lottie-avatar" :style="wrapperStyle">
-    <canvas :id="canvasId" :canvas-id="canvasId" type="2d" class="pet-lottie-avatar__canvas" :style="avatarSizeStyle" />
+    <canvas
+      :id="canvasId"
+      :canvas-id="canvasId"
+      type="2d"
+      class="pet-lottie-avatar__canvas"
+      :style="avatarSizeStyle"
+    />
   </view>
 </template>
 
@@ -131,6 +179,9 @@ onBeforeUnmount(() => {
 .pet-lottie-avatar__canvas {
   display: block;
   height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
   width: 100%;
 }
 </style>

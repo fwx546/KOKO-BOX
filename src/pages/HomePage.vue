@@ -89,6 +89,7 @@ const showBubble = ref(false)
 const chatDraft = ref('')
 const chatPromptHint = ref(pickChatPromptHint())
 const sending = ref(false)
+const petEmotion = ref<'happy' | 'angry'>('happy')
 const gameDrawerOpen = ref(false)
 const careResourcePanelOpen = ref(false)
 const activeCareResourceAction = ref<'feedMeal' | 'feedWater' | 'clean' | null>(null)
@@ -97,11 +98,14 @@ const activeStatKey = ref<HomeStatKey | null>(null)
 const nowMs = ref(Date.now())
 const rotationFrame = ref(pet.value.rotationFrame ?? 0)
 const dragging = ref(false)
+const TAP_WINDOW_MS = 320
 
 let tapTimer: ReturnType<typeof setTimeout> | undefined
 let bubbleTimer: ReturnType<typeof setTimeout> | undefined
 let actionTimer: ReturnType<typeof setTimeout> | undefined
+let emotionTimer: ReturnType<typeof setTimeout> | undefined
 let digestTimer: ReturnType<typeof setInterval> | undefined
+let tapCount = 0
 let dragStartX = 0
 let movedDistance = 0
 let carryDistance = 0
@@ -222,11 +226,14 @@ const clearTimers = () => {
   if (tapTimer) clearTimeout(tapTimer)
   if (bubbleTimer) clearTimeout(bubbleTimer)
   if (actionTimer) clearTimeout(actionTimer)
+  if (emotionTimer) clearTimeout(emotionTimer)
   if (digestTimer) clearInterval(digestTimer)
   tapTimer = undefined
   bubbleTimer = undefined
   actionTimer = undefined
+  emotionTimer = undefined
   digestTimer = undefined
+  tapCount = 0
 }
 
 const queueIdleReset = (duration = 1800) => {
@@ -253,6 +260,12 @@ const triggerPetAction = (action: PetActionType, message: string, duration = 220
   queueIdleReset(duration)
 }
 
+const setPetEmotion = (emotion: 'happy' | 'angry') => {
+  petEmotion.value = emotion
+  if (emotionTimer) clearTimeout(emotionTimer)
+  emotionTimer = undefined
+}
+
 const handleSingleTap = async () => {
   const reply = await getPetQuickReply('home-tap')
   triggerPetAction(reply.action === 'idle' ? 'greet' : reply.action, reply.content)
@@ -263,18 +276,31 @@ const handleDoubleTap = async () => {
   triggerPetAction(reply.action === 'idle' ? 'greet' : reply.action, reply.content, 2400)
 }
 
-const handlePetTap = () => {
-  if (tapTimer) {
-    clearTimeout(tapTimer)
-    tapTimer = undefined
-    void handleDoubleTap()
-    return
-  }
+const handleTripleTap = () => {
+  setPetEmotion('angry')
+}
 
-  tapTimer = setTimeout(() => {
-    tapTimer = undefined
+const handleAngryComplete = () => {
+  setPetEmotion('happy')
+}
+
+const finalizeTap = () => {
+  const count = tapCount
+  tapCount = 0
+  tapTimer = undefined
+  if (count === 1) {
     void handleSingleTap()
-  }, 220)
+  } else if (count === 2) {
+    void handleDoubleTap()
+  } else if (count >= 3) {
+    handleTripleTap()
+  }
+}
+
+const handlePetTap = () => {
+  tapCount += 1
+  if (tapTimer) clearTimeout(tapTimer)
+  tapTimer = setTimeout(finalizeTap, TAP_WINDOW_MS)
 }
 
 const handleRotate = (frame: number) => {
@@ -316,11 +342,14 @@ const movePetDrag = (event: any) => {
 
 const endPetDrag = () => {
   if (!dragging.value) return
-  const wasTap = movedDistance < 10
   dragging.value = false
   carryDistance = 0
-  if (wasTap) handlePetTap()
-  handleRotateEnd(rotationFrame.value)
+  const TAP_THRESHOLD_PX = 8
+  if (movedDistance < TAP_THRESHOLD_PX) {
+    handlePetTap()
+  } else {
+    handleRotateEnd(rotationFrame.value)
+  }
 }
 
 const carePreviewMessage = (key: (typeof careActions)[number]['key']) => {
@@ -513,7 +542,21 @@ onShow(() => {
             <view class="pet-model-stage__halo" />
             <view class="pet-model-stage__platform" />
             <view v-if="shouldShowPetLottie" class="pet-lottie-wrap" :class="`pet-lottie-wrap--${petAction}`">
-              <PetLottieAvatar :size-rpx="PET_LOTTIE_SIZE_RPX" :mirror="petFacingMirrored" />
+              <PetLottieAvatar
+                v-if="petEmotion === 'happy'"
+                :size-rpx="PET_LOTTIE_SIZE_RPX"
+                :mirror="petFacingMirrored"
+                variant="happy"
+                :loop="true"
+              />
+              <PetLottieAvatar
+                v-else
+                :size-rpx="PET_LOTTIE_SIZE_RPX"
+                :mirror="petFacingMirrored"
+                variant="angry"
+                :loop="false"
+                @complete="handleAngryComplete"
+              />
             </view>
           </view>
         </view>
