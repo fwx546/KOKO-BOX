@@ -3137,7 +3137,7 @@ button {
 
 .planner-focus-hour-chart__grid {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   grid-template-columns: repeat(24, 8px);
   min-width: max-content;
   width: max-content;
@@ -3166,10 +3166,11 @@ button {
 
 .planner-focus-hour-chart__track {
   align-items: end;
-  background: rgba(180, 215, 203, 0.25);
+  background: transparent;
   border-radius: 999px;
   display: flex;
-  height: 288px;
+  justify-content: center;
+  height: 173px; /* reduced to 60% (3/5) of previous 288px */
   overflow: hidden;
   width: 100%;
 }
@@ -3177,7 +3178,8 @@ button {
 .planner-focus-hour-chart__fill {
   background: linear-gradient(0deg, #2f9e59, #7fd38a);
   border-radius: inherit;
-  width: 100%;
+  width: 30%;
+  align-self: flex-end;
 }
 
 .planner-focus-hour-chart__label {

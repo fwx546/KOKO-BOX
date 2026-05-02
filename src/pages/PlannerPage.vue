@@ -294,11 +294,15 @@ const focusSessionWeeklyDays = computed(() => {
 const focusSessionModeLabel = computed(() => (focusStatsMode.value === 'daily' ? (isZh.value ? '今日专注' : 'Today focus') : (isZh.value ? '近 7 天' : 'Last 7 days')))
 const focusSessionBars = computed(() => {
   if (focusStatsMode.value === 'daily') {
-    return focusSessionTodayHourlySeconds.value.map((seconds, hour) => ({
-      key: `${hour}`,
-      label: `${String(hour).padStart(2, '0')}`,
-      value: seconds,
-    }))
+    return focusSessionTodayHourlySeconds.value.map((seconds, hour) => {
+      const displayHours = [1, 6, 12, 18, 24]
+      const hourLabel = displayHours.includes(hour + 1) ? String(hour + 1) : ''
+      return {
+        key: `${hour}`,
+        label: hourLabel,
+        value: seconds,
+      }
+    })
   }
 
   return focusSessionWeeklyDays.value.map((day) => ({
@@ -990,7 +994,6 @@ onBeforeUnmount(() => {
           <scroll-view scroll-x class="planner-focus-hour-chart__scroll">
             <view class="planner-focus-hour-chart__grid">
               <view v-for="bar in focusSessionBars" :key="bar.key" class="planner-focus-hour-chart__item">
-                <view class="planner-focus-hour-chart__value">{{ Math.round(bar.value / 60) }}<text>{{ isZh ? '分' : 'm' }}</text></view>
                 <view class="planner-focus-hour-chart__track">
                   <view class="planner-focus-hour-chart__fill" :style="{ height: `${Math.max(6, (bar.value / focusSessionBarsMaxSeconds) * 100)}%` }" />
                 </view>
