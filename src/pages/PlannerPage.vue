@@ -103,6 +103,16 @@ const pomodoroCopy = computed(() => ({
 }))
 const pomodoroButtonLabel = computed(() => (pomodoroRunning.value ? pomodoroCopy.value.buttonRunning : pomodoroCopy.value.buttonIdle))
 const pomodoroBleError = computed(() => corgiBle.lastError.value)
+const pomodoroStopButtonStyle = computed(() => (
+  pomodoroRunning.value
+    ? { backgroundColor: '#d95c49', borderColor: '#d95c49', color: '#ffffff' }
+    : {}
+))
+const pomodoroUnbindButtonStyle = computed(() => (
+  corgiBle.linkState.value === 'connected'
+    ? { backgroundColor: '#d95c49', borderColor: '#d95c49', color: '#ffffff' }
+    : {}
+))
 const pomodoroBoundDeviceLabel = computed(() => {
   const device = corgiBle.boundDevice.value
   return device ? `${pomodoroCopy.value.bound} ${device.name || device.localName || device.deviceId}` : pomodoroCopy.value.unbound
@@ -736,7 +746,13 @@ onBeforeUnmount(() => {
         <view class="planner-pomodoro-card__status">{{ pomodoroLinkLabel }}</view>
         <view class="planner-pomodoro-card__binding">
           <view>{{ pomodoroBoundDeviceLabel }}</view>
-          <button v-if="corgiBle.boundDevice.value" class="planner-pomodoro-card__mini" @click="unbindPomodoroDevice">{{ pomodoroCopy.unbind }}</button>
+          <button
+            v-if="corgiBle.boundDevice.value"
+            class="planner-pomodoro-card__mini"
+            :class="{ 'planner-pomodoro-card__mini--danger': corgiBle.linkState.value === 'connected' }"
+            :style="pomodoroUnbindButtonStyle"
+            @click="unbindPomodoroDevice"
+          >{{ pomodoroCopy.unbind }}</button>
         </view>
 
         <view class="planner-pomodoro-card__label">{{ pomodoroCopy.duration }}</view>
@@ -752,7 +768,13 @@ onBeforeUnmount(() => {
 
         <view class="planner-pomodoro-card__actions">
           <button class="planner-pomodoro-card__primary" :disabled="pomodoroRunning" @click="startPomodoro">{{ pomodoroCopy.start }}</button>
-          <button class="planner-pomodoro-card__ghost" :disabled="!pomodoroRunning" @click="stopPomodoro">{{ pomodoroCopy.stop }}</button>
+          <button
+            class="planner-pomodoro-card__ghost"
+            :class="{ 'planner-pomodoro-card__ghost--danger': pomodoroRunning }"
+            :style="pomodoroStopButtonStyle"
+            :disabled="!pomodoroRunning"
+            @click="stopPomodoro"
+          >{{ pomodoroCopy.stop }}</button>
         </view>
         <view class="planner-pomodoro-card__actions planner-pomodoro-card__actions--secondary">
           <button class="planner-pomodoro-card__ghost" @click="connectPomodoroDevice">{{ pomodoroCopy.connect }}</button>

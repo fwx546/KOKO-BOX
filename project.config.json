@@ -4,20 +4,20 @@
     "ignore": [],
     "include": [
       {
-        "type": "file",
-        "value": "static/home/room.webp"
+        "value": "static/home/room.webp",
+        "type": "file"
       },
       {
-        "type": "file",
-        "value": "static/home/room-fallback.jpg"
+        "value": "static/home/room-fallback.jpg",
+        "type": "file"
       },
       {
-        "type": "file",
-        "value": "static/town/map.webp"
+        "value": "static/town/map.webp",
+        "type": "file"
       },
       {
-        "type": "file",
-        "value": "static/town/map-fallback.jpg"
+        "value": "static/town/map-fallback.jpg",
+        "type": "file"
       }
     ]
   },
@@ -47,7 +47,7 @@
     }
   },
   "compileType": "miniprogram",
-  "libVersion": "trial",
+  "libVersion": "3.15.2",
   "appid": "wx90ec72eb27dedd5b",
   "miniprogramRoot": "dist/build/mp-weixin/",
   "cloudfunctionRoot": "cloudfunctions/",

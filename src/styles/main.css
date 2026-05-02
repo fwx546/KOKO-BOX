@@ -4079,6 +4079,16 @@ button {
   color: #7c5c2c;
 }
 
+.planner-pomodoro-card__ghost--danger {
+  background: #d95c49 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.planner-pomodoro-card__ghost--danger[disabled] {
+  opacity: 1 !important;
+}
+
 .planner-pomodoro-card__ghost--wide {
   grid-column: 1 / -1;
 }
@@ -4091,6 +4101,16 @@ button {
   min-height: 32px;
   min-width: 64px;
   padding: 0 10px;
+}
+
+.planner-pomodoro-card__mini--danger {
+  background: #d95c49 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.planner-pomodoro-card__mini--danger[disabled] {
+  opacity: 1 !important;
 }
 
 .planner-pomodoro-card__primary[disabled],
