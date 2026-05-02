@@ -2847,7 +2847,7 @@ button {
   font-weight: 900;
   justify-content: center;
   line-height: 1.15;
-  margin: -2px 0 16px;
+  margin: -2px 0 4px;
   min-height: 48px;
   overflow: hidden;
   padding: 0 16px;
@@ -2860,6 +2860,330 @@ button {
 .planner-pomodoro-button--running {
   background: #d95c49;
   border-color: rgba(217, 92, 73, 0.2);
+}
+
+.planner-pomodoro-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.planner-pomodoro-links {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.planner-pomodoro-link {
+  align-items: center;
+  background: rgba(255, 251, 243, 0.96);
+  border: 1px solid rgba(214, 188, 132, 0.14);
+  border-radius: 18px;
+  color: #927244;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  justify-content: center;
+  line-height: 1.05;
+  min-height: 42px;
+  padding: 0 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.planner-pomodoro-link--en {
+  font-size: 0.76rem;
+}
+
+.planner-focus-mask {
+  align-items: center;
+  background: rgba(37, 48, 71, 0.38);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 60;
+}
+
+.planner-focus-card {
+  background: linear-gradient(145deg, #fffdf8, #eefbf2);
+  border: 1px solid rgba(176, 143, 102, 0.2);
+  border-radius: 24px;
+  box-shadow: 0 22px 48px rgba(99, 74, 42, 0.2);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 18px;
+  position: relative;
+  width: min(680px, 100%);
+}
+
+.planner-focus-card__close {
+  background: rgba(255, 247, 232, 0.92);
+  border-radius: 999px;
+  color: #7c5c2c;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 36px;
+  height: 36px;
+}
+
+.planner-focus-card__title {
+  color: #253047;
+  font-size: 28px;
+  font-weight: 900;
+  padding-right: 48px;
+}
+
+.planner-focus-card__title--daily {
+  font-size: 25px;
+}
+
+.planner-focus-card__subtitle {
+  color: #7d8a74;
+  font-size: 14px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.planner-focus-goal {
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(176, 143, 102, 0.14);
+  border-radius: 18px;
+  margin-top: 14px;
+  padding: 12px 14px;
+}
+
+.planner-focus-goal__row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.planner-focus-goal__label {
+  color: #253047;
+  font-size: 14px;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.planner-focus-goal__picker {
+  align-items: center;
+  background: rgba(54, 95, 86, 0.08);
+  border-radius: 14px;
+  color: #365f56;
+  display: inline-flex;
+  font-size: 18px;
+  font-weight: 900;
+  margin-top: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.planner-focus-goal__hint {
+  color: #7d8a74;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  margin-top: 8px;
+}
+
+.planner-focus-ring-row {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 180px minmax(0, 1fr);
+  margin-top: 18px;
+}
+
+.planner-focus-ring-row--daily {
+  margin-top: 12px;
+}
+
+.planner-focus-ring {
+  align-items: center;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  height: 180px;
+  justify-content: center;
+  padding: 12px;
+}
+
+.planner-focus-ring__inner {
+  align-items: center;
+  background: #fffdf8;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  height: 116px;
+  justify-content: center;
+  width: 116px;
+}
+
+.planner-focus-ring__value {
+  color: #365f56;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.planner-focus-ring__label {
+  color: #7d8a74;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.planner-focus-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.planner-focus-summary__item {
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  padding: 12px 14px;
+}
+
+.planner-focus-summary__label {
+  color: #7d8a74;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.planner-focus-summary__value {
+  color: #253047;
+  font-size: 26px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.planner-focus-summary__value text {
+  color: #8a7a68;
+  font-size: 12px;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.planner-focus-bar-chart {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.planner-focus-bar-chart__item {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.planner-focus-bar-chart__label {
+  color: #7d8a74;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.planner-focus-bar-chart__track {
+  align-items: end;
+  background: rgba(180, 215, 203, 0.25);
+  border-radius: 999px;
+  display: flex;
+  height: 140px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.planner-focus-bar-chart__fill {
+  background: linear-gradient(180deg, #f0b94a, #d95c49);
+  border-radius: inherit;
+  width: 100%;
+}
+
+.planner-focus-bar-chart__value {
+  color: #253047;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.planner-focus-hour-chart {
+  margin-top: 18px;
+}
+
+.planner-focus-hour-chart__header {
+  display: grid;
+  gap: 4px;
+}
+
+.planner-focus-hour-chart__title {
+  color: #253047;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.planner-focus-hour-chart__hint {
+  color: #7d8a74;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.planner-focus-hour-chart__scroll {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.planner-focus-hour-chart__grid {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(24, 8px);
+  min-width: max-content;
+  width: max-content;
+}
+
+.planner-focus-hour-chart__item {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.planner-focus-hour-chart__value {
+  color: #253047;
+  font-size: 11px;
+  font-weight: 900;
+  min-height: 14px;
+}
+
+.planner-focus-hour-chart__value text {
+  color: #8a7a68;
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: 1px;
+}
+
+.planner-focus-hour-chart__track {
+  align-items: end;
+  background: rgba(180, 215, 203, 0.25);
+  border-radius: 999px;
+  display: flex;
+  height: 288px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.planner-focus-hour-chart__fill {
+  background: linear-gradient(0deg, #2f9e59, #7fd38a);
+  border-radius: inherit;
+  width: 100%;
+}
+
+.planner-focus-hour-chart__label {
+  color: #7d8a74;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .planner-punch-create::after,
@@ -3368,6 +3692,7 @@ button {
 
 .planner-punch-ddl-section {
   gap: 8px;
+  margin-top: 16px;
 }
 
 .planner-punch-ddl-list {

@@ -50,6 +50,24 @@ const pomodoroRunning = ref(false)
 const pomodoroPaused = ref(false)
 const pomodoroEnding = ref(false)
 const pomodoroScanningDevices = ref(false)
+const focusStatsVisible = ref(false)
+const focusStatsMode = ref<'daily' | 'weekly'>('daily')
+const focusSessionStartedAt = ref<number | null>(null)
+const focusSessionAccumulatedSeconds = ref(0)
+const focusSessionElapsedSeconds = ref(0)
+type FocusSessionRecord = {
+  id: string
+  date: string
+  seconds: number
+  createdAt: string
+  startedAt?: string
+  endedAt?: string
+}
+const FOCUS_SESSION_STORAGE_KEY = 'koko-pomodoro-focus-sessions-v1'
+const FOCUS_DAILY_GOAL_HOURS_KEY = 'koko-pomodoro-focus-goal-hours-v1'
+const focusSessionRecords = ref<FocusSessionRecord[]>([])
+const focusDailyGoalHours = ref(8)
+const focusDailyGoalOptions = Array.from({ length: 12 }, (_, index) => index + 1)
 const calendarNow = ref(new Date())
 let calendarTimer: ReturnType<typeof setInterval> | undefined
 let pomodoroTimer: ReturnType<typeof setInterval> | undefined
@@ -65,9 +83,78 @@ const parseIsoDate = (iso: string) => {
   const [year, month, day] = iso.split('-').map((value) => Number(value))
   return new Date(year, (month || 1) - 1, day || 1)
 }
+const createFocusSessionId = () => `focus-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36)}`
+const readFocusSessionRecords = () => {
+  if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') return
+  const stored = uni.getStorageSync(FOCUS_SESSION_STORAGE_KEY)
+  if (!Array.isArray(stored)) return
+  focusSessionRecords.value = stored.filter((record): record is FocusSessionRecord => (
+    record
+    && typeof record === 'object'
+    && typeof record.id === 'string'
+    && typeof record.date === 'string'
+    && typeof record.seconds === 'number'
+    && typeof record.createdAt === 'string'
+  ))
+}
+const readFocusDailyGoalHours = () => {
+  if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') return
+  const stored = Number(uni.getStorageSync(FOCUS_DAILY_GOAL_HOURS_KEY))
+  if (Number.isFinite(stored) && stored > 0) {
+    focusDailyGoalHours.value = Math.min(12, Math.max(1, Math.round(stored)))
+  }
+}
+const writeFocusSessionRecords = () => {
+  if (typeof uni === 'undefined' || typeof uni.setStorageSync !== 'function') return
+  uni.setStorageSync(FOCUS_SESSION_STORAGE_KEY, focusSessionRecords.value)
+}
+const writeFocusDailyGoalHours = () => {
+  if (typeof uni === 'undefined' || typeof uni.setStorageSync !== 'function') return
+  uni.setStorageSync(FOCUS_DAILY_GOAL_HOURS_KEY, focusDailyGoalHours.value)
+}
+const refreshFocusSessionElapsed = () => {
+  if (focusSessionStartedAt.value === null) {
+    focusSessionElapsedSeconds.value = 0
+    return
+  }
+  focusSessionElapsedSeconds.value = Math.max(0, Math.floor((Date.now() - focusSessionStartedAt.value) / 1000))
+}
+const addFocusSessionRecord = (seconds: number, startedAt?: number | null, endedAt?: number | null) => {
+  if (seconds <= 0) return
+  const endDate = new Date(endedAt ?? Date.now())
+  focusSessionRecords.value = [
+    ...focusSessionRecords.value,
+    {
+      id: createFocusSessionId(),
+      date: toIsoDate(endDate),
+      seconds,
+      createdAt: endDate.toISOString(),
+      startedAt: startedAt !== undefined && startedAt !== null ? new Date(startedAt).toISOString() : undefined,
+      endedAt: endedAt !== undefined && endedAt !== null ? new Date(endedAt).toISOString() : endDate.toISOString(),
+    },
+  ].slice(-90)
+  writeFocusSessionRecords()
+}
+const recordActiveFocusSegment = (endedAt = Date.now()) => {
+  if (focusSessionStartedAt.value === null) return
+  const startedAt = focusSessionStartedAt.value
+  const seconds = Math.max(1, Math.floor((endedAt - startedAt) / 1000))
+  addFocusSessionRecord(seconds, startedAt, endedAt)
+}
+const finalizeFocusSession = () => {
+  refreshFocusSessionElapsed()
+  recordActiveFocusSegment()
+  focusSessionStartedAt.value = null
+  focusSessionAccumulatedSeconds.value = 0
+  focusSessionElapsedSeconds.value = 0
+}
+readFocusSessionRecords()
+readFocusDailyGoalHours()
 const isZh = computed(() => t.value.nav.home === '首页')
 const pomodoroDurationOptions = [5, 10, 15, 25, 45, 60]
 const pomodoroDurationLabels = pomodoroDurationOptions.map((value) => `${value} min`)
+const focusDailyGoalLabels = computed(() => focusDailyGoalOptions.map((hours) => (isZh.value ? `${hours}小时` : `${hours}h`)))
+const focusDailyGoalIndex = computed(() => Math.max(0, focusDailyGoalOptions.indexOf(focusDailyGoalHours.value)))
 const pomodoroDurationIndex = computed(() => {
   const index = pomodoroDurationOptions.indexOf(pomodoroMinutes.value)
   return index >= 0 ? index : 3
@@ -133,6 +220,133 @@ const pomodoroLinkLabel = computed(() => {
   if (corgiBle.linkState.value === 'connected') return `${pomodoroCopy.value.connected} ${corgiBle.connectedDeviceName.value || corgiBle.deviceName}`
   if (corgiBle.linkState.value === 'error') return pomodoroCopy.value.error
   return pomodoroCopy.value.idle
+})
+const closeFocusStats = () => {
+  focusStatsVisible.value = false
+}
+const focusSessionEntriesToday = computed(() =>
+  focusSessionRecords.value
+    .filter((record) => record.date === todayDate())
+    .slice()
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+)
+const focusSessionTodaySeconds = computed(() => {
+  const recorded = focusSessionEntriesToday.value.reduce((sum, record) => sum + record.seconds, 0)
+  return recorded + (focusSessionStartedAt.value !== null ? focusSessionElapsedSeconds.value : 0)
+})
+const focusSessionTodayHourlySeconds = computed(() => {
+  const hourly = Array.from({ length: 24 }, () => 0)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const dayStartMs = todayStart.getTime()
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000
+  const segments = focusSessionRecords.value
+    .filter((record) => record.date === todayDate())
+    .map((record) => {
+      const endedAt = new Date(record.endedAt || record.createdAt).getTime()
+      const startedAt = record.startedAt
+        ? new Date(record.startedAt).getTime()
+        : endedAt - Math.max(0, record.seconds) * 1000
+      return { startedAt, endedAt }
+    })
+
+  if (focusSessionStartedAt.value !== null) {
+    segments.push({ startedAt: focusSessionStartedAt.value, endedAt: Date.now() })
+  }
+
+  segments.forEach((segment) => {
+    let cursor = Math.max(segment.startedAt, dayStartMs)
+    const end = Math.min(segment.endedAt, dayEndMs)
+    if (end <= cursor) return
+
+    while (cursor < end) {
+      const hour = new Date(cursor).getHours()
+      const hourBoundary = new Date(cursor)
+      hourBoundary.setMinutes(0, 0, 0)
+      hourBoundary.setHours(hourBoundary.getHours() + 1)
+      const nextCursor = Math.min(end, hourBoundary.getTime())
+      hourly[hour] += (nextCursor - cursor) / 1000
+      cursor = nextCursor
+    }
+  })
+
+  return hourly
+})
+const focusSessionWeeklyDays = computed(() => {
+  const now = new Date()
+  const locale = isZh.value ? 'zh-CN' : 'en-US'
+  const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now)
+    date.setDate(now.getDate() - (6 - index))
+    const iso = toIsoDate(date)
+    const seconds = focusSessionRecords.value
+      .filter((record) => record.date === iso)
+      .reduce((sum, record) => sum + record.seconds, 0)
+    return {
+      iso,
+      label: weekdayFormatter.format(date),
+      day: `${date.getDate()}`,
+      seconds,
+    }
+  })
+})
+const focusSessionModeLabel = computed(() => (focusStatsMode.value === 'daily' ? (isZh.value ? '今日专注' : 'Today focus') : (isZh.value ? '近 7 天' : 'Last 7 days')))
+const focusSessionBars = computed(() => {
+  if (focusStatsMode.value === 'daily') {
+    return focusSessionTodayHourlySeconds.value.map((seconds, hour) => ({
+      key: `${hour}`,
+      label: `${String(hour).padStart(2, '0')}`,
+      value: seconds,
+    }))
+  }
+
+  return focusSessionWeeklyDays.value.map((day) => ({
+    key: day.iso,
+    label: day.label,
+    value: day.seconds,
+  }))
+})
+const focusSessionFocusSeconds = computed(() => (focusStatsMode.value === 'daily' ? focusSessionTodaySeconds.value : focusSessionWeeklyDays.value.reduce((sum, day) => sum + day.seconds, 0)))
+const focusSessionRingGoalSeconds = computed(() => (focusStatsMode.value === 'daily' ? focusDailyGoalHours.value * 60 * 60 : 7 * pomodoroMinutes.value * 60))
+const focusSessionRingPercent = computed(() => {
+  const goal = focusSessionRingGoalSeconds.value || 1
+  return Math.min(100, Math.round((focusSessionFocusSeconds.value / goal) * 100))
+})
+const focusSessionBarsMaxSeconds = computed(() => Math.max(60, ...focusSessionBars.value.map((bar) => bar.value)))
+const focusSessionRingStyle = computed(() => ({
+  background: `conic-gradient(#d95c49 0deg ${focusSessionRingPercent.value * 3.6}deg, rgba(196, 156, 82, 0.18) ${focusSessionRingPercent.value * 3.6}deg 360deg)`,
+}))
+const focusSessionRingLabel = computed(() => (focusStatsMode.value === 'daily' ? (isZh.value ? '目标进度' : 'Goal progress') : (isZh.value ? '周完成度' : 'Weekly completion')))
+const focusSessionRingValue = computed(() => `${focusSessionRingPercent.value}%`)
+const focusSessionSummary = computed(() => {
+  if (focusStatsMode.value === 'daily') {
+    return [
+      {
+        label: isZh.value ? '今日累计' : 'Today total',
+        value: `${Math.round(focusSessionTodaySeconds.value / 60)}`,
+        unit: isZh.value ? '分钟' : 'min',
+      },
+      {
+        label: isZh.value ? '今日目标' : 'Today goal',
+        value: `${focusDailyGoalHours.value}`,
+        unit: isZh.value ? '小时' : 'h',
+      },
+    ]
+  }
+
+  return [
+    {
+      label: isZh.value ? '近 7 天累计' : '7-day total',
+      value: `${Math.round(focusSessionFocusSeconds.value / 60)}`,
+      unit: isZh.value ? '分钟' : 'min',
+    },
+    {
+      label: isZh.value ? '有记录的天数' : 'Recorded days',
+      value: `${focusSessionWeeklyDays.value.filter((day) => day.seconds > 0).length}`,
+      unit: isZh.value ? '天' : 'days',
+    },
+  ]
 })
 const calendarCursor = ref(new Date())
 const yearCalendarVisible = ref(false)
@@ -297,6 +511,11 @@ const openPomodoro = () => {
   pomodoroVisible.value = true
 }
 
+const openFocusStats = (focus: 'daily' | 'weekly') => {
+  focusStatsMode.value = focus
+  focusStatsVisible.value = true
+}
+
 const closePomodoro = () => {
   pomodoroVisible.value = false
 }
@@ -328,6 +547,7 @@ const sendPomodoroCommand = async (command: 'START' | 'DONE' | 'PING') => {
 const finishPomodoro = async () => {
   if (pomodoroEnding.value) return
   pomodoroEnding.value = true
+  finalizeFocusSession()
   clearPomodoroTimer()
   pomodoroRunning.value = false
   pomodoroPaused.value = false
@@ -344,6 +564,7 @@ const finishPomodoro = async () => {
 const startPomodoroCountdown = () => {
   clearPomodoroTimer()
   pomodoroTimer = setInterval(() => {
+    refreshFocusSessionElapsed()
     if (pomodoroRemainingSeconds.value <= 1) {
       void finishPomodoro()
       return
@@ -354,21 +575,31 @@ const startPomodoroCountdown = () => {
 
 const startPomodoro = async () => {
   if (pomodoroPaused.value) {
+    focusSessionStartedAt.value = Date.now()
     pomodoroRunning.value = true
     pomodoroPaused.value = false
     pomodoroEnding.value = false
+    refreshFocusSessionElapsed()
     updatePet({ state: 'resting', energy: 48 })
+    triggerHardwareAction('pomodoro-start', { command: 'START', minutes: pomodoroMinutes.value })
     startPomodoroCountdown()
-    uni.showToast({ title: pomodoroCopy.value.localResumed, icon: 'none' })
+    const resumed = await sendPomodoroCommand('START')
+    if (resumed) {
+      uni.showToast({ title: pomodoroCopy.value.localResumed, icon: 'none' })
+    }
     return
   }
 
   if (!pomodoroPaused.value) {
     pomodoroRemainingSeconds.value = pomodoroMinutes.value * 60
   }
+  focusSessionAccumulatedSeconds.value = 0
+  focusSessionStartedAt.value = Date.now()
+  focusSessionElapsedSeconds.value = 0
   pomodoroRunning.value = true
   pomodoroPaused.value = false
   pomodoroEnding.value = false
+  refreshFocusSessionElapsed()
   updatePet({ state: 'resting', energy: 48 })
   triggerHardwareAction('pomodoro-start', { command: 'START', minutes: pomodoroMinutes.value })
   startPomodoroCountdown()
@@ -380,12 +611,17 @@ const startPomodoro = async () => {
 
 const pausePomodoro = () => {
   if (!pomodoroRunning.value) return
+  refreshFocusSessionElapsed()
   clearPomodoroTimer()
+  recordActiveFocusSegment()
+  focusSessionStartedAt.value = null
+  focusSessionElapsedSeconds.value = 0
   pomodoroRunning.value = false
   pomodoroPaused.value = true
 }
 
 const endPomodoro = async () => {
+  finalizeFocusSession()
   clearPomodoroTimer()
   pomodoroRunning.value = false
   pomodoroPaused.value = false
@@ -401,6 +637,12 @@ const selectPomodoroDuration = (event: { detail: { value: number | string } }) =
   if (!pomodoroRunning.value && !pomodoroPaused.value) {
     pomodoroRemainingSeconds.value = pomodoroMinutes.value * 60
   }
+}
+
+const selectFocusDailyGoal = (event: { detail: { value: number | string } }) => {
+  const index = Number(event.detail.value)
+  focusDailyGoalHours.value = focusDailyGoalOptions[index] ?? 8
+  writeFocusDailyGoalHours()
 }
 
 const connectPomodoroDevice = async () => {
@@ -693,9 +935,81 @@ onBeforeUnmount(() => {
       </view>
     </view>
 
-    <button class="planner-pomodoro-button" :class="{ 'planner-pomodoro-button--running': pomodoroRunning }" @click="openPomodoro">
-      {{ pomodoroButtonLabel }}
-    </button>
+    <view class="planner-pomodoro-section">
+      <view class="planner-punch-section__title">{{ t.planner.pomodoro }}</view>
+      <button class="planner-pomodoro-button" :class="{ 'planner-pomodoro-button--running': pomodoroRunning }" @click="openPomodoro">
+        {{ pomodoroButtonLabel }}
+      </button>
+      <view class="planner-pomodoro-links">
+        <button class="planner-pomodoro-link" :class="{ 'planner-pomodoro-link--en': !isZh }" @click="openFocusStats('daily')">{{ t.planner.todayFocusTime }}</button>
+        <button class="planner-pomodoro-link" :class="{ 'planner-pomodoro-link--en': !isZh }" @click="openFocusStats('weekly')">{{ t.planner.recentFocusReport }}</button>
+      </view>
+    </view>
+
+    <view v-if="focusStatsVisible" class="planner-focus-mask" @click="closeFocusStats">
+      <view class="planner-focus-card" @click.stop>
+        <button class="planner-focus-card__close" @click="closeFocusStats">×</button>
+        <view
+          class="planner-focus-card__title"
+          :class="{ 'planner-focus-card__title--daily': focusStatsMode === 'daily' }"
+        >{{ focusStatsMode === 'daily' ? t.planner.todayFocusTime : t.planner.recentFocusReport }}</view>
+        <view class="planner-focus-card__subtitle">{{ focusSessionModeLabel }}</view>
+        <view v-if="focusStatsMode === 'daily'" class="planner-focus-goal">
+          <view class="planner-focus-goal__row">
+            <view class="planner-focus-goal__label">{{ isZh ? '今日目标' : 'Daily goal' }}</view>
+            <picker
+              mode="selector"
+              :range="focusDailyGoalLabels"
+              :value="focusDailyGoalIndex"
+              @change="selectFocusDailyGoal"
+            >
+              <view class="planner-focus-goal__picker">{{ focusDailyGoalHours }}{{ isZh ? '小时' : 'h' }}</view>
+            </picker>
+          </view>
+          <view class="planner-focus-goal__hint">{{ t.planner.focusGoalHint }}</view>
+        </view>
+        <view class="planner-focus-ring-row" :class="{ 'planner-focus-ring-row--daily': focusStatsMode === 'daily' }">
+          <view class="planner-focus-ring" :style="focusSessionRingStyle">
+            <view class="planner-focus-ring__inner">
+              <view class="planner-focus-ring__value">{{ focusSessionRingValue }}</view>
+              <view class="planner-focus-ring__label">{{ focusSessionRingLabel }}</view>
+            </view>
+          </view>
+          <view class="planner-focus-summary">
+            <view v-for="item in focusSessionSummary" :key="item.label" class="planner-focus-summary__item">
+              <view class="planner-focus-summary__label">{{ item.label }}</view>
+              <view class="planner-focus-summary__value">{{ item.value }}<text>{{ item.unit }}</text></view>
+            </view>
+          </view>
+        </view>
+        <view v-if="focusStatsMode === 'daily'" class="planner-focus-hour-chart">
+          <view class="planner-focus-hour-chart__header">
+            <view class="planner-focus-hour-chart__title">{{ t.planner.focusHourlyChart }}</view>
+            <view class="planner-focus-hour-chart__hint">{{ t.planner.focusHourlyChartHint }}</view>
+          </view>
+          <scroll-view scroll-x class="planner-focus-hour-chart__scroll">
+            <view class="planner-focus-hour-chart__grid">
+              <view v-for="bar in focusSessionBars" :key="bar.key" class="planner-focus-hour-chart__item">
+                <view class="planner-focus-hour-chart__value">{{ Math.round(bar.value / 60) }}<text>{{ isZh ? '分' : 'm' }}</text></view>
+                <view class="planner-focus-hour-chart__track">
+                  <view class="planner-focus-hour-chart__fill" :style="{ height: `${Math.max(6, (bar.value / focusSessionBarsMaxSeconds) * 100)}%` }" />
+                </view>
+                <view class="planner-focus-hour-chart__label">{{ bar.label }}</view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        <view v-else class="planner-focus-bar-chart">
+          <view v-for="bar in focusSessionBars" :key="bar.key" class="planner-focus-bar-chart__item">
+            <view class="planner-focus-bar-chart__label">{{ bar.label }}</view>
+            <view class="planner-focus-bar-chart__track">
+              <view class="planner-focus-bar-chart__fill" :style="{ height: `${Math.max(8, (bar.value / focusSessionBarsMaxSeconds) * 100)}%` }" />
+            </view>
+            <view class="planner-focus-bar-chart__value">{{ Math.round(bar.value / 60) }} {{ isZh ? '分' : 'm' }}</view>
+          </view>
+        </view>
+      </view>
+    </view>
 
     <view class="planner-punch-board">
       <view class="planner-punch-section planner-punch-ddl-section">
