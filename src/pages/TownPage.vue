@@ -47,6 +47,7 @@ const PET_MIN_X = 10
 const PET_MAX_X = 90
 const PET_MIN_Y = 26
 const PET_MAX_Y = 92
+const TOWN_CENTER_PAW_POSITION = { x: 52, y: 58 }
 const TOWN_HOME_ACTION_STORAGE_KEY = 'koko-town-home-action'
 const TOWN_GUIDE_STORAGE_KEY = 'hasSeenTownGuideCommunityV1'
 const TOWN_INVITE_SHARE_STORAGE_KEY = 'koko-town-share-invite'
@@ -593,6 +594,10 @@ const goChat = () => {
 
 const startTownGuide = () => {
   guideSavedPetPosition.value = { ...petPosition.value }
+  stopMoveTimer()
+  petMoveDurationMs.value = 900
+  petMirror.value = TOWN_CENTER_PAW_POSITION.x < petPosition.value.x
+  petPosition.value = { ...TOWN_CENTER_PAW_POSITION }
   guideVisible.value = true
   guideStepIndex.value = 0
   walkingEnabled.value = false
