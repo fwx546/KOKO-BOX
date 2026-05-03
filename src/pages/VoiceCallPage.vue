@@ -5,6 +5,7 @@ import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 
 type CallPhase = 'idle' | 'recording' | 'thinking' | 'playing' | 'error'
+type RecorderState = 'idle' | 'recording' | 'stopping'
 
 const { t } = useLanguage()
 const { pet, sendVoiceChatTurn } = useKokoState()
@@ -20,6 +21,13 @@ const elapsedSeconds = ref(0)
 let recorder: any
 let audio: any
 let timer: ReturnType<typeof setInterval> | undefined
+let recorderState: RecorderState = 'idle'
+let recordStartedAt = 0
+
+const isRecorderBusyError = (message = '') =>
+  message.includes('is recording or paused') ||
+  message.includes('operateRecorder:fail') ||
+  message.includes('recorder is recording')
 
 const statusText = computed(() => {
   if (phase.value === 'recording') return t.value.voiceCall.listening
@@ -45,7 +53,11 @@ const ensureRecorder = () => {
 
   recorder = uni.getRecorderManager()
   recorder.onStop(async (result: { tempFilePath?: string }) => {
-    if (!result.tempFilePath || muted.value) {
+    const durationMs = Date.now() - recordStartedAt
+    recorderState = 'idle'
+    recordStartedAt = 0
+
+    if (!result.tempFilePath || muted.value || durationMs < 350) {
       phase.value = 'idle'
       return
     }
@@ -66,8 +78,16 @@ const ensureRecorder = () => {
     }
   })
   recorder.onError((error: { errMsg?: string }) => {
+    const message = error?.errMsg || ''
+
+    if (isRecorderBusyError(message) && (recorderState === 'recording' || recorderState === 'stopping')) {
+      return
+    }
+
+    recorderState = 'idle'
+    recordStartedAt = 0
     phase.value = 'error'
-    errorMessage.value = error?.errMsg || t.value.voiceCall.permissionDenied
+    errorMessage.value = message || t.value.voiceCall.permissionDenied
   })
 
   return recorder
@@ -107,6 +127,7 @@ const playReply = async (audioTempUrl?: string) => {
 
 const startRecord = () => {
   if (phase.value === 'thinking' || phase.value === 'playing') return
+  if (phase.value === 'recording' || recorderState !== 'idle') return
   if (muted.value) {
     uni.showToast({ title: t.value.voiceCall.mutedHint, icon: 'none' })
     return
@@ -121,19 +142,45 @@ const startRecord = () => {
 
   transcript.value = ''
   reply.value = ''
+  errorMessage.value = ''
   phase.value = 'recording'
-  activeRecorder.start({
-    duration: 60000,
-    sampleRate: 16000,
-    numberOfChannels: 1,
-    encodeBitRate: 48000,
-    format: 'mp3',
-  })
+  recorderState = 'recording'
+  recordStartedAt = Date.now()
+  audio?.stop()
+
+  try {
+    activeRecorder.start({
+      duration: 60000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: 'mp3',
+    })
+  } catch (caughtError) {
+    const message = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    recorderState = 'idle'
+    recordStartedAt = 0
+    phase.value = isRecorderBusyError(message) ? 'idle' : 'error'
+    errorMessage.value = isRecorderBusyError(message) ? '' : message || t.value.voiceCall.failed
+  }
 }
 
 const stopRecord = () => {
-  if (phase.value !== 'recording') return
-  recorder?.stop()
+  if (phase.value !== 'recording' || recorderState !== 'recording') return
+  recorderState = 'stopping'
+  try {
+    recorder?.stop()
+  } catch (caughtError) {
+    const message = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    recorderState = 'idle'
+    recordStartedAt = 0
+    if (!isRecorderBusyError(message)) {
+      phase.value = 'error'
+      errorMessage.value = message || t.value.voiceCall.failed
+      return
+    }
+    phase.value = 'idle'
+  }
 }
 
 const toggleMuted = () => {
@@ -147,7 +194,7 @@ const toggleSpeaker = () => {
 }
 
 const endCall = () => {
-  if (phase.value === 'recording') recorder?.stop()
+  if (phase.value === 'recording') stopRecord()
   audio?.stop()
   uni.navigateBack()
 }
@@ -162,7 +209,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopTimer()
-  if (phase.value === 'recording') recorder?.stop()
+  if (phase.value === 'recording') stopRecord()
   audio?.destroy?.()
 })
 </script>
