@@ -172,10 +172,8 @@ onLoad((options = {}) => {
   <PageScaffold>
     <view class="onboarding-page">
       <view class="onboarding-card">
-        <view class="onboarding-card__top">
-          <view class="onboarding-pet-avatar">
-            <PetLottieAvatar :size-rpx="132" />
-          </view>
+        <view class="onboarding-pet-avatar">
+          <PetLottieAvatar :size-rpx="138" />
         </view>
 
         <view v-if="step === 'auth-choice'" class="onboarding-panel">
@@ -256,25 +254,24 @@ onLoad((options = {}) => {
   box-shadow: 0 24rpx 60rpx rgba(167, 124, 72, 0.12);
   box-sizing: border-box;
   max-width: 660rpx;
-  overflow: hidden;
-  padding: 32rpx;
+  overflow: visible;
+  padding: 54rpx 32rpx 32rpx;
+  position: relative;
   width: 100%;
 }
 
-.onboarding-card__top {
-  align-items: center;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .onboarding-pet-avatar {
-  height: 132rpx;
+  height: 138rpx;
   overflow: visible;
-  width: 132rpx;
+  position: absolute;
+  right: 36rpx;
+  top: -52rpx;
+  width: 138rpx;
+  z-index: 2;
 }
 
 .onboarding-panel {
-  margin-top: 34rpx;
+  margin-top: 0;
 }
 
 .onboarding-kicker {
