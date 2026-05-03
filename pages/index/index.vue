@@ -5,14 +5,15 @@ import PageScaffold from '../../src/components/PageScaffold.vue'
 import { useAuth } from '../../src/composables/useAuth'
 import { useKokoState } from '../../src/composables/useKokoState'
 import { useLanguage } from '../../src/composables/useLanguage'
+import { syncNativeLanguageUi } from '../../src/utils/nativeLanguageUi'
 import { useWechatShare } from '../../src/composables/useWechatShare'
 
 type LoginMode = 'wechat' | 'guest'
 type LoginStep = 'auth-choice' | 'pet-naming'
 
 const { loading, authMode, pet: authPet, hasCompletedOnboarding, login, completeOnboarding, refreshOnboardingState } = useAuth()
-const { syncPetFromAuth, syncCourseScheduleFromCloud, syncTasksFromCloud, syncEconomyFromCloud } = useKokoState()
-const { t } = useLanguage()
+const { syncPetFromAuth, syncCourseScheduleFromCloud, syncTasksFromCloud, syncEconomyFromCloud, updateSettings } = useKokoState()
+const { language, setLanguage, t } = useLanguage()
 
 useWechatShare({
   path: '/pages/index/index',
@@ -30,6 +31,12 @@ const isRedirectingHome = ref(false)
 const normalizedPetName = computed(() => petName.value.trim())
 const canStart = computed(() => !loading.value && selectedLoginMode.value === 'wechat' && normalizedPetName.value.length > 0)
 const stepLabel = computed(() => (step.value === 'auth-choice' ? '1 / 2' : '2 / 2'))
+
+const changeLanguage = (nextLanguage: 'zh' | 'en') => {
+  setLanguage(nextLanguage)
+  updateSettings({ language: nextLanguage })
+  syncNativeLanguageUi(nextLanguage)
+}
 
 const redirectToHome = () => {
   if (isRedirectingHome.value) return
@@ -138,6 +145,25 @@ onShow(() => {
           <view class="onboarding-kicker">KOKO BOX</view>
           <view class="onboarding-title">{{ t.onboarding.authTitle }}</view>
           <view class="onboarding-copy">{{ t.onboarding.authCopy }}</view>
+
+          <view class="onboarding-language">
+            <button
+              class="onboarding-language__button"
+              :class="{ 'onboarding-language__button--active': language === 'zh' }"
+              :disabled="loading"
+              @click="changeLanguage('zh')"
+            >
+              中文
+            </button>
+            <button
+              class="onboarding-language__button"
+              :class="{ 'onboarding-language__button--active': language === 'en' }"
+              :disabled="loading"
+              @click="changeLanguage('en')"
+            >
+              English
+            </button>
+          </view>
 
           <view class="onboarding-actions">
             <button class="onboarding-button onboarding-button--primary" :disabled="loading" @click="chooseLoginMode('wechat')">
@@ -312,6 +338,38 @@ onShow(() => {
   display: grid;
   gap: 18rpx;
   margin-top: 46rpx;
+}
+
+.onboarding-language {
+  background: rgba(255, 255, 255, 0.64);
+  border: 2rpx solid rgba(176, 143, 102, 0.14);
+  border-radius: 999rpx;
+  display: grid;
+  gap: 8rpx;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 30rpx;
+  padding: 8rpx;
+}
+
+.onboarding-language__button {
+  background: transparent;
+  border-radius: 999rpx;
+  color: #6d7a70;
+  font-size: 27rpx;
+  font-weight: 850;
+  height: 72rpx;
+  line-height: 72rpx;
+  margin: 0;
+  padding: 0 16rpx;
+}
+
+.onboarding-language__button::after {
+  border: none;
+}
+
+.onboarding-language__button--active {
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  color: #173f38;
 }
 
 .onboarding-button {
