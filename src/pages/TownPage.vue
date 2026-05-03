@@ -693,7 +693,13 @@ onBeforeUnmount(() => {
       <view class="town-map">
         <image class="town-map__image" :src="townMapSrc" mode="scaleToFill" @error="handleTownMapError" />
 
-        <view v-if="!activeBuilding" class="town-pet" :class="`town-pet--${petAction}`" :style="petStyle" @click.stop>
+        <view
+          v-if="!activeBuilding"
+          class="town-pet"
+          :class="[`town-pet--${petAction}`, { 'town-pet--under-panel': communityPanelOpen }]"
+          :style="petStyle"
+          @click.stop
+        >
           <view class="town-pet__name">{{ pet.name }}</view>
           <PetLottieAvatar :size-rpx="PET_SIZE_RPX" :mirror="petMirror" />
           <view class="town-pet__shadow" />
@@ -1025,6 +1031,11 @@ onBeforeUnmount(() => {
   animation: town-pet-shadow 0.85s ease-in-out infinite;
 }
 
+.town-pet--under-panel {
+  pointer-events: none;
+  z-index: 2;
+}
+
 .town-partner-pet {
   opacity: 0.95;
   pointer-events: auto;
@@ -1158,7 +1169,7 @@ onBeforeUnmount(() => {
   position: fixed;
   right: 0;
   top: 0;
-  z-index: 42;
+  z-index: 80;
 }
 
 .town-community-panel {
@@ -1171,6 +1182,7 @@ onBeforeUnmount(() => {
   padding: 30rpx 26rpx calc(30rpx + env(safe-area-inset-bottom));
   position: relative;
   width: 100%;
+  z-index: 81;
 }
 
 .town-community-panel__close {
