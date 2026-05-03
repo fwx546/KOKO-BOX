@@ -73,6 +73,7 @@ const petAction = ref<PetActionType>('idle')
 const walkingEnabled = ref(true)
 const guideVisible = ref(false)
 const guideStepIndex = ref(0)
+const guideSavedPetPosition = ref<{ x: number; y: number } | null>(null)
 const communityPanelOpen = ref(false)
 const communityLoading = ref(false)
 const communityMessage = ref('')
@@ -590,24 +591,31 @@ const goChat = () => {
   uni.navigateTo({ url: '/pages/chat/index' })
 }
 
-const showTownGuideIfNeeded = () => {
-  if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') return
-  if (uni.getStorageSync(TOWN_GUIDE_STORAGE_KEY)) return
+const startTownGuide = () => {
+  guideSavedPetPosition.value = { ...petPosition.value }
   guideVisible.value = true
   guideStepIndex.value = 0
   walkingEnabled.value = false
   petAction.value = 'idle'
+}
+
+const showTownGuideIfNeeded = () => {
+  if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') return
+  if (uni.getStorageSync(TOWN_GUIDE_STORAGE_KEY)) return
+  startTownGuide()
 }
 
 const openTownGuide = () => {
   closeBuildingPopup()
-  guideVisible.value = true
-  guideStepIndex.value = 0
-  walkingEnabled.value = false
-  petAction.value = 'idle'
+  startTownGuide()
 }
 
 const finishTownGuide = () => {
+  if (guideSavedPetPosition.value) {
+    petMoveDurationMs.value = 0
+    petPosition.value = guideSavedPetPosition.value
+    guideSavedPetPosition.value = null
+  }
   guideVisible.value = false
   walkingEnabled.value = true
   if (typeof uni !== 'undefined' && typeof uni.setStorageSync === 'function') {
@@ -839,6 +847,9 @@ onBeforeUnmount(() => {
       <view class="town-guide-layer__mask" />
       <view class="town-guide-highlight" :style="guideHighlightStyle" />
       <view class="town-guide-bubble">
+        <view class="town-guide-bubble__pet">
+          <PetLottieAvatar :size-rpx="112" />
+        </view>
         <view class="town-guide-bubble__step">{{ guideStepIndex + 1 }} / {{ guideSteps.length }}</view>
         <view class="town-guide-bubble__title">{{ activeGuideStep.title }}</view>
         <view class="town-guide-bubble__body">{{ activeGuideStep.body }}</view>
@@ -1613,10 +1624,21 @@ onBeforeUnmount(() => {
   z-index: 62;
 }
 
+.town-guide-bubble__pet {
+  height: 112rpx;
+  overflow: visible;
+  position: absolute;
+  right: 18rpx;
+  top: 18rpx;
+  width: 112rpx;
+  z-index: 1;
+}
+
 .town-guide-bubble__step {
   color: #5f8c78;
   font-size: 22rpx;
   font-weight: 900;
+  padding-right: 128rpx;
 }
 
 .town-guide-bubble__title {
@@ -1624,6 +1646,7 @@ onBeforeUnmount(() => {
   font-size: 34rpx;
   font-weight: 900;
   margin-top: 8rpx;
+  padding-right: 128rpx;
 }
 
 .town-guide-bubble__body {
@@ -1631,6 +1654,7 @@ onBeforeUnmount(() => {
   font-size: 26rpx;
   line-height: 1.55;
   margin-top: 12rpx;
+  padding-right: 128rpx;
 }
 
 .town-guide-bubble__button {
