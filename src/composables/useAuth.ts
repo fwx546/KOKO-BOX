@@ -130,7 +130,7 @@ interface WechatCloudApi {
   uploadFile?: (options: {
     cloudPath: string
     filePath: string
-  }) => Promise<{ fileID: string }>
+  }) => Promise<{ fileID?: string }>
 }
 
 const getWechatCloudApi = () =>
@@ -213,6 +213,38 @@ const callWechatCloudFunction = async <T>(name: string, data?: Record<string, un
   return response.result as T
 }
 
+const getCloudErrorMessage = (caughtError: unknown) => {
+  if (caughtError instanceof Error) {
+    return caughtError.message
+  }
+
+  if (typeof caughtError === 'string') {
+    return caughtError
+  }
+
+  if (caughtError && typeof caughtError === 'object' && 'errMsg' in caughtError) {
+    const errMsg = (caughtError as { errMsg?: unknown }).errMsg
+    return typeof errMsg === 'string' ? errMsg : ''
+  }
+
+  return ''
+}
+
+const getAvatarFileExtension = (filePath: string) => {
+  const extensionMatch = filePath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)
+  const extension = extensionMatch?.[1]?.toLowerCase()
+
+  if (!extension) {
+    return '.png'
+  }
+
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(extension)) {
+    return `.${extension}`
+  }
+
+  return '.png'
+}
+
 const uploadAvatarToCloud = async (filePath: string, openid?: string) => {
   const wxCloud = getWechatCloudApi()
 
@@ -220,16 +252,32 @@ const uploadAvatarToCloud = async (filePath: string, openid?: string) => {
     throw new Error('WeChat cloud upload is not available in this environment.')
   }
 
-  const extension = filePath.includes('.') ? filePath.slice(filePath.lastIndexOf('.')) : '.png'
+  const trimmedFilePath = filePath.trim()
+
+  if (!trimmedFilePath) {
+    throw new Error('Avatar file path is empty.')
+  }
+
+  const extension = getAvatarFileExtension(trimmedFilePath)
   const sanitizedOpenid = openid?.replace(/[^a-zA-Z0-9_-]/g, '') || 'anonymous'
   const timestamp = Date.now()
   const cloudPath = `avatars/${sanitizedOpenid}-${timestamp}${extension}`
-  const { fileID } = await wxCloud.uploadFile({
-    cloudPath,
-    filePath,
-  })
 
-  return fileID
+  try {
+    const { fileID } = await wxCloud.uploadFile({
+      cloudPath,
+      filePath: trimmedFilePath,
+    })
+
+    if (!fileID) {
+      throw new Error('WeChat cloud upload returned no fileID.')
+    }
+
+    return fileID
+  } catch (caughtError) {
+    const message = getCloudErrorMessage(caughtError)
+    throw new Error(message ? `Avatar cloud upload failed: ${message}` : 'Avatar cloud upload failed.')
+  }
 }
 
 const useMockLogin = (): AuthSessionResult => {
