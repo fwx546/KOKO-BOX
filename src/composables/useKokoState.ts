@@ -470,7 +470,6 @@ const mergeCoinLogs = (...logGroups: CoinLog[][]) => {
       return true
     })
     .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
-    .slice(0, 300)
 }
 
 const coinLogTotal = (logs: CoinLog[]) =>
@@ -561,7 +560,7 @@ const ensureCoinLogIntegrity = (options: { persist?: boolean } = {}) => {
 
   setEconomy({
     ...economy.value,
-    coinLogs: [coinLog, ...logs].slice(0, 300),
+    coinLogs: [coinLog, ...logs],
     updatedAt: createdAt,
   })
 
@@ -598,7 +597,7 @@ const addCoinLog = (reason: string, amount: number) => {
   setEconomy({
     ...economy.value,
     coins: nextCoins,
-    coinLogs: [coinLog, ...(economy.value.coinLogs ?? [])].slice(0, 300),
+    coinLogs: [coinLog, ...(economy.value.coinLogs ?? [])],
     updatedAt: coinLog.created_at,
   })
   persistEconomy()
@@ -878,6 +877,7 @@ const hydrateEconomyFromCloud = async () => {
 
     if (cloudSnapshot?.exists && cloudUpdatedAt >= localUpdatedAt) {
       const mergedCoinLogs = mergeCoinLogs(cloudSnapshot.economy.coinLogs ?? [], economy.value.coinLogs ?? [])
+      const shouldWriteMergedCoinLogs = mergedCoinLogs.length > (cloudSnapshot.economy.coinLogs ?? []).length
       if (cloudSnapshot.pet) {
         pet.value = sanitizePet({
           ...pet.value,
@@ -895,7 +895,7 @@ const hydrateEconomyFromCloud = async () => {
         actionType: 'companion-cloud-load',
       })
       persistState()
-      if (grantedStarterResources || backfilledCoinLog) {
+      if (grantedStarterResources || backfilledCoinLog || shouldWriteMergedCoinLogs) {
         await persistEconomyToCloud()
       }
     } else {

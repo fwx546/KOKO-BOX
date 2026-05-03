@@ -124,7 +124,6 @@ const normalizeCoinLogs = (value: unknown): CoinLog[] =>
     })
     .filter((item): item is CoinLog => Boolean(item))
     .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
-    .slice(0, 300)
 
 export const normalizeCompanionEconomy = (value: unknown, fallbackCoins = 0): CompanionEconomy => {
   const source = (value ?? {}) as Partial<CompanionEconomy>

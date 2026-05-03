@@ -118,7 +118,6 @@ const sanitizeCoinLogs = (value) =>
     })
     .filter(Boolean)
     .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
-    .slice(0, 300)
 
 const sanitizeEconomy = (value = {}) => ({
   coins: clampNumber(value.coins, 0, 999999, 0),
