@@ -160,6 +160,7 @@ const loadState = async (openid, room) => {
     partners,
     invitePath: room.inviteCode ? `/pages/town/index?invite=${room.inviteCode}` : '',
     inviteCode: room.inviteCode || '',
+    qrCodeFileID: room.qrCodeFileID || '',
   }
 }
 
@@ -231,6 +232,21 @@ const createQrCode = async (inviteCode) => {
 const ensureInvite = async (room) => {
   const currentExpiresAt = new Date(room.inviteExpiresAt || 0).getTime() || 0
   if (room.inviteCode && currentExpiresAt > Date.now()) {
+    if (!room.qrCodeFileID) {
+      const qrCodeFileID = await createQrCode(room.inviteCode)
+      if (qrCodeFileID) {
+        const data = {
+          qrCodeFileID,
+          updatedAt: nowIso(),
+        }
+        await rooms.doc(room._id).update({ data })
+        return {
+          ...room,
+          ...data,
+        }
+      }
+    }
+
     return room
   }
 
