@@ -243,7 +243,7 @@ export const sendPetVoiceTurn = async (options: {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
 }) => {
   const language = pickLanguage(options.language)
-  const petName = options.petName?.trim() || (language === 'zh' ? '鍙彲' : 'Koko')
+  const petName = options.petName?.trim() || (language === 'zh' ? '可可' : 'Koko')
 
   if (!options.tempFilePath.trim() || !isWechatCloudConfigured()) {
     throw new Error('Voice chat is unavailable.')

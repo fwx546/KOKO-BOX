@@ -6,6 +6,7 @@ const pageTitleKeyByRoute: Record<string, keyof (typeof copy)['en']['nav']> = {
   'pages/home/index': 'home',
   'pages/chat/index': 'chat',
   'pages/stats/index': 'stats',
+  'pages/coin-log/index': 'coinLog',
   'pages/profile/index': 'profile',
   'pages/archive/index': 'archive',
   'pages/town/index': 'town',

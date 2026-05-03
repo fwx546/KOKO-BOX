@@ -34,7 +34,7 @@
     {
       "path": "pages/coin-log/index",
       "style": {
-        "navigationBarTitleText": "金豆明细"
+        "navigationBarTitleText": "Coin Details"
       }
     },
     {

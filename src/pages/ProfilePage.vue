@@ -37,82 +37,83 @@ const shouldShowAvatarImage = computed(() => Boolean(user.value?.avatarUrl && !a
 const isZh = computed(() => settings.value.language === 'zh')
 
 const profileCopy = computed(() => ({
-  petManagement: isZh.value ? '宠物管理' : 'Pet Management',
-  renamePet: isZh.value ? '修改名字' : 'Rename pet',
-  renamePetHint: isZh.value ? '直接修改 Koko 的显示名称' : 'Change Koko display name directly',
-  viewAttributes: isZh.value ? '查看属性' : 'View attributes',
-  viewAttributesHint: isZh.value ? '查看心情、亲密度、精力等状态' : 'Check mood, bond, energy, and more',
-  growthRecords: isZh.value ? '成长记录' : 'Growth Records',
-  achievements: isZh.value ? '成就系统' : 'Achievements',
-  achievementsHint: isZh.value ? `${archive.value.milestones.length} 条里程碑记录` : `${archive.value.milestones.length} milestones`,
-  stats: isZh.value ? '数据统计' : 'Data statistics',
-  statsHint: isZh.value ? `${metrics.value.interactions} 次互动，${metrics.value.completedTasks} 项完成` : `${metrics.value.interactions} interactions, ${metrics.value.completedTasks} completed`,
-  preferences: isZh.value ? '偏好与安全' : 'Preferences & Safety',
-  settings: isZh.value ? '基础设置' : 'Basic settings',
-  settingsHint: isZh.value ? '语言切换、账号状态与退出登录' : 'Language, account status, and logout',
-  privacy: isZh.value ? '隐私设置' : 'Privacy settings',
-  privacyHint: isZh.value ? '聊天隐藏、跨端同步、低打扰模式等开关' : 'Chat privacy, sync, quiet mode, and more',
-  about: isZh.value ? '关于我们' : 'About us',
-  aboutHint: isZh.value ? '了解 KOKOBOX 的产品理念' : 'Learn the KOKOBOX product idea',
-  feedback: isZh.value ? '反馈建议' : 'Feedback',
-  renameTitle: isZh.value ? '给宠物改名' : 'Rename pet',
-  renamePlaceholder: isZh.value ? '输入新的宠物名字' : 'Enter a new pet name',
-  renameHint: isZh.value ? '最多 12 个字，保存后会同步到当前宠物资料。' : 'Up to 12 characters. Saving updates the current pet profile.',
-  save: isZh.value ? '保存' : 'Save',
-  saving: isZh.value ? '保存中...' : 'Saving...',
-  avatarTitle: isZh.value ? '选择头像来源' : 'Choose avatar source',
-  avatarWechat: isZh.value ? '使用微信头像' : 'Use WeChat avatar',
-  avatarAlbum: isZh.value ? '从相册选择' : 'Choose from album',
-  avatarCancel: isZh.value ? '取消' : 'Cancel',
-  petAttributeTitle: isZh.value ? '宠物属性' : 'Pet attributes',
-  aboutTitle: isZh.value ? '关于 KOKOBOX' : 'About KOKOBOX',
-  aboutBody: isZh.value
-    ? 'KOKOBOX 是一个面向微信小程序的 AI 宠物陪伴产品，围绕任务、聊天、小游戏和小镇探索，让宠物真正参与到用户的日常节奏里。'
-    : 'KOKOBOX is an AI pet companion for WeChat mini programs, connecting tasks, chat, mini games, and town exploration into one daily companion loop.',
-  privacyTitle: isZh.value ? '隐私设置' : 'Privacy settings',
-  close: isZh.value ? '关闭' : 'Close',
+  petManagement: t.value.profile.petManagement,
+  renamePet: t.value.profile.renamePet,
+  renamePetHint: t.value.profile.renamePetHint,
+  viewAttributes: t.value.profile.viewAttributes,
+  viewAttributesHint: t.value.profile.viewAttributesHint,
+  growthRecords: t.value.profile.growthRecords,
+  achievements: t.value.profile.achievements,
+  achievementsHint: t.value.profile.achievementsHint.replace('{count}', String(archive.value.milestones.length)),
+  stats: t.value.profile.stats,
+  statsHint: t.value.profile.statsHint
+    .replace('{interactions}', String(metrics.value.interactions))
+    .replace('{completed}', String(metrics.value.completedTasks)),
+  preferences: t.value.profile.preferences,
+  settings: t.value.profile.basicSettings,
+  settingsHint: t.value.profile.basicSettingsHint,
+  privacy: t.value.profile.privacy,
+  privacyHint: t.value.profile.privacyHint,
+  about: t.value.profile.about,
+  aboutHint: t.value.profile.aboutHint,
+  feedback: t.value.profile.feedbackTitle,
+  renameTitle: t.value.profile.renameTitle,
+  renamePlaceholder: t.value.profile.renamePlaceholder,
+  renameHint: t.value.profile.renameHint,
+  save: t.value.profile.save,
+  saving: t.value.profile.saving,
+  avatarTitle: t.value.profile.avatarTitle,
+  avatarWechat: t.value.profile.avatarWechat,
+  avatarAlbum: t.value.profile.avatarAlbum,
+  avatarCancel: t.value.profile.avatarCancel,
+  avatarSyncHint: t.value.profile.avatarSyncHint,
+  petAttributeTitle: t.value.profile.petAttributeTitle,
+  aboutTitle: t.value.profile.aboutTitle,
+  aboutBody: t.value.profile.aboutBody,
+  privacyTitle: t.value.profile.privacyTitle,
+  close: t.value.profile.close,
 }))
 
 const privacyOptions = computed<Array<{ key: PrivacySettingKey; title: string; hint: string; value: boolean }>>(() => [
   {
     key: 'hideChats',
-    title: isZh.value ? '隐藏聊天内容' : 'Hide chat content',
-    hint: isZh.value ? '开启后聊天记录会以隐私模式保存。' : 'Store chat history in privacy mode.',
+    title: t.value.profile.privacyOptions.hideChats.title,
+    hint: t.value.profile.privacyOptions.hideChats.hint,
     value: settings.value.hideChats,
   },
   {
     key: 'allowChatClear',
-    title: isZh.value ? '允许清空聊天' : 'Allow chat clearing',
-    hint: isZh.value ? '关闭后可避免误删陪伴记录。' : 'Turn off to avoid accidental deletion.',
+    title: t.value.profile.privacyOptions.allowChatClear.title,
+    hint: t.value.profile.privacyOptions.allowChatClear.hint,
     value: settings.value.allowChatClear,
   },
   {
     key: 'allowCrossDeviceSummary',
-    title: isZh.value ? '跨端摘要同步' : 'Cross-device summary',
-    hint: isZh.value ? '允许任务和聊天摘要写入硬件/桌面联动队列。' : 'Allow summaries to sync to linked devices.',
+    title: t.value.profile.privacyOptions.allowCrossDeviceSummary.title,
+    hint: t.value.profile.privacyOptions.allowCrossDeviceSummary.hint,
     value: settings.value.allowCrossDeviceSummary,
   },
   {
     key: 'lowDisturbanceMode',
-    title: isZh.value ? '低打扰模式' : 'Low-disturbance mode',
-    hint: isZh.value ? '减少提醒频率，适合专注或休息时使用。' : 'Reduce reminder intensity for focus or rest.',
+    title: t.value.profile.privacyOptions.lowDisturbanceMode.title,
+    hint: t.value.profile.privacyOptions.lowDisturbanceMode.hint,
     value: settings.value.lowDisturbanceMode,
   },
   {
     key: 'demoMode',
-    title: isZh.value ? '演示模式' : 'Demo mode',
-    hint: isZh.value ? '保留演示数据和快捷体验入口。' : 'Keep demo data and shortcut experiences enabled.',
+    title: t.value.profile.privacyOptions.demoMode.title,
+    hint: t.value.profile.privacyOptions.demoMode.hint,
     value: settings.value.demoMode,
   },
 ])
 
 const petAttributes = computed(() => [
-  { label: isZh.value ? '心情' : 'Mood', value: pet.value.mood, tone: 'mood' },
-  { label: isZh.value ? '亲密度' : 'Bond', value: pet.value.intimacy, tone: 'bond' },
-  { label: isZh.value ? '健康' : 'Health', value: pet.value.health, tone: 'health' },
-  { label: isZh.value ? '饱腹' : 'Hunger', value: pet.value.hunger, tone: 'hunger' },
-  { label: isZh.value ? '精力' : 'Energy', value: pet.value.energy, tone: 'energy' },
-  { label: isZh.value ? '清洁' : 'Clean', value: pet.value.clean, tone: 'clean' },
+  { label: t.value.profile.attributes.mood, value: pet.value.mood, tone: 'mood' },
+  { label: t.value.profile.attributes.bond, value: pet.value.intimacy, tone: 'bond' },
+  { label: t.value.profile.attributes.health, value: pet.value.health, tone: 'health' },
+  { label: t.value.profile.attributes.hunger, value: pet.value.hunger, tone: 'hunger' },
+  { label: t.value.profile.attributes.energy, value: pet.value.energy, tone: 'energy' },
+  { label: t.value.profile.attributes.clean, value: pet.value.clean, tone: 'clean' },
 ])
 
 const openSettings = () => {
@@ -210,24 +211,24 @@ const profileGroups = computed(() => [
   {
     title: profileCopy.value.petManagement,
     items: [
-      { key: 'rename', icon: '名', title: profileCopy.value.renamePet, hint: profileCopy.value.renamePetHint, action: openRenameSheet },
-      { key: 'attributes', icon: '值', title: profileCopy.value.viewAttributes, hint: profileCopy.value.viewAttributesHint, action: () => openSheet('petAttributes') },
+      { key: 'rename', icon: '✎', title: profileCopy.value.renamePet, hint: profileCopy.value.renamePetHint, action: openRenameSheet },
+      { key: 'attributes', icon: '◈', title: profileCopy.value.viewAttributes, hint: profileCopy.value.viewAttributesHint, action: () => openSheet('petAttributes') },
     ],
   },
   {
     title: profileCopy.value.growthRecords,
     items: [
-      { key: 'achievements', icon: '章', title: profileCopy.value.achievements, hint: profileCopy.value.achievementsHint, action: openArchive },
-      { key: 'stats', icon: '图', title: profileCopy.value.stats, hint: profileCopy.value.statsHint, action: openStats },
+      { key: 'achievements', icon: '★', title: profileCopy.value.achievements, hint: profileCopy.value.achievementsHint, action: openArchive },
+      { key: 'stats', icon: '▥', title: profileCopy.value.stats, hint: profileCopy.value.statsHint, action: openStats },
     ],
   },
   {
     title: profileCopy.value.preferences,
     items: [
-      { key: 'settings', icon: '设', title: profileCopy.value.settings, hint: profileCopy.value.settingsHint, action: openSettings },
-      { key: 'privacy', icon: '隐', title: profileCopy.value.privacy, hint: profileCopy.value.privacyHint, action: openPrivacySettings },
-      { key: 'about', icon: 'i', title: profileCopy.value.about, hint: profileCopy.value.aboutHint, action: () => openSheet('about') },
-      { key: 'feedback', icon: '答', title: profileCopy.value.feedback, hint: t.value.profile.feedbackHint, action: openFeedback },
+      { key: 'settings', icon: '⚙', title: profileCopy.value.settings, hint: profileCopy.value.settingsHint, action: openSettings },
+      { key: 'privacy', icon: '🔒', title: profileCopy.value.privacy, hint: profileCopy.value.privacyHint, action: openPrivacySettings },
+      { key: 'about', icon: 'ⓘ', title: profileCopy.value.about, hint: profileCopy.value.aboutHint, action: () => openSheet('about') },
+      { key: 'feedback', icon: '✉', title: profileCopy.value.feedback, hint: t.value.profile.feedbackHint, action: openFeedback },
     ],
   },
 ])
@@ -265,7 +266,7 @@ const chooseCustomAvatar = async () => {
     }
 
     uni.showToast({
-      title: isZh.value ? '头像选择失败' : 'Avatar selection failed',
+      title: t.value.profile.avatarFailed,
       icon: 'none',
     })
   }
@@ -325,15 +326,28 @@ onMounted(async () => {
   <view class="profile-page">
     <view class="profile-hero">
       <view class="profile-hero__top">
-        <button v-if="!isGuestSession" class="profile-avatar profile-avatar--button" @click="openAvatarSheet">
+        <button
+          v-if="!isGuestSession && shouldShowAvatarImage"
+          class="profile-avatar profile-avatar--button"
+          @click="openAvatarSheet"
+        >
           <image
-            v-if="shouldShowAvatarImage"
             class="profile-avatar__image"
             :src="user?.avatarUrl"
             mode="aspectFill"
             @error="handleAvatarError"
           />
-          <view v-else class="profile-avatar__fallback">{{ profileInitial }}</view>
+        </button>
+        <button
+          v-else-if="!isGuestSession"
+          class="profile-avatar profile-avatar--button profile-avatar--empty"
+          open-type="chooseAvatar"
+          @chooseavatar="handleChooseAvatar"
+        >
+          <view class="profile-avatar__fallback">
+            <view class="profile-avatar__sync-icon">+</view>
+            <view class="profile-avatar__sync-text">{{ profileCopy.avatarSyncHint }}</view>
+          </view>
         </button>
         <view v-else class="profile-avatar">
           <view class="profile-avatar__fallback">{{ profileInitial }}</view>
@@ -504,6 +518,7 @@ onMounted(async () => {
   border-radius: 24rpx;
   height: 108rpx;
   overflow: hidden;
+  position: relative;
   width: 108rpx;
 }
 
@@ -516,6 +531,10 @@ onMounted(async () => {
   border: 0;
 }
 
+.profile-avatar--empty {
+  background: linear-gradient(160deg, #fff0ca, #e8f7ef);
+}
+
 .profile-avatar__image,
 .profile-avatar__fallback {
   height: 100%;
@@ -526,9 +545,33 @@ onMounted(async () => {
   align-items: center;
   color: #6d5542;
   display: flex;
+  flex-direction: column;
   font-size: 42rpx;
   font-weight: 800;
   justify-content: center;
+}
+
+.profile-avatar__sync-icon {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  color: #365f56;
+  display: flex;
+  font-size: 38rpx;
+  height: 48rpx;
+  justify-content: center;
+  line-height: 1;
+  width: 48rpx;
+}
+
+.profile-avatar__sync-text {
+  color: #5f8c78;
+  font-size: 16rpx;
+  font-weight: 800;
+  line-height: 1.12;
+  margin-top: 6rpx;
+  max-width: 92rpx;
+  text-align: center;
 }
 
 .profile-hero__main {
@@ -713,10 +756,12 @@ onMounted(async () => {
   color: #365f56;
   display: flex;
   flex: 0 0 auto;
-  font-size: 26rpx;
-  font-weight: 900;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', sans-serif;
+  font-size: 32rpx;
+  font-weight: 700;
   height: 68rpx;
   justify-content: center;
+  line-height: 1;
   width: 68rpx;
 }
 

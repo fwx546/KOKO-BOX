@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useCourseScheduleImporter } from '../composables/useCourseScheduleImporter'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
@@ -41,6 +41,9 @@ const TIME_COLUMN_WIDTH = 68
 const DAY_COLUMN_WIDTH = 88
 const ROW_HEIGHT = 35
 const HEADER_HEIGHT = 48
+const DEFAULT_NAV_HEIGHT = 118
+const NAV_ROW_HEIGHT = 52
+const NAV_ROW_GAP = 8
 
 const { courseSchedule, setCourseSchedule } = useKokoState()
 const { t } = useLanguage()
@@ -60,6 +63,7 @@ const dragGhostX = ref(0)
 const dragGhostY = ref(0)
 const scrollLeft = ref(0)
 const scrollTop = ref(0)
+const scheduleNavHeight = ref(DEFAULT_NAV_HEIGHT)
 let dragOrigin: DragOrigin | null = null
 let dragStartX = 0
 let dragStartY = 0
@@ -149,6 +153,10 @@ const dragGhostStyle = computed(() =>
     `width: ${DAY_COLUMN_WIDTH - 12}px`,
   ].join('; '),
 )
+
+const schedulePageStyle = computed(() => `padding-top: ${scheduleNavHeight.value}px`)
+const scheduleBodyStyle = computed(() => `height: calc(100vh - ${scheduleNavHeight.value}px)`)
+const scheduleTopbarStyle = computed(() => `height: ${scheduleNavHeight.value}px`)
 
 const scheduleTrackStyle = computed(() => {
   const bodyRows = Math.max(1, scheduleSlots.value.length - 1)
@@ -320,6 +328,27 @@ const handleScheduleScroll = (event: any) => {
   scrollTop.value = Number(event?.detail?.scrollTop ?? 0)
 }
 
+const syncScheduleNavHeight = () => {
+  try {
+    const systemInfo = uni.getSystemInfoSync?.()
+    const statusBarHeight = Number(systemInfo?.statusBarHeight ?? 0)
+    const wxApi = (globalThis as {
+      wx?: {
+        getMenuButtonBoundingClientRect?: () => { bottom?: number; height?: number; top?: number }
+      }
+    }).wx
+    const menuButton = wxApi?.getMenuButtonBoundingClientRect?.()
+    const menuBottom = Number(menuButton?.bottom ?? 0)
+    const menuTop = Number(menuButton?.top ?? 0)
+    const menuHeight = Number(menuButton?.height ?? 0)
+    const nativeNavBottom = menuBottom || (menuTop && menuHeight ? menuTop + menuHeight : statusBarHeight + 44)
+
+    scheduleNavHeight.value = Math.max(DEFAULT_NAV_HEIGHT, Math.ceil(nativeNavBottom + NAV_ROW_GAP + NAV_ROW_HEIGHT))
+  } catch {
+    scheduleNavHeight.value = DEFAULT_NAV_HEIGHT
+  }
+}
+
 const backToPlanner = () => {
   const pageStack = typeof getCurrentPages === 'function' ? getCurrentPages() : []
   if (pageStack.length > 1) {
@@ -329,21 +358,25 @@ const backToPlanner = () => {
 
   uni.switchTab({ url: '/pages/planner/index' })
 }
+
+onMounted(() => {
+  syncScheduleNavHeight()
+})
 </script>
 
 <template>
-  <view class="planner-schedule-page">
-    <view class="planner-schedule-topbar">
-      <button class="planner-schedule-back" :aria-label="t.schedule.back" @click="backToPlanner">←</button>
+  <view class="planner-schedule-page" :style="schedulePageStyle">
+    <view class="planner-schedule-topbar" :style="scheduleTopbarStyle">
+      <button class="planner-schedule-back" :aria-label="t.schedule.back" @click="backToPlanner" />
       <view class="planner-schedule-title">{{ t.schedule.title }}</view>
       <button class="planner-schedule-change planner-schedule-change--top" @click="openScheduleImporter">{{ t.schedule.change }}</button>
     </view>
 
-    <view v-if="hasCourseSchedule" class="planner-schedule-page-body">
+    <view v-if="hasCourseSchedule" class="planner-schedule-page-body" :style="scheduleBodyStyle">
       <scroll-view
         class="planner-schedule-grid planner-schedule-grid--page"
         :scroll-x="!activeDragCourseId"
-        :scroll-y="false"
+        :scroll-y="!activeDragCourseId"
         enhanced
         :show-scrollbar="false"
         @scroll="handleScheduleScroll"
