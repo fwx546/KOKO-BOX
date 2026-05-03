@@ -65,12 +65,16 @@ type FocusSessionRecord = {
 }
 const FOCUS_SESSION_STORAGE_KEY = 'koko-pomodoro-focus-sessions-v1'
 const FOCUS_DAILY_GOAL_HOURS_KEY = 'koko-pomodoro-focus-goal-hours-v1'
+const TASK_SYNC_INTERVAL_MS = 60 * 1000
 const focusSessionRecords = ref<FocusSessionRecord[]>([])
 const focusDailyGoalHours = ref(8)
 const focusDailyGoalOptions = Array.from({ length: 12 }, (_, index) => index + 1)
 const calendarNow = ref(new Date())
 let calendarTimer: ReturnType<typeof setInterval> | undefined
 let pomodoroTimer: ReturnType<typeof setInterval> | undefined
+let deferredTaskSyncTimer: ReturnType<typeof setTimeout> | undefined
+let focusStorageHydrated = false
+let lastTaskSyncAt = 0
 
 const todayDate = () => new Date().toISOString().slice(0, 10)
 const toIsoDate = (date: Date) => {
@@ -148,8 +152,13 @@ const finalizeFocusSession = () => {
   focusSessionAccumulatedSeconds.value = 0
   focusSessionElapsedSeconds.value = 0
 }
-readFocusSessionRecords()
-readFocusDailyGoalHours()
+const hydrateFocusStorage = () => {
+  if (focusStorageHydrated) return
+  focusStorageHydrated = true
+  readFocusSessionRecords()
+  readFocusDailyGoalHours()
+}
+setTimeout(hydrateFocusStorage, 0)
 const isZh = computed(() => t.value.nav.home === '首页')
 const pomodoroDurationOptions = [5, 10, 15, 25, 45, 60]
 const pomodoroDurationLabels = pomodoroDurationOptions.map((value) => `${value} min`)
@@ -359,16 +368,20 @@ const selectedCalendarDate = ref(todayDate())
 const dateActionVisible = ref(false)
 const markedDates = ref<string[]>([])
 const markedDateSet = computed(() => new Set(markedDates.value))
-const calendarHeader = computed(() => {
+const calendarHeaderDate = computed(() => {
   const now = calendarNow.value
-  return now.toLocaleString(isZh.value ? 'zh-CN' : 'en-US', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  if (isZh.value) {
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    return `${weekdays[now.getDay()]} ${now.getMonth() + 1}月${now.getDate()}日`
+  }
+
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  return `${weekdays[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`
+})
+const calendarHeaderTime = computed(() => {
+  const now = calendarNow.value
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 })
 const calendarCopy = computed(() => ({
   live: isZh.value ? '实时日历' : 'Live calendar',
@@ -397,9 +410,12 @@ const calendarRangeLabel = computed(() => {
   start.setDate(start.getDate() - 2)
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
-  const locale = isZh.value ? 'zh-CN' : 'en-US'
-  const formatter = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' })
-  return `${formatter.format(start)} - ${formatter.format(end)}`
+  const formatRangeDate = (date: Date) => {
+    if (isZh.value) return `${date.getMonth() + 1}月${date.getDate()}日`
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${months[date.getMonth()]} ${date.getDate()}`
+  }
+  return `${formatRangeDate(start)} - ${formatRangeDate(end)}`
 })
 const calendarTasksForDate = (iso: string) =>
   tasks.value.filter((task) => {
@@ -416,6 +432,9 @@ const selectedCalendarTasks = computed(() =>
 const syncedCalendarDays = computed(() => {
   const base = calendarCursor.value
   const todayIso = toIsoDate(calendarNow.value)
+  const weekdays = isZh.value
+    ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(base)
     date.setDate(base.getDate() + index - 2)
@@ -424,7 +443,7 @@ const syncedCalendarDays = computed(() => {
     return {
       iso,
       day: date.getDate(),
-      weekday: date.toLocaleDateString(isZh.value ? 'zh-CN' : 'en-US', { weekday: 'short' }),
+      weekday: weekdays[date.getDay()],
       active: iso === todayIso,
       selected: iso === selectedCalendarDate.value,
       marked: markedDateSet.value.has(iso),
@@ -436,7 +455,10 @@ const defaultIconForKind = (kind: TaskKind) => (kind === 'ddl' ? '⏰' : '📋')
 const weekHeaders = computed(() =>
   Array.from({ length: 7 }, (_, index) => {
     const date = new Date(2026, 0, 4 + index)
-    return date.toLocaleDateString(isZh.value ? 'zh-CN' : 'en-US', { weekday: 'short' })
+    const weekdays = isZh.value
+      ? ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    return weekdays[date.getDay()]
   }),
 )
 const yearCalendarMonths = computed(() =>
@@ -512,10 +534,12 @@ const openCreateChoice = () => {
 }
 
 const openPomodoro = () => {
+  hydrateFocusStorage()
   pomodoroVisible.value = true
 }
 
 const openFocusStats = (focus: 'daily' | 'weekly') => {
+  hydrateFocusStorage()
   focusStatsMode.value = focus
   focusStatsVisible.value = true
 }
@@ -558,10 +582,11 @@ const finishPomodoro = async () => {
   pomodoroRemainingSeconds.value = 0
   updatePet({ state: 'normal', energy: 76 })
   triggerHardwareAction('pomodoro-done', { command: 'DONE' })
-  const sent = await sendPomodoroCommand('DONE')
-  if (sent) {
-    uni.showToast({ title: pomodoroCopy.value.done, icon: 'none' })
-  }
+  void sendPomodoroCommand('DONE').then((sent) => {
+    if (sent) {
+      uni.showToast({ title: pomodoroCopy.value.done, icon: 'none' })
+    }
+  })
   pomodoroEnding.value = false
 }
 
@@ -587,10 +612,11 @@ const startPomodoro = async () => {
     updatePet({ state: 'resting', energy: 48 })
     triggerHardwareAction('pomodoro-start', { command: 'START', minutes: pomodoroMinutes.value })
     startPomodoroCountdown()
-    const resumed = await sendPomodoroCommand('START')
-    if (resumed) {
-      uni.showToast({ title: pomodoroCopy.value.localResumed, icon: 'none' })
-    }
+    void sendPomodoroCommand('START').then((resumed) => {
+      if (resumed) {
+        uni.showToast({ title: pomodoroCopy.value.localResumed, icon: 'none' })
+      }
+    })
     return
   }
 
@@ -607,10 +633,11 @@ const startPomodoro = async () => {
   updatePet({ state: 'resting', energy: 48 })
   triggerHardwareAction('pomodoro-start', { command: 'START', minutes: pomodoroMinutes.value })
   startPomodoroCountdown()
-  const sent = await sendPomodoroCommand('START')
-  if (sent) {
-    uni.showToast({ title: pomodoroCopy.value.localStarted, icon: 'none' })
-  }
+  void sendPomodoroCommand('START').then((sent) => {
+    if (sent) {
+      uni.showToast({ title: pomodoroCopy.value.localStarted, icon: 'none' })
+    }
+  })
 }
 
 const pausePomodoro = () => {
@@ -632,7 +659,7 @@ const endPomodoro = async () => {
   pomodoroRemainingSeconds.value = 0
   updatePet({ state: 'normal', energy: 70 })
   triggerHardwareAction('pomodoro-stop', { command: 'DONE' })
-  await sendPomodoroCommand('DONE')
+  void sendPomodoroCommand('DONE')
 }
 
 const selectPomodoroDuration = (event: { detail: { value: number | string } }) => {
@@ -889,7 +916,14 @@ onShow(() => {
   calendarCursor.value = now
   selectedCalendarDate.value = toIsoDate(now)
   readMarkedDates()
-  void syncTasksFromCloud()
+  if (Date.now() - lastTaskSyncAt > TASK_SYNC_INTERVAL_MS) {
+    lastTaskSyncAt = Date.now()
+    if (deferredTaskSyncTimer) clearTimeout(deferredTaskSyncTimer)
+    deferredTaskSyncTimer = setTimeout(() => {
+      deferredTaskSyncTimer = undefined
+      void syncTasksFromCloud()
+    }, 600)
+  }
 })
 
 calendarTimer = setInterval(() => {
@@ -899,6 +933,8 @@ calendarTimer = setInterval(() => {
 onBeforeUnmount(() => {
   if (calendarTimer) clearInterval(calendarTimer)
   calendarTimer = undefined
+  if (deferredTaskSyncTimer) clearTimeout(deferredTaskSyncTimer)
+  deferredTaskSyncTimer = undefined
   clearPomodoroTimer()
 })
 </script>
@@ -911,7 +947,8 @@ onBeforeUnmount(() => {
       <view class="planner-live-calendar__head">
         <view class="planner-live-calendar__headline" @click="openYearCalendar">
         <view class="planner-live-calendar__eyebrow">{{ isZh ? '实时日历' : 'Live calendar' }}</view>
-        <view class="planner-live-calendar__time">{{ calendarHeader }}</view>
+        <view class="planner-live-calendar__time">{{ calendarHeaderDate }}</view>
+          <view class="planner-live-calendar__clock">{{ calendarHeaderTime }}</view>
           <view class="planner-live-calendar__range">{{ calendarRangeLabel }}</view>
         </view>
         <view class="planner-live-calendar__controls">

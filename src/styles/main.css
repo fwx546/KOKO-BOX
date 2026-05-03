@@ -2806,11 +2806,23 @@ button {
   border-radius: 0;
   color: #2d2b35;
   display: block;
+  font-family: Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  letter-spacing: 0;
   min-height: 100vh;
   margin: 0;
   overflow: visible;
   padding: 14px 14px calc(92px + env(safe-area-inset-bottom));
   position: relative;
+}
+
+.planner-punch-page view,
+.planner-punch-page text,
+.planner-punch-page button,
+.planner-punch-page input,
+.planner-punch-page picker,
+.planner-punch-page scroll-view {
+  font-family: Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  letter-spacing: 0;
 }
 
 .planner-punch-create {
@@ -3287,6 +3299,14 @@ button {
   font-size: 1.08rem;
   font-weight: 900;
   margin-top: 3px;
+}
+
+.planner-live-calendar__clock {
+  color: #2f2e36;
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-top: 1px;
 }
 
 .planner-live-calendar__range {

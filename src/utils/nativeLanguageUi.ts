@@ -23,6 +23,10 @@ const pageTitleKeyByRoute: Record<string, keyof (typeof copy)['en']['nav']> = {
   'pages/voice-call/index': 'voiceCall',
 }
 
+let syncedTabBarLanguage: Language | '' = ''
+let syncedTitleKey = ''
+let syncedTitleLanguage: Language | '' = ''
+
 const currentRoute = () => {
   if (typeof getCurrentPages !== 'function') return ''
   const pages = getCurrentPages()
@@ -35,7 +39,7 @@ export const syncNativeLanguageUi = (language: Language, route = currentRoute())
 
   const nav = copy[language].nav
 
-  if (typeof uni.setTabBarItem === 'function') {
+  if (syncedTabBarLanguage !== language && typeof uni.setTabBarItem === 'function') {
     const tabLabels = [nav.home, nav.planner, nav.town, nav.profile]
     tabBarPages.forEach((_, index) => {
       uni.setTabBarItem({
@@ -44,13 +48,16 @@ export const syncNativeLanguageUi = (language: Language, route = currentRoute())
         fail: () => undefined,
       })
     })
+    syncedTabBarLanguage = language
   }
 
   const titleKey = pageTitleKeyByRoute[route]
-  if (titleKey && typeof uni.setNavigationBarTitle === 'function') {
+  if (titleKey && (syncedTitleKey !== titleKey || syncedTitleLanguage !== language) && typeof uni.setNavigationBarTitle === 'function') {
     uni.setNavigationBarTitle({
       title: nav[titleKey],
       fail: () => undefined,
     })
+    syncedTitleKey = titleKey
+    syncedTitleLanguage = language
   }
 }
