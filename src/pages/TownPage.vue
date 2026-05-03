@@ -204,6 +204,7 @@ const communityCopy = computed(() => {
     inviteReady: isZh ? '邀请已生成，可以转发或扫码。' : 'Invite ready. Share it or scan it.',
     loadFailed: isZh ? '联机状态暂时加载失败。' : 'Community state failed to load.',
     copied: isZh ? '邀请信息已复制。' : 'Invite copied.',
+    greet: isZh ? 'Koko 去找伙伴打招呼啦' : 'Koko is heading over to say hi',
   }
 })
 
@@ -459,6 +460,22 @@ const copyInvite = () => {
   }
 }
 
+const greetPartner = (partner: TownCommunityPartner) => {
+  if (guideVisible.value) return
+
+  movePetTo(
+    partner.x + randomBetween(-5, 5),
+    partner.y + randomBetween(4, 8),
+  )
+  petAction.value = 'sparkle'
+  uni.showToast({
+    title: communityCopy.value.greet,
+    icon: 'none',
+  })
+  queueIdle(2200)
+  queueCommunityHeartbeat(300)
+}
+
 const stopMoveTimer = () => {
   if (moveTimer) clearTimeout(moveTimer)
   moveTimer = undefined
@@ -662,7 +679,7 @@ onBeforeUnmount(() => {
           class="town-partner-pet"
           :class="{ 'town-partner-pet--offline': !partner.online }"
           :style="partnerStyle(partner)"
-          @tap.stop="openCommunityPanel"
+          @tap.stop="greetPartner(partner)"
         >
           <view class="town-partner-pet__name">
             <view class="town-partner-pet__dot" :class="{ 'town-partner-pet__dot--offline': !partner.online }" />
