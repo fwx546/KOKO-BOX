@@ -1033,6 +1033,11 @@ onMounted(async () => {
   margin: 16rpx 0 0;
 }
 
+.profile-sheet__primary[disabled],
+.profile-sheet__ghost[disabled] {
+  opacity: 0.58;
+}
+
 .profile-sheet__text {
   background: transparent;
   color: #8a7a68;
