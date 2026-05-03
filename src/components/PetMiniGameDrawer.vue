@@ -1287,7 +1287,7 @@ onBeforeUnmount(() => {
               :key="scene.id"
               class="hide-scene-picker__button"
               :class="{ 'hide-scene-picker__button--active': activeHideScene === scene.id }"
-              :disabled="isRunning"
+              :disabled="isRunning && !isPaused && !gameCompleted"
               @click.stop="switchHideScene(scene.id)"
             >
               {{ localize(scene.label) }}
@@ -3144,15 +3144,15 @@ onBeforeUnmount(() => {
 }
 
 .mini-game-peek-pet {
-  background: linear-gradient(180deg, #fffdf0, #ffe2aa);
-  border-radius: 44% 44% 38% 38%;
-  height: 70rpx;
+  height: 96rpx;
   left: 50%;
+  overflow: visible;
+  pointer-events: none;
   position: absolute;
-  top: -6rpx;
+  top: -20rpx;
   transform: translateX(-50%);
-  width: 78rpx;
-  z-index: 3;
+  width: 96rpx;
+  z-index: 5;
 }
 
 .mini-game-peek-pet__ear {
