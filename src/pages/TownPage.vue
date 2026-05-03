@@ -694,9 +694,9 @@ onBeforeUnmount(() => {
         <image class="town-map__image" :src="townMapSrc" mode="scaleToFill" @error="handleTownMapError" />
 
         <view
-          v-if="!activeBuilding"
+          v-if="!activeBuilding && !communityPanelOpen"
           class="town-pet"
-          :class="[`town-pet--${petAction}`, { 'town-pet--under-panel': communityPanelOpen }]"
+          :class="`town-pet--${petAction}`"
           :style="petStyle"
           @click.stop
         >
@@ -705,21 +705,23 @@ onBeforeUnmount(() => {
           <view class="town-pet__shadow" />
         </view>
 
-        <view
-          v-for="partner in communityOtherPartners"
-          :key="partner.openid"
-          class="town-partner-pet"
-          :class="{ 'town-partner-pet--offline': !partner.online }"
-          :style="partnerStyle(partner)"
-          @tap.stop="greetPartner(partner)"
-        >
-          <view class="town-partner-pet__name">
-            <view class="town-partner-pet__dot" :class="{ 'town-partner-pet__dot--offline': !partner.online }" />
-            <text>{{ partner.petName }}</text>
+        <template v-if="!communityPanelOpen">
+          <view
+            v-for="partner in communityOtherPartners"
+            :key="partner.openid"
+            class="town-partner-pet"
+            :class="{ 'town-partner-pet--offline': !partner.online }"
+            :style="partnerStyle(partner)"
+            @tap.stop="greetPartner(partner)"
+          >
+            <view class="town-partner-pet__name">
+              <view class="town-partner-pet__dot" :class="{ 'town-partner-pet__dot--offline': !partner.online }" />
+              <text>{{ partner.petName }}</text>
+            </view>
+            <PetLottieAvatar :size-rpx="158" :still="!partner.online" />
+            <view class="town-partner-pet__shadow" />
           </view>
-          <PetLottieAvatar :size-rpx="158" :still="!partner.online" />
-          <view class="town-partner-pet__shadow" />
-        </view>
+        </template>
 
         <view
           v-for="spot in hotspots"
@@ -1029,11 +1031,6 @@ onBeforeUnmount(() => {
 .town-pet--chase .town-pet__shadow,
 .town-pet--nuzzle .town-pet__shadow {
   animation: town-pet-shadow 0.85s ease-in-out infinite;
-}
-
-.town-pet--under-panel {
-  pointer-events: none;
-  z-index: 2;
 }
 
 .town-partner-pet {
