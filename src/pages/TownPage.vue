@@ -50,6 +50,7 @@ const PET_MAX_Y = 92
 const TOWN_HOME_ACTION_STORAGE_KEY = 'koko-town-home-action'
 const TOWN_GUIDE_STORAGE_KEY = 'hasSeenTownGuideCommunityV1'
 const TOWN_INVITE_SHARE_STORAGE_KEY = 'koko-town-share-invite'
+const TOWN_PENDING_INVITE_STORAGE_KEY = 'koko-town-pending-invite'
 
 const { pet, economy, shopItems, todayTasks, completedTasks, settings, purchaseShopItem, syncEconomyFromCloud } = useKokoState()
 const { user, authMode, isMockSession, login } = useAuth()
@@ -383,6 +384,9 @@ const joinPendingInviteIfNeeded = async () => {
     communityMessage.value = communityCopy.value.joined
     communityPanelOpen.value = true
     pendingInviteCode.value = ''
+    if (typeof uni.removeStorageSync === 'function') {
+      uni.removeStorageSync(TOWN_PENDING_INVITE_STORAGE_KEY)
+    }
     return true
   } catch {
     communityMessage.value = communityCopy.value.loadFailed
@@ -416,6 +420,14 @@ const startCommunity = async () => {
 const markCommunityOfflineNow = () => {
   if (!communityAvailable.value) return
   void markTownCommunityOffline(communityPayload()).catch(() => undefined)
+}
+
+const restorePendingInvite = () => {
+  if (pendingInviteCode.value || typeof uni.getStorageSync !== 'function') return
+  const stored = decodeInviteCode(String(uni.getStorageSync(TOWN_PENDING_INVITE_STORAGE_KEY) || ''))
+  if (stored) {
+    pendingInviteCode.value = stored
+  }
 }
 
 const openCommunityPanel = () => {
@@ -644,6 +656,7 @@ onLoad((options = {}) => {
 })
 
 onShow(() => {
+  restorePendingInvite()
   void startCommunity()
 })
 

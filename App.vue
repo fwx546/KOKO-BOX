@@ -35,12 +35,13 @@ const ensureEntryGate = () => {
   }
 
   const pages = getCurrentPages()
-  const current = pages[pages.length - 1] as { route?: string } | undefined
+  const current = pages[pages.length - 1] as { route?: string; options?: Record<string, string | undefined> } | undefined
   const route = current?.route
+  const invite = current?.options?.invite || current?.options?.scene
 
   if (route && route !== 'pages/index/index') {
     uni.reLaunch({
-      url: '/pages/index/index',
+      url: `/pages/index/index${invite ? `?townInvite=${encodeURIComponent(invite)}` : ''}`,
     })
   }
 }

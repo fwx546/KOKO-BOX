@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import PageScaffold from '../../src/components/PageScaffold.vue'
 import { useAuth } from '../../src/composables/useAuth'
 import { useKokoState } from '../../src/composables/useKokoState'
@@ -27,6 +27,8 @@ const step = ref<LoginStep>('auth-choice')
 const selectedLoginMode = ref<LoginMode>('wechat')
 const petName = ref('')
 const isRedirectingHome = ref(false)
+const pendingTownInvite = ref('')
+const TOWN_PENDING_INVITE_STORAGE_KEY = 'koko-town-pending-invite'
 
 const normalizedPetName = computed(() => petName.value.trim())
 const canStart = computed(() => !loading.value && selectedLoginMode.value === 'wechat' && normalizedPetName.value.length > 0)
@@ -38,10 +40,45 @@ const changeLanguage = (nextLanguage: 'zh' | 'en') => {
   syncNativeLanguageUi(nextLanguage)
 }
 
+const decodeInviteCode = (value?: string) => {
+  if (!value) return ''
+  const decoded = decodeURIComponent(value)
+  const query = decoded.includes('?') ? decoded.slice(decoded.indexOf('?') + 1) : decoded
+  const invitePair = query
+    .split('&')
+    .map((part) => part.split('='))
+    .find(([key]) => key === 'invite')
+
+  return (invitePair?.[1] || decoded).replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase()
+}
+
 const redirectToHome = () => {
   if (isRedirectingHome.value) return
 
   isRedirectingHome.value = true
+  const invite = pendingTownInvite.value
+
+  if (invite) {
+    if (typeof uni.setStorageSync === 'function') {
+      uni.setStorageSync(TOWN_PENDING_INVITE_STORAGE_KEY, invite)
+    }
+    uni.switchTab({
+      url: '/pages/town/index',
+      fail: () => {
+        uni.reLaunch({
+          url: '/pages/town/index',
+          complete: () => {
+            isRedirectingHome.value = false
+          },
+        })
+      },
+      success: () => {
+        isRedirectingHome.value = false
+      },
+    })
+    return
+  }
+
   uni.switchTab({
     url: '/pages/home/index',
     fail: () => {
@@ -120,6 +157,13 @@ onShow(() => {
 
   if (authMode.value && hasCompletedOnboarding.value) {
     redirectToHome()
+  }
+})
+
+onLoad((options = {}) => {
+  const invite = decodeInviteCode(String(options.townInvite || options.invite || options.scene || ''))
+  if (invite) {
+    pendingTownInvite.value = invite
   }
 })
 </script>
