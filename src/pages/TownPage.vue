@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import PetLottieAvatar from '../components/PetLottieAvatar.vue'
+import { useAuth } from '../composables/useAuth'
 import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 import type { PetActionType } from '../types/koko'
+import {
+  createTownInvite,
+  joinTownInvite,
+  loadTownCommunityState,
+  markTownCommunityOffline,
+  sendTownCommunityHeartbeat,
+  type TownCommunityPartner,
+  type TownCommunityRoom,
+} from '../services/townCommunityCloud'
 
 interface BuildingHotspot {
   id: string
@@ -18,7 +29,7 @@ interface BuildingHotspot {
 interface TownGuideStep {
   title: string
   body: string
-  focus: 'map' | 'pet' | 'home' | 'playground' | 'shop' | 'task-board'
+  focus: 'map' | 'pet' | 'community' | 'home' | 'playground' | 'shop' | 'task-board'
 }
 
 const MAP_WIDTH = 941
@@ -38,8 +49,10 @@ const PET_MIN_Y = 26
 const PET_MAX_Y = 92
 const TOWN_HOME_ACTION_STORAGE_KEY = 'koko-town-home-action'
 const TOWN_GUIDE_STORAGE_KEY = 'hasSeenTownGuide'
+const TOWN_INVITE_SHARE_STORAGE_KEY = 'koko-town-share-invite'
 
 const { pet, economy, shopItems, todayTasks, completedTasks, settings, purchaseShopItem, syncEconomyFromCloud } = useKokoState()
+const { user, authMode, isMockSession, login } = useAuth()
 const { t } = useLanguage()
 
 const hotspots = computed<BuildingHotspot[]>(() => [
@@ -59,9 +72,21 @@ const petAction = ref<PetActionType>('idle')
 const walkingEnabled = ref(true)
 const guideVisible = ref(false)
 const guideStepIndex = ref(0)
+const communityPanelOpen = ref(false)
+const communityLoading = ref(false)
+const communityMessage = ref('')
+const communityPartners = ref<TownCommunityPartner[]>([])
+const communityRoom = ref<TownCommunityRoom | null>(null)
+const communityInvitePath = ref('')
+const communityInviteCode = ref('')
+const communityQrCodeFileID = ref('')
+const pendingInviteCode = ref('')
 
 let moveTimer: ReturnType<typeof setTimeout> | undefined
 let roamTimer: ReturnType<typeof setInterval> | undefined
+let communityHeartbeatTimer: ReturnType<typeof setInterval> | undefined
+let communityRefreshTimer: ReturnType<typeof setInterval> | undefined
+let communityMoveTimer: ReturnType<typeof setTimeout> | undefined
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
@@ -117,6 +142,9 @@ const guideHighlightStyle = computed(() => {
   if (focus === 'pet') {
     return `left:${petPosition.value.x - 14}%;top:${petPosition.value.y - 20}%;width:28%;height:24%;`
   }
+  if (focus === 'community') {
+    return 'left:4%;top:7%;width:92%;height:23%;'
+  }
 
   const spot = hotspots.value.find((item) => item.id === focus)
   if (!spot) return 'left:8%;top:14%;width:84%;height:24%;'
@@ -141,6 +169,9 @@ const petStyle = computed(() => ({
   top: `${petPosition.value.y}%`,
   transitionDuration: `${petMoveDurationMs.value}ms`,
 }))
+const communityAvailable = computed(() => authMode.value === 'wechat' && !isMockSession.value)
+const communityOtherPartners = computed(() => communityPartners.value.filter((partner) => !partner.isSelf))
+const communityOnlinePartners = computed(() => communityOtherPartners.value.filter((partner) => partner.online))
 
 const townPendingTasks = computed(() => todayTasks.value.slice(0, 3))
 const townCompletedTasks = computed(() => completedTasks.value.slice(0, 3))
@@ -152,6 +183,29 @@ const shopText = computed(() => ({
   pending: settings.value.language === 'zh' ? '待办' : 'pending',
   done: settings.value.language === 'zh' ? '完成' : 'done',
 }))
+
+const communityCopy = computed(() => {
+  const isZh = settings.value.language === 'zh'
+  return {
+    title: isZh ? '社区联机' : 'Community Co-op',
+    subtitle: isZh ? '邀请好友进入同一座小镇，看见彼此的 Koko 在地图上散步。' : 'Invite friends into the same town and watch every Koko wander on the map.',
+    online: isZh ? '在线' : 'online',
+    offline: isZh ? '离线' : 'offline',
+    openPanel: isZh ? '联机' : 'Co-op',
+    invite: isZh ? '生成邀请' : 'Create invite',
+    refresh: isZh ? '刷新伙伴' : 'Refresh',
+    share: isZh ? '转发邀请链接' : 'Share invite link',
+    copy: isZh ? '复制邀请信息' : 'Copy invite',
+    qrTitle: isZh ? '线下扫码联机' : 'Scan to join nearby',
+    qrPending: isZh ? '二维码生成中或暂不可用，可先用转发链接。' : 'QR is being generated or unavailable. Use the share link for now.',
+    unavailable: isZh ? '社区联机需要微信登录和云开发环境，游客模式不会显示虚假的在线好友。' : 'Community co-op needs WeChat login and cloud. Guest mode never shows fake online friends.',
+    empty: isZh ? '还没有联机伙伴。生成邀请后转发给好友，或让好友线下扫码加入。' : 'No partners yet. Create an invite, share it, or let a friend scan nearby.',
+    joined: isZh ? '已加入好友小镇。' : 'Joined your friend town.',
+    inviteReady: isZh ? '邀请已生成，可以转发或扫码。' : 'Invite ready. Share it or scan it.',
+    loadFailed: isZh ? '联机状态暂时加载失败。' : 'Community state failed to load.',
+    copied: isZh ? '邀请信息已复制。' : 'Invite copied.',
+  }
+})
 
 const guideSteps = computed<TownGuideStep[]>(() => {
   const isZh = settings.value.language === 'zh'
@@ -207,6 +261,194 @@ const shopItemCopy = (item: (typeof shopItems)[number]) => {
   return zhCopy[item.id]
 }
 
+const decodeInviteCode = (value?: string) => {
+  if (!value) return ''
+
+  const decoded = decodeURIComponent(value)
+  const query = decoded.includes('?') ? decoded.slice(decoded.indexOf('?') + 1) : decoded
+  const invitePair = query
+    .split('&')
+    .map((part) => part.split('='))
+    .find(([key]) => key === 'invite')
+
+  return (invitePair?.[1] || decoded).replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase()
+}
+
+const partnerStyle = (partner: TownCommunityPartner) => ({
+  left: `${clamp(partner.x, PET_MIN_X, PET_MAX_X)}%`,
+  top: `${clamp(partner.y, PET_MIN_Y, PET_MAX_Y)}%`,
+  transitionDuration: partner.online ? '1600ms' : '0ms',
+})
+
+const partnerLastSeenLabel = (partner: TownCommunityPartner) => {
+  if (partner.online) return communityCopy.value.online
+  if (!partner.lastSeenAt) return communityCopy.value.offline
+
+  const date = new Date(partner.lastSeenAt)
+  if (Number.isNaN(date.getTime())) return communityCopy.value.offline
+
+  return `${communityCopy.value.offline} ${date.toLocaleTimeString(settings.value.language === 'zh' ? 'zh-CN' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })}`
+}
+
+const communityPayload = () => ({
+  nickName: user.value?.nickName,
+  avatarUrl: user.value?.avatarUrl,
+  petName: pet.value.name,
+  x: petPosition.value.x,
+  y: petPosition.value.y,
+  action: petAction.value,
+})
+
+const applyCommunityState = (state: Awaited<ReturnType<typeof loadTownCommunityState>>) => {
+  communityPartners.value = state.partners
+  communityRoom.value = state.room
+  communityInvitePath.value = state.invitePath
+  communityInviteCode.value = state.inviteCode
+  communityQrCodeFileID.value = state.qrCodeFileID || communityQrCodeFileID.value
+
+  if (state.inviteCode && typeof uni.setStorageSync === 'function') {
+    uni.setStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY, state.inviteCode)
+  }
+}
+
+const loadCommunityState = async () => {
+  if (!communityAvailable.value) return
+
+  try {
+    applyCommunityState(await loadTownCommunityState())
+  } catch {
+    communityMessage.value = communityCopy.value.loadFailed
+  }
+}
+
+const heartbeatCommunity = async () => {
+  if (!communityAvailable.value) return
+
+  try {
+    applyCommunityState(await sendTownCommunityHeartbeat(communityPayload()))
+    if (!communityMessage.value) return
+    communityMessage.value = ''
+  } catch {
+    communityMessage.value = communityCopy.value.loadFailed
+  }
+}
+
+const queueCommunityHeartbeat = (delay = 500) => {
+  if (communityMoveTimer) clearTimeout(communityMoveTimer)
+  communityMoveTimer = setTimeout(() => {
+    void heartbeatCommunity()
+  }, delay)
+}
+
+const stopCommunityTimers = () => {
+  if (communityHeartbeatTimer) clearInterval(communityHeartbeatTimer)
+  if (communityRefreshTimer) clearInterval(communityRefreshTimer)
+  if (communityMoveTimer) clearTimeout(communityMoveTimer)
+  communityHeartbeatTimer = undefined
+  communityRefreshTimer = undefined
+  communityMoveTimer = undefined
+}
+
+const startCommunityTimers = () => {
+  stopCommunityTimers()
+  communityHeartbeatTimer = setInterval(() => {
+    void heartbeatCommunity()
+  }, 15000)
+  communityRefreshTimer = setInterval(() => {
+    void loadCommunityState()
+  }, 5200)
+}
+
+const joinPendingInviteIfNeeded = async () => {
+  if (!pendingInviteCode.value || !communityAvailable.value) return false
+
+  communityLoading.value = true
+  try {
+    applyCommunityState(await joinTownInvite(pendingInviteCode.value, communityPayload()))
+    communityMessage.value = communityCopy.value.joined
+    communityPanelOpen.value = true
+    pendingInviteCode.value = ''
+    return true
+  } catch {
+    communityMessage.value = communityCopy.value.loadFailed
+    return false
+  } finally {
+    communityLoading.value = false
+  }
+}
+
+const startCommunity = async () => {
+  if (!communityAvailable.value) {
+    communityMessage.value = communityCopy.value.unavailable
+    return
+  }
+
+  communityLoading.value = true
+  try {
+    if (!user.value) {
+      await login('wechat')
+    }
+    const joined = await joinPendingInviteIfNeeded()
+    if (!joined) {
+      await heartbeatCommunity()
+    }
+    startCommunityTimers()
+  } finally {
+    communityLoading.value = false
+  }
+}
+
+const markCommunityOfflineNow = () => {
+  if (!communityAvailable.value) return
+  void markTownCommunityOffline(communityPayload()).catch(() => undefined)
+}
+
+const openCommunityPanel = () => {
+  communityPanelOpen.value = true
+  void startCommunity()
+}
+
+const closeCommunityPanel = () => {
+  communityPanelOpen.value = false
+}
+
+const createCommunityInvite = async () => {
+  if (!communityAvailable.value) {
+    communityMessage.value = communityCopy.value.unavailable
+    return
+  }
+
+  communityLoading.value = true
+  try {
+    applyCommunityState(await createTownInvite(communityPayload()))
+    communityMessage.value = communityCopy.value.inviteReady
+    communityPanelOpen.value = true
+  } catch {
+    communityMessage.value = communityCopy.value.loadFailed
+  } finally {
+    communityLoading.value = false
+  }
+}
+
+const copyInvite = () => {
+  const text = communityInviteCode.value
+    ? `${communityCopy.value.title}: ${communityInvitePath.value || communityInviteCode.value}`
+    : communityCopy.value.empty
+
+  if (typeof uni.setClipboardData === 'function') {
+    uni.setClipboardData({
+      data: text,
+      success: () => {
+        uni.showToast({ title: communityCopy.value.copied, icon: 'none' })
+      },
+    })
+  }
+}
+
 const stopMoveTimer = () => {
   if (moveTimer) clearTimeout(moveTimer)
   moveTimer = undefined
@@ -233,6 +475,7 @@ const movePetTo = (nextX: number, nextY: number) => {
   petMoveDurationMs.value = Math.round(clamp(distance * 120, 1400, 4200))
   petPosition.value = { x, y }
   queueIdle(petMoveDurationMs.value + 120)
+  queueCommunityHeartbeat(700)
 }
 
 const roamSomewhere = () => {
@@ -359,14 +602,33 @@ onMounted(() => {
   void syncEconomyFromCloud()
   petMirror.value = false
   showTownGuideIfNeeded()
+  void startCommunity()
   roamTimer = setInterval(() => {
     roamSomewhere()
   }, 5200)
   queueIdle(1600)
 })
 
+onLoad((options = {}) => {
+  const invite = decodeInviteCode(String(options.invite || options.scene || ''))
+  if (invite) {
+    pendingInviteCode.value = invite
+  }
+})
+
+onShow(() => {
+  void startCommunity()
+})
+
+onHide(() => {
+  stopCommunityTimers()
+  markCommunityOfflineNow()
+})
+
 onBeforeUnmount(() => {
   stopMoveTimer()
+  stopCommunityTimers()
+  markCommunityOfflineNow()
   if (roamTimer) clearInterval(roamTimer)
   roamTimer = undefined
 })
@@ -385,6 +647,22 @@ onBeforeUnmount(() => {
         </view>
 
         <view
+          v-for="partner in communityOtherPartners"
+          :key="partner.openid"
+          class="town-partner-pet"
+          :class="{ 'town-partner-pet--offline': !partner.online }"
+          :style="partnerStyle(partner)"
+          @tap.stop="openCommunityPanel"
+        >
+          <view class="town-partner-pet__name">
+            <view class="town-partner-pet__dot" :class="{ 'town-partner-pet__dot--offline': !partner.online }" />
+            <text>{{ partner.petName }}</text>
+          </view>
+          <PetLottieAvatar :size-rpx="158" :still="!partner.online" />
+          <view class="town-partner-pet__shadow" />
+        </view>
+
+        <view
           v-for="spot in hotspots"
           :key="spot.id"
           class="town-hotspot"
@@ -400,6 +678,75 @@ onBeforeUnmount(() => {
       <text class="town-guide-entry__icon">?</text>
       <text>{{ guideEntryText }}</text>
     </button>
+
+    <view class="town-community-hud">
+      <button class="town-community-hud__button" hover-class="town-community-hud__button--pressed" @tap.stop="openCommunityPanel">
+        <view class="town-community-hud__pulse" :class="{ 'town-community-hud__pulse--offline': !communityAvailable }" />
+        <view>
+          <view class="town-community-hud__title">{{ communityCopy.openPanel }}</view>
+          <view class="town-community-hud__meta">{{ communityOnlinePartners.length }} {{ communityCopy.online }}</view>
+        </view>
+      </button>
+    </view>
+
+    <view v-if="communityPanelOpen" class="town-community-layer" @tap="closeCommunityPanel">
+      <view class="town-community-panel" @tap.stop>
+        <button class="town-community-panel__close" @tap="closeCommunityPanel">×</button>
+        <view class="town-community-panel__head">
+          <view>
+            <view class="town-community-panel__eyebrow">KOKO LINK</view>
+            <view class="town-community-panel__title">{{ communityCopy.title }}</view>
+          </view>
+          <view class="town-community-panel__count">{{ communityOnlinePartners.length }}/{{ Math.max(communityRoom?.memberCount || 1, 1) }}</view>
+        </view>
+        <view class="town-community-panel__subtitle">{{ communityCopy.subtitle }}</view>
+
+        <view v-if="communityMessage" class="town-community-panel__message">{{ communityMessage }}</view>
+        <view v-else-if="!communityAvailable" class="town-community-panel__message">{{ communityCopy.unavailable }}</view>
+
+        <view class="town-community-panel__actions">
+          <button class="town-community-panel__primary" :disabled="communityLoading || !communityAvailable" @tap="createCommunityInvite">
+            {{ communityLoading ? '...' : communityCopy.invite }}
+          </button>
+          <button class="town-community-panel__ghost" :disabled="communityLoading || !communityAvailable" @tap="loadCommunityState">
+            {{ communityCopy.refresh }}
+          </button>
+        </view>
+
+        <view v-if="communityInviteCode" class="town-invite-card">
+          <view>
+            <view class="town-invite-card__label">{{ communityCopy.qrTitle }}</view>
+            <view class="town-invite-card__code">{{ communityInviteCode }}</view>
+          </view>
+          <image v-if="communityQrCodeFileID" class="town-invite-card__qr" :src="communityQrCodeFileID" mode="aspectFit" />
+          <view v-else class="town-invite-card__qr town-invite-card__qr--empty">{{ communityCopy.qrPending }}</view>
+        </view>
+
+        <view class="town-community-panel__share-row">
+          <button class="town-community-panel__share" open-type="share" :disabled="!communityInviteCode">
+            {{ communityCopy.share }}
+          </button>
+          <button class="town-community-panel__share town-community-panel__share--soft" :disabled="!communityInviteCode" @tap="copyInvite">
+            {{ communityCopy.copy }}
+          </button>
+        </view>
+
+        <view class="town-partner-list">
+          <view v-if="!communityOtherPartners.length" class="town-partner-list__empty">{{ communityCopy.empty }}</view>
+          <view v-for="partner in communityOtherPartners" :key="partner.openid" class="town-partner-row">
+            <view class="town-partner-row__avatar">
+              <image v-if="partner.avatarUrl" :src="partner.avatarUrl" mode="aspectFill" />
+              <text v-else>{{ partner.nickName.charAt(0).toUpperCase() }}</text>
+            </view>
+            <view class="town-partner-row__main">
+              <view class="town-partner-row__name">{{ partner.nickName }}</view>
+              <view class="town-partner-row__pet">{{ partner.petName }} · {{ partnerLastSeenLabel(partner) }}</view>
+            </view>
+            <view class="town-partner-row__status" :class="{ 'town-partner-row__status--offline': !partner.online }" />
+          </view>
+        </view>
+      </view>
+    </view>
 
     <view v-if="activeBuilding" class="town-popup-mask" @tap="closeBuildingPopup">
       <view class="town-popup" @tap.stop>
@@ -620,6 +967,378 @@ onBeforeUnmount(() => {
 .town-pet--chase .town-pet__shadow,
 .town-pet--nuzzle .town-pet__shadow {
   animation: town-pet-shadow 0.85s ease-in-out infinite;
+}
+
+.town-partner-pet {
+  opacity: 0.95;
+  pointer-events: auto;
+  position: absolute;
+  transform: translate(-50%, -100%);
+  transition-property: left, top;
+  transition-timing-function: ease-out;
+  z-index: 3;
+}
+
+.town-partner-pet--offline {
+  filter: grayscale(0.45);
+  opacity: 0.62;
+}
+
+.town-partner-pet__name {
+  align-items: center;
+  background: rgba(255, 253, 248, 0.9);
+  border: 2rpx solid rgba(95, 199, 168, 0.18);
+  border-radius: 999rpx;
+  color: #365f56;
+  display: flex;
+  font-size: 20rpx;
+  font-weight: 900;
+  gap: 8rpx;
+  left: 50%;
+  line-height: 1.2;
+  max-width: 180rpx;
+  overflow: hidden;
+  padding: 7rpx 14rpx;
+  position: absolute;
+  text-overflow: ellipsis;
+  top: -34rpx;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.town-partner-pet__dot {
+  background: #5fc782;
+  border-radius: 50%;
+  box-shadow: 0 0 12rpx rgba(95, 199, 130, 0.68);
+  flex: 0 0 auto;
+  height: 13rpx;
+  width: 13rpx;
+}
+
+.town-partner-pet__dot--offline {
+  background: #b4a58f;
+  box-shadow: none;
+}
+
+.town-partner-pet__shadow {
+  background: rgba(37, 72, 54, 0.14);
+  border-radius: 50%;
+  bottom: 18rpx;
+  filter: blur(3rpx);
+  height: 28rpx;
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+  width: 104rpx;
+}
+
+.town-community-hud {
+  position: fixed;
+  right: 24rpx;
+  top: calc(22rpx + env(safe-area-inset-top));
+  z-index: 18;
+}
+
+.town-community-hud__button {
+  align-items: center;
+  background: rgba(255, 253, 248, 0.94);
+  border: 2rpx solid rgba(95, 199, 168, 0.26);
+  border-radius: 999rpx;
+  box-shadow: 0 12rpx 28rpx rgba(40, 72, 59, 0.16);
+  color: #365f56;
+  display: flex;
+  gap: 12rpx;
+  margin: 0;
+  min-height: 62rpx;
+  padding: 10rpx 18rpx 10rpx 14rpx;
+}
+
+.town-community-hud__button::after,
+.town-community-panel__close::after,
+.town-community-panel__primary::after,
+.town-community-panel__ghost::after,
+.town-community-panel__share::after {
+  border: none;
+}
+
+.town-community-hud__button--pressed {
+  transform: scale(0.96);
+}
+
+.town-community-hud__pulse {
+  background: #5fc782;
+  border-radius: 50%;
+  box-shadow: 0 0 0 8rpx rgba(95, 199, 130, 0.16), 0 0 18rpx rgba(95, 199, 130, 0.62);
+  height: 18rpx;
+  width: 18rpx;
+}
+
+.town-community-hud__pulse--offline {
+  background: #b4a58f;
+  box-shadow: 0 0 0 8rpx rgba(180, 165, 143, 0.12);
+}
+
+.town-community-hud__title {
+  color: #253047;
+  font-size: 23rpx;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.town-community-hud__meta {
+  color: #7d8a74;
+  font-size: 19rpx;
+  font-weight: 800;
+  line-height: 1.12;
+  margin-top: 4rpx;
+}
+
+.town-community-layer {
+  align-items: flex-end;
+  background: rgba(47, 67, 58, 0.38);
+  bottom: 0;
+  display: flex;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 42;
+}
+
+.town-community-panel {
+  background: linear-gradient(180deg, #fffdf8 0%, #eefbf2 100%);
+  border-radius: 32rpx 32rpx 0 0;
+  box-shadow: 0 -18rpx 48rpx rgba(47, 67, 58, 0.2);
+  box-sizing: border-box;
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 30rpx 26rpx calc(30rpx + env(safe-area-inset-bottom));
+  position: relative;
+  width: 100%;
+}
+
+.town-community-panel__close {
+  align-items: center;
+  background: rgba(255, 240, 202, 0.9);
+  border-radius: 50%;
+  color: #7d644f;
+  display: flex;
+  font-size: 34rpx;
+  font-weight: 900;
+  height: 54rpx;
+  justify-content: center;
+  line-height: 54rpx;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 24rpx;
+  top: 24rpx;
+  width: 54rpx;
+}
+
+.town-community-panel__head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding-right: 72rpx;
+}
+
+.town-community-panel__eyebrow {
+  color: #5f8c78;
+  font-size: 20rpx;
+  font-weight: 900;
+  letter-spacing: 3rpx;
+}
+
+.town-community-panel__title {
+  color: #253047;
+  font-size: 38rpx;
+  font-weight: 900;
+  line-height: 1.16;
+  margin-top: 6rpx;
+}
+
+.town-community-panel__count {
+  background: #fff0ca;
+  border-radius: 999rpx;
+  color: #735420;
+  font-size: 24rpx;
+  font-weight: 900;
+  padding: 10rpx 18rpx;
+}
+
+.town-community-panel__subtitle,
+.town-community-panel__message,
+.town-partner-list__empty {
+  color: #6d7890;
+  font-size: 25rpx;
+  line-height: 1.5;
+  margin-top: 14rpx;
+}
+
+.town-community-panel__message {
+  background: rgba(255, 240, 202, 0.64);
+  border-radius: 18rpx;
+  color: #7d644f;
+  font-weight: 800;
+  padding: 14rpx 16rpx;
+}
+
+.town-community-panel__actions,
+.town-community-panel__share-row {
+  display: grid;
+  gap: 14rpx;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 20rpx;
+}
+
+.town-community-panel__primary,
+.town-community-panel__ghost,
+.town-community-panel__share {
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 900;
+  height: 78rpx;
+  line-height: 78rpx;
+  margin: 0;
+  padding: 0 18rpx;
+}
+
+.town-community-panel__primary {
+  background: linear-gradient(135deg, #8adfb0, #6bd4c7);
+  color: #173f38;
+}
+
+.town-community-panel__ghost,
+.town-community-panel__share--soft {
+  background: rgba(255, 255, 255, 0.82);
+  color: #365f56;
+}
+
+.town-community-panel__share {
+  background: linear-gradient(135deg, #ffe08a, #f0b94a);
+  color: #4d3219;
+}
+
+.town-community-panel__primary[disabled],
+.town-community-panel__ghost[disabled],
+.town-community-panel__share[disabled] {
+  opacity: 0.48;
+}
+
+.town-invite-card {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 2rpx solid rgba(95, 199, 168, 0.16);
+  border-radius: 24rpx;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 18rpx;
+}
+
+.town-invite-card__label {
+  color: #7d8a74;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.town-invite-card__code {
+  color: #253047;
+  font-size: 38rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+  margin-top: 8rpx;
+}
+
+.town-invite-card__qr {
+  background: #fffdf8;
+  border-radius: 18rpx;
+  height: 156rpx;
+  width: 156rpx;
+}
+
+.town-invite-card__qr--empty {
+  align-items: center;
+  color: #8a7a68;
+  display: flex;
+  font-size: 20rpx;
+  font-weight: 800;
+  line-height: 1.28;
+  padding: 14rpx;
+  text-align: center;
+}
+
+.town-partner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.town-partner-row {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 2rpx solid rgba(176, 143, 102, 0.12);
+  border-radius: 20rpx;
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx;
+}
+
+.town-partner-row__avatar {
+  align-items: center;
+  background: linear-gradient(135deg, #ffe08a, #8adfb0);
+  border-radius: 18rpx;
+  color: #365f56;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 28rpx;
+  font-weight: 900;
+  height: 68rpx;
+  justify-content: center;
+  overflow: hidden;
+  width: 68rpx;
+}
+
+.town-partner-row__avatar image {
+  height: 100%;
+  width: 100%;
+}
+
+.town-partner-row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.town-partner-row__name {
+  color: #253047;
+  font-size: 28rpx;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.town-partner-row__pet {
+  color: #7d8a74;
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-top: 4rpx;
+}
+
+.town-partner-row__status {
+  background: #5fc782;
+  border-radius: 50%;
+  box-shadow: 0 0 12rpx rgba(95, 199, 130, 0.62);
+  height: 18rpx;
+  width: 18rpx;
+}
+
+.town-partner-row__status--offline {
+  background: #b4a58f;
+  box-shadow: none;
 }
 
 .town-popup {
