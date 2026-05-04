@@ -21,9 +21,21 @@ type UniChooseMedia = (options: {
   success: (result: { tempFiles?: Array<{ tempFilePath?: string; path?: string }> }) => void
   fail: (error: UniPickerError) => void
 }) => void
+type UniChooseImage = (options: {
+  count: number
+  sizeType: string[]
+  sourceType: string[]
+  success: (result: { tempFilePaths?: string[] }) => void
+  fail: (error: UniPickerError) => void
+}) => void
 type UniSaveFile = (options: {
   tempFilePath: string
   success: (result: { savedFilePath?: string }) => void
+  fail: (error: UniPickerError) => void
+}) => void
+type UniGetImageInfo = (options: {
+  src: string
+  success: () => void
   fail: (error: UniPickerError) => void
 }) => void
 
@@ -260,6 +272,20 @@ const profileGroups = computed(() => [
 const getWechatCloudUrlApi = () =>
   (globalThis as { wx?: { cloud?: WechatCloudUrlApi } }).wx?.cloud
 
+const getNativeWechatApi = () => (globalThis as { wx?: Record<string, unknown> }).wx
+
+const getProfileMediaApi = () => {
+  const uniApi = uni as unknown as Record<string, unknown>
+  const wxApi = getNativeWechatApi() ?? {}
+
+  return {
+    chooseImage: (typeof uniApi.chooseImage === 'function' ? uniApi.chooseImage : wxApi.chooseImage) as UniChooseImage | undefined,
+    chooseMedia: (typeof uniApi.chooseMedia === 'function' ? uniApi.chooseMedia : wxApi.chooseMedia) as UniChooseMedia | undefined,
+    saveFile: (typeof uniApi.saveFile === 'function' ? uniApi.saveFile : wxApi.saveFile) as UniSaveFile | undefined,
+    getImageInfo: (typeof uniApi.getImageInfo === 'function' ? uniApi.getImageInfo : wxApi.getImageInfo) as UniGetImageInfo | undefined,
+  }
+}
+
 const isCloudAvatarUrl = (avatarUrl: string) => avatarUrl.startsWith('cloud://')
 
 const readAvatarPreviewCache = () => {
@@ -280,7 +306,7 @@ const writeAvatarPreviewCache = (avatarUrl: string) => {
 
 const persistAvatarPreview = async (avatarFilePath: string) => {
   const trimmedPath = avatarFilePath.trim()
-  const saveFile = (uni as unknown as { saveFile?: UniSaveFile }).saveFile
+  const saveFile = getProfileMediaApi().saveFile
 
   if (!trimmedPath || trimmedPath.startsWith('cloud://') || /^https?:\/\//i.test(trimmedPath) || !saveFile) {
     writeAvatarPreviewCache(trimmedPath)
@@ -302,6 +328,23 @@ const persistAvatarPreview = async (avatarFilePath: string) => {
     })
   })
 }
+
+const verifyAvatarImagePath = (avatarFilePath: string) =>
+  new Promise<void>((resolve, reject) => {
+    const trimmedPath = avatarFilePath.trim()
+    const getImageInfo = getProfileMediaApi().getImageInfo
+
+    if (!trimmedPath || !getImageInfo) {
+      resolve()
+      return
+    }
+
+    getImageInfo({
+      src: trimmedPath,
+      success: () => resolve(),
+      fail: (error) => reject(error),
+    })
+  })
 
 const resolveAvatarDisplayUrl = async (avatarUrl?: string) => {
   const nextToken = avatarResolveToken + 1
@@ -462,7 +505,14 @@ const showAvatarFailure = (error: unknown) => {
 
 const chooseAvatarWithChooseImage = () =>
   new Promise<string>((resolve, reject) => {
-    uni.chooseImage({
+    const chooseImage = getProfileMediaApi().chooseImage
+
+    if (!chooseImage) {
+      reject(new Error('chooseImage is not available.'))
+      return
+    }
+
+    chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album'],
@@ -481,7 +531,7 @@ const chooseAvatarWithChooseImage = () =>
 
 const chooseAvatarWithChooseMedia = () =>
   new Promise<string>((resolve, reject) => {
-    const chooseMedia = (uni as unknown as { chooseMedia?: UniChooseMedia }).chooseMedia
+    const chooseMedia = getProfileMediaApi().chooseMedia
 
     if (!chooseMedia) {
       reject(new Error('chooseMedia is not available.'))
@@ -506,7 +556,7 @@ const chooseAvatarWithChooseMedia = () =>
     })
   })
 const chooseAlbumAvatarPath = async () => {
-  const chooseMedia = (uni as unknown as { chooseMedia?: UniChooseMedia }).chooseMedia
+  const chooseMedia = getProfileMediaApi().chooseMedia
 
   if (!chooseMedia) {
     return chooseAvatarWithChooseImage()
@@ -542,6 +592,9 @@ const saveAvatarFromPath = async (avatarFilePath: string) => {
   avatarSaving.value = true
 
   try {
+    await verifyAvatarImagePath(avatarFilePath)
+    avatarDisplayUrl.value = avatarFilePath
+    avatarLoadFailed.value = false
     const previewPath = await persistAvatarPreview(avatarFilePath)
     avatarDisplayUrl.value = previewPath
     avatarLoadFailed.value = false
@@ -650,6 +703,7 @@ onMounted(async () => {
           @click="openAvatarSheet"
         >
           <image
+            :key="avatarDisplayUrl"
             class="profile-avatar__image"
             :src="avatarDisplayUrl"
             mode="aspectFill"
@@ -850,6 +904,7 @@ onMounted(async () => {
 
 .profile-avatar__image,
 .profile-avatar__fallback {
+  display: block;
   height: 100%;
   width: 100%;
 }
