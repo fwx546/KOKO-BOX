@@ -5,10 +5,11 @@ import { useKokoState } from '../composables/useKokoState'
 import { useLanguage } from '../composables/useLanguage'
 
 type CallPhase = 'idle' | 'recording' | 'thinking' | 'playing' | 'error'
-type RecorderState = 'idle' | 'recording' | 'stopping'
+type RecorderState = 'idle' | 'starting' | 'recording' | 'stopping'
+type QuickVoicePrompt = { label: string; text: string }
 
 const { t } = useLanguage()
-const { pet, sendVoiceChatTurn } = useKokoState()
+const { pet, messages, sendChatMessage, sendVoiceChatTurn } = useKokoState()
 
 const phase = ref<CallPhase>('idle')
 const transcript = ref('')
@@ -23,6 +24,9 @@ let audio: any
 let timer: ReturnType<typeof setInterval> | undefined
 let recorderState: RecorderState = 'idle'
 let recordStartedAt = 0
+let pendingStopAfterStart = false
+let talkPressing = false
+let startGuardTimer: ReturnType<typeof setTimeout> | undefined
 
 const isRecorderBusyError = (message = '') =>
   message.includes('is recording or paused') ||
@@ -43,22 +47,117 @@ const elapsedLabel = computed(() => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
+const quickPrompts = computed<QuickVoicePrompt[]>(() => t.value.voiceCall.quickPrompts)
+const recentMessages = computed(() =>
+  messages.value.slice(-8).map((message) => ({
+    ...message,
+    label: message.role === 'user' ? t.value.voiceCall.you : pet.value.name,
+    timeLabel: new Date(message.createdAt).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }),
+  })),
+)
+
 const stopTimer = () => {
   if (timer) clearInterval(timer)
   timer = undefined
 }
 
+const clearStartGuard = () => {
+  if (startGuardTimer) clearTimeout(startGuardTimer)
+  startGuardTimer = undefined
+}
+
+const getErrorText = (error: unknown) => {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'errMsg' in error) {
+    const errMsg = (error as { errMsg?: unknown }).errMsg
+    return typeof errMsg === 'string' ? errMsg : ''
+  }
+  return ''
+}
+
+const openRecordSettings = () => {
+  uni.showModal({
+    title: t.value.voiceCall.permissionTitle,
+    content: t.value.voiceCall.permissionDenied,
+    showCancel: true,
+    cancelText: t.value.voiceCall.permissionCancel,
+    confirmText: t.value.voiceCall.permissionSettings,
+    success: (result) => {
+      if (result.confirm && typeof uni.openSetting === 'function') {
+        uni.openSetting({ fail: () => undefined })
+      }
+    },
+  })
+}
+
+const ensureRecordPermission = () =>
+  new Promise<boolean>((resolve) => {
+    if (typeof uni.getSetting !== 'function' || typeof uni.authorize !== 'function') {
+      resolve(true)
+      return
+    }
+
+    uni.getSetting({
+      success: (setting) => {
+        const authSetting = (setting.authSetting ?? {}) as Record<string, boolean | undefined>
+
+        if (authSetting['scope.record'] === true) {
+          resolve(true)
+          return
+        }
+
+        if (authSetting['scope.record'] === false) {
+          openRecordSettings()
+          resolve(false)
+          return
+        }
+
+        uni.authorize({
+          scope: 'scope.record',
+          success: () => resolve(true),
+          fail: () => {
+            openRecordSettings()
+            resolve(false)
+          },
+        })
+      },
+      fail: () => resolve(true),
+    })
+  })
+
 const ensureRecorder = () => {
   if (recorder || typeof uni.getRecorderManager !== 'function') return recorder
 
   recorder = uni.getRecorderManager()
+  recorder.onStart(() => {
+    clearStartGuard()
+    recorderState = 'recording'
+    recordStartedAt = Date.now()
+
+    if (pendingStopAfterStart) {
+      pendingStopAfterStart = false
+      setTimeout(() => {
+        stopRecord()
+      }, 360)
+    }
+  })
   recorder.onStop(async (result: { tempFilePath?: string }) => {
     const durationMs = Date.now() - recordStartedAt
+    clearStartGuard()
     recorderState = 'idle'
     recordStartedAt = 0
+    pendingStopAfterStart = false
 
     if (!result.tempFilePath || muted.value || durationMs < 350) {
       phase.value = 'idle'
+      if (durationMs > 0 && durationMs < 350) {
+        uni.showToast({ title: t.value.voiceCall.shortRecording, icon: 'none' })
+      }
       return
     }
 
@@ -74,13 +173,18 @@ const ensureRecorder = () => {
       await playReply(turn.audioTempUrl)
     } catch (caughtError) {
       phase.value = 'error'
-      errorMessage.value = caughtError instanceof Error ? caughtError.message : t.value.voiceCall.failed
+      errorMessage.value = getErrorText(caughtError) || t.value.voiceCall.failed
     }
   })
   recorder.onError((error: { errMsg?: string }) => {
     const message = error?.errMsg || ''
+    clearStartGuard()
 
-    if (isRecorderBusyError(message) && (recorderState === 'recording' || recorderState === 'stopping')) {
+    if (isRecorderBusyError(message)) {
+      recorderState = 'idle'
+      recordStartedAt = 0
+      pendingStopAfterStart = false
+      phase.value = 'idle'
       return
     }
 
@@ -125,11 +229,18 @@ const playReply = async (audioTempUrl?: string) => {
   player.play()
 }
 
-const startRecord = () => {
+const startRecord = async () => {
   if (phase.value === 'thinking' || phase.value === 'playing') return
   if (phase.value === 'recording' || recorderState !== 'idle') return
   if (muted.value) {
     uni.showToast({ title: t.value.voiceCall.mutedHint, icon: 'none' })
+    return
+  }
+
+  const hasPermission = await ensureRecordPermission()
+  if (!hasPermission || !talkPressing) {
+    phase.value = hasPermission ? 'idle' : 'error'
+    errorMessage.value = hasPermission ? '' : t.value.voiceCall.permissionDenied
     return
   }
 
@@ -144,8 +255,8 @@ const startRecord = () => {
   reply.value = ''
   errorMessage.value = ''
   phase.value = 'recording'
-  recorderState = 'recording'
-  recordStartedAt = Date.now()
+  recorderState = 'starting'
+  pendingStopAfterStart = false
   audio?.stop()
 
   try {
@@ -156,8 +267,16 @@ const startRecord = () => {
       encodeBitRate: 48000,
       format: 'mp3',
     })
+    clearStartGuard()
+    startGuardTimer = setTimeout(() => {
+      if (recorderState !== 'starting') return
+      recorderState = 'idle'
+      pendingStopAfterStart = false
+      phase.value = 'error'
+      errorMessage.value = t.value.voiceCall.permissionDenied
+    }, 1800)
   } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const message = getErrorText(caughtError)
     recorderState = 'idle'
     recordStartedAt = 0
     phase.value = isRecorderBusyError(message) ? 'idle' : 'error'
@@ -166,12 +285,17 @@ const startRecord = () => {
 }
 
 const stopRecord = () => {
+  if (recorderState === 'starting') {
+    pendingStopAfterStart = true
+    return
+  }
   if (phase.value !== 'recording' || recorderState !== 'recording') return
   recorderState = 'stopping'
+  clearStartGuard()
   try {
     recorder?.stop()
   } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const message = getErrorText(caughtError)
     recorderState = 'idle'
     recordStartedAt = 0
     if (!isRecorderBusyError(message)) {
@@ -180,6 +304,37 @@ const stopRecord = () => {
       return
     }
     phase.value = 'idle'
+  }
+}
+
+const beginTalk = () => {
+  talkPressing = true
+  void startRecord()
+}
+
+const endTalk = () => {
+  talkPressing = false
+  stopRecord()
+}
+
+const sendQuickPrompt = async (prompt: QuickVoicePrompt) => {
+  if (phase.value === 'recording' || phase.value === 'thinking' || phase.value === 'playing') return
+
+  phase.value = 'thinking'
+  transcript.value = prompt.text
+  reply.value = ''
+  errorMessage.value = ''
+
+  try {
+    const result = await sendChatMessage(prompt.text)
+    reply.value = result.reply
+    if (result.coinReward.awarded) {
+      uni.showToast({ title: `+${result.coinReward.amount}`, icon: 'none' })
+    }
+    phase.value = 'idle'
+  } catch (error) {
+    phase.value = 'error'
+    errorMessage.value = getErrorText(error) || t.value.voiceCall.failed
   }
 }
 
@@ -209,6 +364,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopTimer()
+  clearStartGuard()
   if (phase.value === 'recording') stopRecord()
   audio?.destroy?.()
 })
@@ -230,7 +386,7 @@ onBeforeUnmount(() => {
       <view class="voice-orbit voice-orbit--two" />
       <view class="voice-orbit voice-orbit--three" />
       <view class="voice-call__avatar">
-        <PetLottieAvatar :size-rpx="360" />
+        <PetLottieAvatar :size-rpx="320" />
       </view>
     </view>
 
@@ -243,21 +399,49 @@ onBeforeUnmount(() => {
       <view class="voice-call__caption voice-call__caption--reply">{{ reply || t.voiceCall.emptyReply }}</view>
     </view>
 
+    <view class="voice-call__quick">
+      <button
+        v-for="prompt in quickPrompts"
+        :key="prompt.label"
+        class="voice-quick-chip"
+        :disabled="phase === 'recording' || phase === 'thinking' || phase === 'playing'"
+        @click="sendQuickPrompt(prompt)"
+      >
+        {{ prompt.label }}
+      </button>
+    </view>
+
+    <view class="voice-call__history">
+      <view class="voice-call__history-head">{{ t.voiceCall.historyTitle }}</view>
+      <scroll-view class="voice-call__history-scroll" scroll-y>
+        <view v-if="!recentMessages.length" class="voice-call__history-empty">{{ t.voiceCall.historyEmpty }}</view>
+        <view
+          v-for="message in recentMessages"
+          :key="message.id"
+          class="voice-history-item"
+          :class="{ 'voice-history-item--user': message.role === 'user' }"
+        >
+          <view class="voice-history-item__meta">{{ message.label }} · {{ message.timeLabel }}</view>
+          <view class="voice-history-item__text">{{ message.content }}</view>
+        </view>
+      </scroll-view>
+    </view>
+
     <view class="voice-call__controls">
       <button class="voice-control" :class="{ 'voice-control--active': muted }" @click="toggleMuted">
         <view class="voice-control__icon voice-control__icon--mute" />
         <text>{{ muted ? t.voiceCall.unmute : t.voiceCall.mute }}</text>
       </button>
-      <button
+      <view
         class="voice-control voice-control--talk"
         :class="{ 'voice-control--recording': phase === 'recording' }"
-        @touchstart.prevent="startRecord"
-        @touchend.prevent="stopRecord"
-        @touchcancel.prevent="stopRecord"
+        @touchstart.stop.prevent="beginTalk"
+        @touchend.stop.prevent="endTalk"
+        @touchcancel.stop.prevent="endTalk"
       >
         <view class="voice-control__icon voice-control__icon--mic" />
         <text>{{ phase === 'recording' ? t.voiceCall.releaseToSend : t.voiceCall.hold }}</text>
-      </button>
+      </view>
       <button class="voice-control" :class="{ 'voice-control--active': speakerOn }" @click="toggleSpeaker">
         <view class="voice-control__icon voice-control__icon--speaker" />
         <text>{{ t.voiceCall.speaker }}</text>
@@ -279,7 +463,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding: calc(108rpx + env(safe-area-inset-top)) 28rpx calc(28rpx + env(safe-area-inset-bottom));
+  padding: calc(88rpx + env(safe-area-inset-top)) 28rpx calc(24rpx + env(safe-area-inset-bottom));
 }
 
 .voice-call__top {
@@ -322,9 +506,9 @@ onBeforeUnmount(() => {
 .voice-call__stage {
   align-items: center;
   display: flex;
-  flex: 1;
+  flex: 0 0 500rpx;
   justify-content: center;
-  min-height: 430rpx;
+  min-height: 380rpx;
   position: relative;
 }
 
@@ -335,18 +519,18 @@ onBeforeUnmount(() => {
 }
 
 .voice-orbit--one {
-  height: 330rpx;
-  width: 330rpx;
+  height: 300rpx;
+  width: 300rpx;
 }
 
 .voice-orbit--two {
-  height: 430rpx;
-  width: 430rpx;
+  height: 390rpx;
+  width: 390rpx;
 }
 
 .voice-orbit--three {
-  height: 540rpx;
-  width: 540rpx;
+  height: 486rpx;
+  width: 486rpx;
 }
 
 .voice-call__stage--recording .voice-orbit,
@@ -370,10 +554,10 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   box-shadow: 0 28rpx 70rpx rgba(95, 199, 168, 0.16);
   display: flex;
-  height: 360rpx;
+  height: 320rpx;
   justify-content: center;
   overflow: hidden;
-  width: 360rpx;
+  width: 320rpx;
   z-index: 2;
 }
 
@@ -390,7 +574,7 @@ onBeforeUnmount(() => {
   border: 2rpx solid rgba(176, 143, 102, 0.12);
   border-radius: 28rpx;
   box-sizing: border-box;
-  margin-top: 24rpx;
+  margin-top: 18rpx;
   padding: 22rpx;
 }
 
@@ -418,12 +602,97 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
+.voice-call__quick {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.voice-quick-chip {
+  background: rgba(255, 240, 202, 0.86);
+  border: none;
+  border-radius: 999rpx;
+  color: #6d5542;
+  flex: 0 0 auto;
+  font-size: 23rpx;
+  font-weight: 800;
+  height: 58rpx;
+  line-height: 58rpx;
+  margin: 0;
+  padding: 0 22rpx;
+}
+
+.voice-quick-chip::after {
+  border: none;
+}
+
+.voice-quick-chip[disabled] {
+  opacity: 0.52;
+}
+
+.voice-call__history {
+  background: rgba(255, 253, 248, 0.58);
+  border: 2rpx solid rgba(176, 143, 102, 0.1);
+  border-radius: 24rpx;
+  margin-top: 16rpx;
+  padding: 16rpx;
+}
+
+.voice-call__history-head {
+  color: #365f56;
+  font-size: 23rpx;
+  font-weight: 900;
+}
+
+.voice-call__history-scroll {
+  max-height: 178rpx;
+  margin-top: 10rpx;
+}
+
+.voice-call__history-empty {
+  color: #8a7a68;
+  font-size: 23rpx;
+  line-height: 1.42;
+  padding: 8rpx 0;
+}
+
+.voice-history-item {
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 18rpx;
+  margin-top: 10rpx;
+  padding: 12rpx 14rpx;
+}
+
+.voice-history-item:first-child {
+  margin-top: 0;
+}
+
+.voice-history-item--user {
+  background: rgba(225, 247, 236, 0.82);
+}
+
+.voice-history-item__meta {
+  color: #8a7a68;
+  font-size: 19rpx;
+  font-weight: 800;
+}
+
+.voice-history-item__text {
+  color: #253047;
+  font-size: 23rpx;
+  line-height: 1.42;
+  margin-top: 6rpx;
+  word-break: break-word;
+}
+
 .voice-call__controls {
   align-items: center;
   display: grid;
   gap: 20rpx;
   grid-template-columns: 1fr 1.26fr 1fr;
-  margin-top: 34rpx;
+  margin-top: 22rpx;
 }
 
 .voice-control {
@@ -431,6 +700,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 253, 248, 0.86);
   border: none;
   border-radius: 30rpx;
+  box-sizing: border-box;
   color: #365f56;
   display: flex;
   flex-direction: column;
@@ -518,7 +788,7 @@ onBeforeUnmount(() => {
   font-weight: 800;
   height: 82rpx;
   line-height: 82rpx;
-  margin: 24rpx 0 0;
+  margin: 18rpx 0 0;
   padding: 0;
 }
 
