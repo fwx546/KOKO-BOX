@@ -75,7 +75,24 @@ const getErrorText = (error: unknown) => {
   return ''
 }
 
+const getNativeWechatApi = () => (globalThis as { wx?: any }).wx
+
+const getPlatformApi = () => {
+  const uniApi = uni as unknown as Record<string, any>
+  const wxApi = getNativeWechatApi()
+
+  return {
+    getSetting: typeof uniApi.getSetting === 'function' ? uniApi.getSetting : wxApi?.getSetting,
+    authorize: typeof uniApi.authorize === 'function' ? uniApi.authorize : wxApi?.authorize,
+    openSetting: typeof uniApi.openSetting === 'function' ? uniApi.openSetting : wxApi?.openSetting,
+    getRecorderManager: typeof uniApi.getRecorderManager === 'function' ? uniApi.getRecorderManager : wxApi?.getRecorderManager,
+    createInnerAudioContext: typeof uniApi.createInnerAudioContext === 'function' ? uniApi.createInnerAudioContext : wxApi?.createInnerAudioContext,
+  }
+}
+
 const openRecordSettings = () => {
+  const platformApi = getPlatformApi()
+
   uni.showModal({
     title: t.value.voiceCall.permissionTitle,
     content: t.value.voiceCall.permissionDenied,
@@ -83,8 +100,8 @@ const openRecordSettings = () => {
     cancelText: t.value.voiceCall.permissionCancel,
     confirmText: t.value.voiceCall.permissionSettings,
     success: (result) => {
-      if (result.confirm && typeof uni.openSetting === 'function') {
-        uni.openSetting({ fail: () => undefined })
+      if (result.confirm && typeof platformApi.openSetting === 'function') {
+        platformApi.openSetting({ fail: () => undefined })
       }
     },
   })
@@ -92,12 +109,14 @@ const openRecordSettings = () => {
 
 const ensureRecordPermission = () =>
   new Promise<boolean>((resolve) => {
-    if (typeof uni.getSetting !== 'function' || typeof uni.authorize !== 'function') {
+    const platformApi = getPlatformApi()
+
+    if (typeof platformApi.getSetting !== 'function' || typeof platformApi.authorize !== 'function') {
       resolve(true)
       return
     }
 
-    uni.getSetting({
+    platformApi.getSetting({
       success: (setting) => {
         const authSetting = (setting.authSetting ?? {}) as Record<string, boolean | undefined>
 
@@ -112,7 +131,7 @@ const ensureRecordPermission = () =>
           return
         }
 
-        uni.authorize({
+        platformApi.authorize({
           scope: 'scope.record',
           success: () => resolve(true),
           fail: () => {
@@ -126,9 +145,12 @@ const ensureRecordPermission = () =>
   })
 
 const ensureRecorder = () => {
-  if (recorder || typeof uni.getRecorderManager !== 'function') return recorder
+  if (recorder) return recorder
 
-  recorder = uni.getRecorderManager()
+  const platformApi = getPlatformApi()
+  if (typeof platformApi.getRecorderManager !== 'function') return recorder
+
+  recorder = platformApi.getRecorderManager()
   recorder.onStart(() => {
     clearStartGuard()
     recorderState = 'recording'
@@ -195,9 +217,12 @@ const ensureRecorder = () => {
 }
 
 const ensureAudio = () => {
-  if (audio || typeof uni.createInnerAudioContext !== 'function') return audio
+  if (audio) return audio
 
-  audio = uni.createInnerAudioContext()
+  const platformApi = getPlatformApi()
+  if (typeof platformApi.createInnerAudioContext !== 'function') return audio
+
+  audio = platformApi.createInnerAudioContext()
   audio.onEnded(() => {
     phase.value = 'idle'
   })
@@ -414,17 +439,17 @@ onBeforeUnmount(() => {
         <view class="voice-control__icon voice-control__icon--mute" />
         <text>{{ muted ? t.voiceCall.unmute : t.voiceCall.mute }}</text>
       </button>
-      <view
+      <button
         class="voice-control voice-control--talk"
         :class="{ 'voice-control--recording': phase === 'recording' }"
-        @touchstart.stop.prevent="beginTalk"
-        @touchend.stop.prevent="endTalk"
-        @touchcancel.stop.prevent="endTalk"
+        @touchstart.stop="beginTalk"
+        @touchend.stop="endTalk"
+        @touchcancel.stop="endTalk"
         @tap.stop="toggleTapRecord"
       >
         <view class="voice-control__icon voice-control__icon--mic" />
         <text>{{ phase === 'recording' ? t.voiceCall.releaseToSend : t.voiceCall.hold }}</text>
-      </view>
+      </button>
       <button class="voice-control" :class="{ 'voice-control--active': speakerOn }" @click="toggleSpeaker">
         <view class="voice-control__icon voice-control__icon--speaker" />
         <text>{{ t.voiceCall.speaker }}</text>
