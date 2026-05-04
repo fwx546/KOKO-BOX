@@ -212,6 +212,24 @@ const communityCopy = computed(() => {
   }
 })
 
+const getCommunityErrorText = (error: unknown) => {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'errMsg' in error) {
+    const errMsg = (error as { errMsg?: unknown }).errMsg
+    return typeof errMsg === 'string' ? errMsg : ''
+  }
+  return ''
+}
+
+const buildCommunityFailureMessage = (error: unknown) => {
+  const reason = getCommunityErrorText(error).trim()
+  if (!reason) return communityCopy.value.loadFailed
+  return settings.value.language === 'zh'
+    ? `${communityCopy.value.loadFailed} 原因：${reason}`
+    : `${communityCopy.value.loadFailed} Reason: ${reason}`
+}
+
 const guideSteps = computed<TownGuideStep[]>(() => {
   const isZh = settings.value.language === 'zh'
   return [
@@ -335,8 +353,8 @@ const loadCommunityState = async () => {
 
   try {
     applyCommunityState(await loadTownCommunityState())
-  } catch {
-    communityMessage.value = communityCopy.value.loadFailed
+  } catch (error) {
+    communityMessage.value = buildCommunityFailureMessage(error)
   }
 }
 
@@ -347,8 +365,8 @@ const heartbeatCommunity = async () => {
     applyCommunityState(await sendTownCommunityHeartbeat(communityPayload()))
     if (!communityMessage.value) return
     communityMessage.value = ''
-  } catch {
-    communityMessage.value = communityCopy.value.loadFailed
+  } catch (error) {
+    communityMessage.value = buildCommunityFailureMessage(error)
   }
 }
 
@@ -391,8 +409,8 @@ const joinPendingInviteIfNeeded = async () => {
       uni.removeStorageSync(TOWN_PENDING_INVITE_STORAGE_KEY)
     }
     return true
-  } catch {
-    communityMessage.value = communityCopy.value.loadFailed
+  } catch (error) {
+    communityMessage.value = buildCommunityFailureMessage(error)
     return false
   } finally {
     communityLoading.value = false
@@ -453,8 +471,8 @@ const createCommunityInvite = async () => {
     applyCommunityState(await createTownInvite(communityPayload()))
     communityMessage.value = communityCopy.value.inviteReady
     communityPanelOpen.value = true
-  } catch {
-    communityMessage.value = communityCopy.value.loadFailed
+  } catch (error) {
+    communityMessage.value = buildCommunityFailureMessage(error)
   } finally {
     communityLoading.value = false
   }

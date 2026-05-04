@@ -43,24 +43,90 @@ interface WechatCloudApi {
   callFunction?: (options: unknown) => Promise<{ result: unknown }>
 }
 
+type TownCommunityAction = 'load' | 'heartbeat' | 'offline' | 'createInvite' | 'joinInvite'
+
 const getWechatCloudApi = () =>
   (globalThis as { wx?: { cloud?: WechatCloudApi } }).wx?.cloud
 
-const callTownCommunityFunction = async <T>(data: Record<string, unknown>, timeout = 20000) => {
+const callTownCommunityPrimary = async (data: Record<string, unknown>, timeout: number) => {
   const wxCloud = getWechatCloudApi()
 
   if (!wxCloud?.callFunction || !isWechatCloudConfigured()) {
     throw new Error('Town community cloud is unavailable.')
   }
 
-  const response = await wxCloud.callFunction({
+  return wxCloud.callFunction({
     name: 'town-community',
     data,
     timeout,
   })
-
-  return normalizeTownCommunityState(response.result) as T
 }
+
+const callTownCommunityFallback = async (data: Record<string, unknown>, timeout: number) => {
+  const wxCloud = getWechatCloudApi()
+
+  if (!wxCloud?.callFunction || !isWechatCloudConfigured()) {
+    throw new Error('Town community cloud is unavailable.')
+  }
+
+  return wxCloud.callFunction({
+    name: 'login',
+    data: {
+      action: 'townCommunity',
+      townCommunity: data,
+    },
+    timeout,
+  })
+}
+
+const getCloudErrorText = (error: unknown) => {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'errMsg' in error) {
+    const errMsg = (error as { errMsg?: unknown }).errMsg
+    return typeof errMsg === 'string' ? errMsg : ''
+  }
+  return ''
+}
+
+const shouldUseLoginFallback = (error: unknown) => {
+  const message = getCloudErrorText(error).toLowerCase()
+  return (
+    message.includes('not found') ||
+    message.includes('not exist') ||
+    message.includes('cannot find') ||
+    message.includes('cloud function') ||
+    message.includes('fail') ||
+    message.includes('timeout')
+  )
+}
+
+const callTownCommunityFunction = async <T>(data: Record<string, unknown>, timeout = 20000) => {
+  let response: { result: unknown }
+
+  try {
+    response = await callTownCommunityPrimary(data, timeout)
+  } catch (error) {
+    if (!shouldUseLoginFallback(error)) {
+      throw error
+    }
+
+    response = await callTownCommunityFallback(data, timeout)
+  }
+
+  const state = normalizeTownCommunityState(response.result)
+
+  if (!state.room.ownerOpenid && !state.partners.length) {
+    throw new Error('Town community cloud returned no room state. Please deploy the latest login or town-community cloud function.')
+  }
+
+  return state as T
+}
+
+const createTownPayload = (action: TownCommunityAction, payload?: Record<string, unknown>) => ({
+  action,
+  ...(payload ?? {}),
+})
 
 const normalizeText = (value: unknown, fallback = '') =>
   typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -109,35 +175,25 @@ const normalizeTownCommunityState = (value: unknown): TownCommunityState => {
 }
 
 export const loadTownCommunityState = () =>
-  callTownCommunityFunction<TownCommunityState>({ action: 'load' })
+  callTownCommunityFunction<TownCommunityState>(createTownPayload('load'))
 
 export const sendTownCommunityHeartbeat = (payload: TownCommunityPresencePayload) =>
-  callTownCommunityFunction<TownCommunityState>({
-    action: 'heartbeat',
-    ...payload,
-  })
+  callTownCommunityFunction<TownCommunityState>(createTownPayload('heartbeat', payload as unknown as Record<string, unknown>))
 
 export const markTownCommunityOffline = (payload: TownCommunityPresencePayload) =>
-  callTownCommunityFunction<TownCommunityState>({
-    action: 'offline',
-    ...payload,
-  })
+  callTownCommunityFunction<TownCommunityState>(createTownPayload('offline', payload as unknown as Record<string, unknown>))
 
 export const createTownInvite = (payload: TownCommunityPresencePayload) =>
   callTownCommunityFunction<TownCommunityState>(
-    {
-      action: 'createInvite',
-      ...payload,
-    },
+    createTownPayload('createInvite', payload as unknown as Record<string, unknown>),
     30000,
   )
 
 export const joinTownInvite = (inviteCode: string, payload: TownCommunityPresencePayload) =>
   callTownCommunityFunction<TownCommunityState>(
-    {
-      action: 'joinInvite',
+    createTownPayload('joinInvite', {
       inviteCode,
       ...payload,
-    },
+    }),
     30000,
   )
