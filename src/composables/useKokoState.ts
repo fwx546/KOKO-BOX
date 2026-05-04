@@ -1940,6 +1940,34 @@ const sendVoiceChatTurn = async (tempFilePath: string) => {
     personaPrompt: petPersonaPrompt.value,
     language: settings.value.language,
     messages: conversation,
+  }).catch(async () => {
+    const fallbackTranscript = settings.value.language === 'zh'
+      ? '我刚刚发了一段语音。'
+      : 'I just sent a voice note.'
+    const fallbackEmotion = inferEmotion(fallbackTranscript)
+    const templates = emotionReplyMap[settings.value.language][fallbackEmotion]
+    const fallbackReply = templates[messages.value.length % templates.length]
+    const replyResult = await createPetChatReply({
+      petName: pet.value.name,
+      personaPrompt: petPersonaPrompt.value,
+      language: settings.value.language,
+      userMessage: fallbackTranscript,
+      messages: [
+        ...conversation,
+        {
+          role: 'user',
+          content: fallbackTranscript,
+        },
+      ],
+      fallbackEmotion,
+    }).catch(() => ({ content: fallbackReply }))
+
+    return {
+      transcript: fallbackTranscript,
+      reply: replyResult.content,
+      audioTempUrl: undefined,
+      history: replyResult.history,
+    }
   })
 
   const createdAt = nowIso()
