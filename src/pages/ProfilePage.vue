@@ -8,6 +8,10 @@ type ProfileSheet = 'rename' | 'petAttributes' | 'about' | 'privacy' | 'avatar'
 type PrivacySettingKey = 'hideChats' | 'allowChatClear' | 'allowCrossDeviceSummary' | 'lowDisturbanceMode' | 'demoMode'
 type AvatarChooseEvent = { detail?: { avatarUrl?: string; errMsg?: string } }
 type UniPickerError = { errMsg?: string }
+type WechatCloudTempFile = { fileID?: string; tempFileURL?: string; status?: number; errMsg?: string }
+type WechatCloudUrlApi = {
+  getTempFileURL?: (options: { fileList: string[] }) => Promise<{ fileList?: WechatCloudTempFile[] }>
+}
 type UniChooseMedia = (options: {
   count: number
   mediaType: string[]
@@ -34,6 +38,7 @@ const {
 const { t } = useLanguage()
 
 const avatarLoadFailed = ref(false)
+const avatarDisplayUrl = ref('')
 const activeSheet = ref<ProfileSheet | null>(null)
 const renameInput = ref(pet.value.name)
 const renameSaving = ref(false)
@@ -43,8 +48,9 @@ const accountModeLabel = computed(() => (isGuestSession.value ? t.value.profile.
 const profileInitial = computed(() => displayName.value.trim().charAt(0).toUpperCase() || 'K')
 const accountHint = computed(() => (isGuestSession.value ? t.value.profile.guestHint : t.value.profile.accountHint))
 const petStageLabel = computed(() => t.value.profile.stages[pet.value.stage] ?? pet.value.stage)
-const shouldShowAvatarImage = computed(() => Boolean(user.value?.avatarUrl && !avatarLoadFailed.value))
+const shouldShowAvatarImage = computed(() => Boolean(avatarDisplayUrl.value && !avatarLoadFailed.value))
 const isZh = computed(() => settings.value.language === 'zh')
+let avatarResolveToken = 0
 
 const profileCopy = computed(() => ({
   petManagement: t.value.profile.petManagement,
@@ -243,6 +249,46 @@ const profileGroups = computed(() => [
   },
 ])
 
+const getWechatCloudUrlApi = () =>
+  (globalThis as { wx?: { cloud?: WechatCloudUrlApi } }).wx?.cloud
+
+const isCloudAvatarUrl = (avatarUrl: string) => avatarUrl.startsWith('cloud://')
+
+const resolveAvatarDisplayUrl = async (avatarUrl?: string) => {
+  const nextToken = avatarResolveToken + 1
+  avatarResolveToken = nextToken
+  const normalizedAvatarUrl = avatarUrl?.trim() ?? ''
+
+  avatarLoadFailed.value = false
+  avatarDisplayUrl.value = normalizedAvatarUrl
+
+  if (!normalizedAvatarUrl || !isCloudAvatarUrl(normalizedAvatarUrl)) {
+    return
+  }
+
+  const wxCloud = getWechatCloudUrlApi()
+
+  if (!wxCloud?.getTempFileURL) {
+    return
+  }
+
+  try {
+    const result = await wxCloud.getTempFileURL({
+      fileList: [normalizedAvatarUrl],
+    })
+    const file = result.fileList?.[0]
+    const tempFileURL = file?.tempFileURL?.trim()
+
+    if (avatarResolveToken !== nextToken || !tempFileURL) {
+      return
+    }
+
+    avatarDisplayUrl.value = tempFileURL
+  } catch (error) {
+    console.warn('[ProfilePage] avatar temp URL resolve failed:', getPickerErrorText(error) || normalizedAvatarUrl)
+  }
+}
+
 const getPickerErrorText = (error: unknown) => {
   if (error instanceof Error) {
     return error.message
@@ -413,6 +459,8 @@ const saveAvatarFromPath = async (avatarFilePath: string) => {
   avatarSaving.value = true
 
   try {
+    avatarDisplayUrl.value = avatarFilePath
+    avatarLoadFailed.value = false
     await importWechatProfile({
       nickName: user.value?.nickName,
       avatarFilePath,
@@ -465,14 +513,15 @@ const handleChooseAvatar = async (event: AvatarChooseEvent) => {
 
 const handleAvatarError = (event: { detail?: { errMsg?: string } }) => {
   avatarLoadFailed.value = true
-  console.warn('[ProfilePage] avatar image load failed:', event?.detail?.errMsg ?? user.value?.avatarUrl)
+  console.warn('[ProfilePage] avatar image load failed:', event?.detail?.errMsg ?? avatarDisplayUrl.value, user.value?.avatarUrl)
 }
 
 watch(
   () => user.value?.avatarUrl,
-  () => {
-    avatarLoadFailed.value = false
+  (avatarUrl) => {
+    void resolveAvatarDisplayUrl(avatarUrl)
   },
+  { immediate: true },
 )
 
 watch(
@@ -505,7 +554,7 @@ onMounted(async () => {
         >
           <image
             class="profile-avatar__image"
-            :src="user?.avatarUrl"
+            :src="avatarDisplayUrl"
             mode="aspectFill"
             @error="handleAvatarError"
           />
