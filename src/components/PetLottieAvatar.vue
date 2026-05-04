@@ -114,8 +114,18 @@ onBeforeUnmount(() => {
   opacity: 0;
 }
 
-.pet-lottie-avatar--still *,
-.pet-lottie-avatar--paused * {
+.pet-lottie-avatar--still .pet-lottie-avatar__body,
+.pet-lottie-avatar--still .pet-lottie-avatar__tail,
+.pet-lottie-avatar--still .pet-lottie-avatar__head,
+.pet-lottie-avatar--still .pet-lottie-avatar__eye,
+.pet-lottie-avatar--still .pet-lottie-avatar__tongue,
+.pet-lottie-avatar--still.pet-lottie-avatar--angry,
+.pet-lottie-avatar--paused .pet-lottie-avatar__body,
+.pet-lottie-avatar--paused .pet-lottie-avatar__tail,
+.pet-lottie-avatar--paused .pet-lottie-avatar__head,
+.pet-lottie-avatar--paused .pet-lottie-avatar__eye,
+.pet-lottie-avatar--paused .pet-lottie-avatar__tongue,
+.pet-lottie-avatar--paused.pet-lottie-avatar--angry {
   animation-play-state: paused !important;
 }
 
