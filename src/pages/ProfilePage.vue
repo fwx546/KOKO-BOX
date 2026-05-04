@@ -35,9 +35,23 @@ type UniSaveFile = (options: {
 }) => void
 type UniGetImageInfo = (options: {
   src: string
-  success: () => void
+  success: (result: { path?: string }) => void
   fail: (error: UniPickerError) => void
 }) => void
+type UniCompressImage = (options: {
+  src: string
+  quality: number
+  success: (result: { tempFilePath?: string }) => void
+  fail: (error: UniPickerError) => void
+}) => void
+type WechatFileSystemManager = {
+  copyFile?: (options: {
+    srcPath: string
+    destPath: string
+    success: () => void
+    fail: (error: UniPickerError) => void
+  }) => void
+}
 
 const AVATAR_PREVIEW_STORAGE_KEY = 'koko-profile-avatar-preview-v2'
 
@@ -283,6 +297,7 @@ const getProfileMediaApi = () => {
     chooseMedia: (typeof uniApi.chooseMedia === 'function' ? uniApi.chooseMedia : wxApi.chooseMedia) as UniChooseMedia | undefined,
     saveFile: (typeof uniApi.saveFile === 'function' ? uniApi.saveFile : wxApi.saveFile) as UniSaveFile | undefined,
     getImageInfo: (typeof uniApi.getImageInfo === 'function' ? uniApi.getImageInfo : wxApi.getImageInfo) as UniGetImageInfo | undefined,
+    compressImage: (typeof uniApi.compressImage === 'function' ? uniApi.compressImage : wxApi.compressImage) as UniCompressImage | undefined,
   }
 }
 
@@ -304,6 +319,77 @@ const writeAvatarPreviewCache = (avatarUrl: string) => {
   }
 }
 
+const getAvatarFileExtensionFromPath = (filePath: string) => {
+  const extension = filePath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/)?.[1]?.toLowerCase()
+  return extension && ['jpg', 'jpeg', 'png', 'webp'].includes(extension) ? extension : 'jpg'
+}
+
+const copyAvatarToUserDataPath = (avatarFilePath: string) =>
+  new Promise<string | null>((resolve) => {
+    const wxApi = getNativeWechatApi()
+    const getFileSystemManager = wxApi?.getFileSystemManager
+    const userDataPath = (wxApi?.env as { USER_DATA_PATH?: string } | undefined)?.USER_DATA_PATH
+
+    if (typeof getFileSystemManager !== 'function' || !userDataPath) {
+      resolve(null)
+      return
+    }
+
+    const fs = getFileSystemManager() as WechatFileSystemManager
+    if (!fs.copyFile) {
+      resolve(null)
+      return
+    }
+
+    const extension = getAvatarFileExtensionFromPath(avatarFilePath)
+    const destPath = `${userDataPath}/koko-profile-avatar-${Date.now()}.${extension}`
+    fs.copyFile({
+      srcPath: avatarFilePath,
+      destPath,
+      success: () => resolve(destPath),
+      fail: () => resolve(null),
+    })
+  })
+
+const compressAvatarImage = (avatarFilePath: string) =>
+  new Promise<string>((resolve) => {
+    const compressImage = getProfileMediaApi().compressImage
+
+    if (!compressImage || /^https?:\/\//i.test(avatarFilePath) || avatarFilePath.startsWith('cloud://')) {
+      resolve(avatarFilePath)
+      return
+    }
+
+    compressImage({
+      src: avatarFilePath,
+      quality: 82,
+      success: (result) => resolve(result.tempFilePath?.trim() || avatarFilePath),
+      fail: () => resolve(avatarFilePath),
+    })
+  })
+
+const resolveImageInfoPath = (avatarFilePath: string) =>
+  new Promise<string>((resolve, reject) => {
+    const trimmedPath = avatarFilePath.trim()
+    const getImageInfo = getProfileMediaApi().getImageInfo
+
+    if (!trimmedPath || !getImageInfo) {
+      resolve(trimmedPath)
+      return
+    }
+
+    getImageInfo({
+      src: trimmedPath,
+      success: (result) => resolve(result.path?.trim() || trimmedPath),
+      fail: (error) => reject(error),
+    })
+  })
+
+const normalizeAvatarDisplayPath = async (avatarFilePath: string) => {
+  const compressedPath = await compressAvatarImage(avatarFilePath.trim())
+  return resolveImageInfoPath(compressedPath)
+}
+
 const persistAvatarPreview = async (avatarFilePath: string) => {
   const trimmedPath = avatarFilePath.trim()
   const saveFile = getProfileMediaApi().saveFile
@@ -311,6 +397,12 @@ const persistAvatarPreview = async (avatarFilePath: string) => {
   if (!trimmedPath || trimmedPath.startsWith('cloud://') || /^https?:\/\//i.test(trimmedPath) || !saveFile) {
     writeAvatarPreviewCache(trimmedPath)
     return trimmedPath
+  }
+
+  const copiedPath = await copyAvatarToUserDataPath(trimmedPath)
+  if (copiedPath) {
+    writeAvatarPreviewCache(copiedPath)
+    return copiedPath
   }
 
   return new Promise<string>((resolve) => {
@@ -328,23 +420,6 @@ const persistAvatarPreview = async (avatarFilePath: string) => {
     })
   })
 }
-
-const verifyAvatarImagePath = (avatarFilePath: string) =>
-  new Promise<void>((resolve, reject) => {
-    const trimmedPath = avatarFilePath.trim()
-    const getImageInfo = getProfileMediaApi().getImageInfo
-
-    if (!trimmedPath || !getImageInfo) {
-      resolve()
-      return
-    }
-
-    getImageInfo({
-      src: trimmedPath,
-      success: () => resolve(),
-      fail: (error) => reject(error),
-    })
-  })
 
 const resolveAvatarDisplayUrl = async (avatarUrl?: string) => {
   const nextToken = avatarResolveToken + 1
@@ -592,15 +667,15 @@ const saveAvatarFromPath = async (avatarFilePath: string) => {
   avatarSaving.value = true
 
   try {
-    await verifyAvatarImagePath(avatarFilePath)
-    avatarDisplayUrl.value = avatarFilePath
+    const normalizedAvatarPath = await normalizeAvatarDisplayPath(avatarFilePath)
+    avatarDisplayUrl.value = normalizedAvatarPath
     avatarLoadFailed.value = false
-    const previewPath = await persistAvatarPreview(avatarFilePath)
+    const previewPath = await persistAvatarPreview(normalizedAvatarPath)
     avatarDisplayUrl.value = previewPath
     avatarLoadFailed.value = false
     await importWechatProfile({
       nickName: user.value?.nickName,
-      avatarFilePath,
+      avatarFilePath: normalizedAvatarPath,
     })
     avatarLoadFailed.value = false
     closeSheet()
@@ -799,7 +874,13 @@ onMounted(async () => {
 
         <template v-else-if="activeSheet === 'avatar'">
           <view class="profile-sheet__title">{{ profileCopy.avatarTitle }}</view>
-          <button class="profile-sheet__primary" open-type="chooseAvatar" :disabled="avatarSaving" @chooseavatar="handleChooseAvatar">
+          <button
+            class="profile-sheet__primary"
+            open-type="chooseAvatar"
+            :disabled="avatarSaving"
+            @chooseavatar="handleChooseAvatar"
+            @chooseAvatar="handleChooseAvatar"
+          >
             {{ avatarSaving ? profileCopy.saving : profileCopy.avatarWechat }}
           </button>
           <button class="profile-sheet__ghost" :disabled="avatarSaving" @click="chooseCustomAvatar">
