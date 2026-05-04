@@ -35,7 +35,7 @@ type UniSaveFile = (options: {
 }) => void
 type UniGetImageInfo = (options: {
   src: string
-  success: (result: { path?: string }) => void
+  success: (result: { path?: string; type?: string }) => void
   fail: (error: UniPickerError) => void
 }) => void
 type UniCompressImage = (options: {
@@ -45,6 +45,12 @@ type UniCompressImage = (options: {
   fail: (error: UniPickerError) => void
 }) => void
 type WechatFileSystemManager = {
+  readFile?: (options: {
+    filePath: string
+    encoding?: string
+    success: (result: { data?: string | ArrayBuffer }) => void
+    fail: (error: UniPickerError) => void
+  }) => void
   copyFile?: (options: {
     srcPath: string
     destPath: string
@@ -54,6 +60,7 @@ type WechatFileSystemManager = {
 }
 
 const AVATAR_PREVIEW_STORAGE_KEY = 'koko-profile-avatar-preview-v2'
+const AVATAR_DATA_PREVIEW_STORAGE_KEY = 'koko-profile-avatar-data-preview-v1'
 
 const { user, pet: authPet, authMode, isGuestSession, loading, error: authError, importWechatProfile, login, syncUserProfile } = useAuth()
 const {
@@ -305,7 +312,7 @@ const isCloudAvatarUrl = (avatarUrl: string) => avatarUrl.startsWith('cloud://')
 
 const readAvatarPreviewCache = () => {
   try {
-    return String(uni.getStorageSync(AVATAR_PREVIEW_STORAGE_KEY) || '').trim()
+    return String(uni.getStorageSync(AVATAR_DATA_PREVIEW_STORAGE_KEY) || uni.getStorageSync(AVATAR_PREVIEW_STORAGE_KEY) || '').trim()
   } catch {
     return ''
   }
@@ -313,7 +320,8 @@ const readAvatarPreviewCache = () => {
 
 const writeAvatarPreviewCache = (avatarUrl: string) => {
   try {
-    uni.setStorageSync(AVATAR_PREVIEW_STORAGE_KEY, avatarUrl)
+    const key = avatarUrl.startsWith('data:image/') ? AVATAR_DATA_PREVIEW_STORAGE_KEY : AVATAR_PREVIEW_STORAGE_KEY
+    uni.setStorageSync(key, avatarUrl)
   } catch {
     // The in-memory preview still keeps the avatar visible for this session.
   }
@@ -369,18 +377,21 @@ const compressAvatarImage = (avatarFilePath: string) =>
   })
 
 const resolveImageInfoPath = (avatarFilePath: string) =>
-  new Promise<string>((resolve, reject) => {
+  new Promise<{ path: string; type: string }>((resolve, reject) => {
     const trimmedPath = avatarFilePath.trim()
     const getImageInfo = getProfileMediaApi().getImageInfo
 
     if (!trimmedPath || !getImageInfo) {
-      resolve(trimmedPath)
+      resolve({ path: trimmedPath, type: getAvatarFileExtensionFromPath(trimmedPath) })
       return
     }
 
     getImageInfo({
       src: trimmedPath,
-      success: (result) => resolve(result.path?.trim() || trimmedPath),
+      success: (result) => resolve({
+        path: result.path?.trim() || trimmedPath,
+        type: result.type?.trim() || getAvatarFileExtensionFromPath(trimmedPath),
+      }),
       fail: (error) => reject(error),
     })
   })
@@ -388,6 +399,40 @@ const resolveImageInfoPath = (avatarFilePath: string) =>
 const normalizeAvatarDisplayPath = async (avatarFilePath: string) => {
   const compressedPath = await compressAvatarImage(avatarFilePath.trim())
   return resolveImageInfoPath(compressedPath)
+}
+
+const readAvatarAsDataUrl = (avatarFilePath: string, imageType: string) =>
+  new Promise<string>((resolve) => {
+    const wxApi = getNativeWechatApi()
+    const getFileSystemManager = wxApi?.getFileSystemManager
+
+    if (typeof getFileSystemManager !== 'function' || /^https?:\/\//i.test(avatarFilePath) || avatarFilePath.startsWith('cloud://')) {
+      resolve('')
+      return
+    }
+
+    const fs = getFileSystemManager() as WechatFileSystemManager
+    if (!fs.readFile) {
+      resolve('')
+      return
+    }
+
+    fs.readFile({
+      filePath: avatarFilePath,
+      encoding: 'base64',
+      success: (result) => {
+        const base64 = typeof result.data === 'string' ? result.data : ''
+        resolve(base64 ? `data:image/${imageType || 'jpeg'};base64,${base64}` : '')
+      },
+      fail: () => resolve(''),
+    })
+  })
+
+const setAvatarPreview = (avatarUrl: string) => {
+  if (!avatarUrl) return
+  avatarDisplayUrl.value = avatarUrl
+  avatarLoadFailed.value = false
+  writeAvatarPreviewCache(avatarUrl)
 }
 
 const persistAvatarPreview = async (avatarFilePath: string) => {
@@ -431,6 +476,11 @@ const resolveAvatarDisplayUrl = async (avatarUrl?: string) => {
 
   if (!normalizedAvatarUrl || !isCloudAvatarUrl(normalizedAvatarUrl)) {
     avatarDisplayUrl.value = normalizedAvatarUrl || cachedPreview
+    return
+  }
+
+  if (cachedPreview.startsWith('data:image/')) {
+    avatarDisplayUrl.value = cachedPreview
     return
   }
 
@@ -667,15 +717,22 @@ const saveAvatarFromPath = async (avatarFilePath: string) => {
   avatarSaving.value = true
 
   try {
-    const normalizedAvatarPath = await normalizeAvatarDisplayPath(avatarFilePath)
-    avatarDisplayUrl.value = normalizedAvatarPath
-    avatarLoadFailed.value = false
-    const previewPath = await persistAvatarPreview(normalizedAvatarPath)
-    avatarDisplayUrl.value = previewPath
-    avatarLoadFailed.value = false
+    const normalizedAvatar = await normalizeAvatarDisplayPath(avatarFilePath)
+    const avatarDataUrl = await readAvatarAsDataUrl(normalizedAvatar.path, normalizedAvatar.type)
+    if (avatarDataUrl) {
+      setAvatarPreview(avatarDataUrl)
+    } else {
+      setAvatarPreview(normalizedAvatar.path)
+    }
+
+    const previewPath = await persistAvatarPreview(normalizedAvatar.path)
+    if (!avatarDataUrl) {
+      setAvatarPreview(previewPath)
+    }
+
     await importWechatProfile({
       nickName: user.value?.nickName,
-      avatarFilePath: normalizedAvatarPath,
+      avatarFilePath: normalizedAvatar.path,
     })
     avatarLoadFailed.value = false
     closeSheet()
@@ -727,6 +784,11 @@ const handleAvatarError = (event: { detail?: { errMsg?: string } }) => {
   const cachedPreview = readAvatarPreviewCache()
   if (cachedPreview && cachedPreview !== avatarDisplayUrl.value) {
     avatarDisplayUrl.value = cachedPreview
+    avatarLoadFailed.value = false
+    return
+  }
+
+  if (avatarDisplayUrl.value.startsWith('data:image/')) {
     avatarLoadFailed.value = false
     return
   }
