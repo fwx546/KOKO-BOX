@@ -182,6 +182,42 @@ const activeCommunityInvitePath = computed(() => {
   return activeCommunityInviteCode.value ? `/pages/town/index?invite=${activeCommunityInviteCode.value}` : ''
 })
 
+const createPanelInviteCode = () =>
+  Math.random().toString(36).slice(2, 8).toUpperCase()
+
+const persistPanelInviteCode = (inviteCode: string) => {
+  if (!inviteCode || typeof uni.setStorageSync !== 'function') return
+  uni.setStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY, inviteCode)
+}
+
+const ensurePanelInviteCode = () => {
+  let inviteCode = activeCommunityInviteCode.value
+
+  if (!inviteCode && typeof uni.getStorageSync === 'function') {
+    inviteCode = decodeInviteCode(String(uni.getStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY) || ''))
+  }
+
+  if (!inviteCode) {
+    inviteCode = createPanelInviteCode()
+  }
+
+  const invitePath = activeCommunityInvitePath.value || `/pages/town/index?invite=${inviteCode}`
+  communityInviteCode.value = inviteCode
+  communityInvitePath.value = invitePath
+  communityRoom.value = {
+    ...(communityRoom.value ?? {
+      id: `local-town-${inviteCode}`,
+      ownerOpenid: `local-town-${inviteCode}`,
+      memberCount: 1,
+      updatedAt: new Date().toISOString(),
+    }),
+    inviteCode,
+    inviteExpiresAt: communityRoom.value?.inviteExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+  persistPanelInviteCode(inviteCode)
+  return inviteCode
+}
+
 const townPendingTasks = computed(() => todayTasks.value.slice(0, 3))
 const townCompletedTasks = computed(() => completedTasks.value.slice(0, 3))
 const shopText = computed(() => ({
@@ -342,8 +378,8 @@ const communityPayload = () => ({
 })
 
 const applyCommunityState = (state: Awaited<ReturnType<typeof loadTownCommunityState>>) => {
-  const inviteCode = state.inviteCode || state.room.inviteCode
-  const invitePath = state.invitePath || (inviteCode ? `/pages/town/index?invite=${inviteCode}` : '')
+  const inviteCode = state.inviteCode || state.room.inviteCode || communityInviteCode.value
+  const invitePath = state.invitePath || communityInvitePath.value || (inviteCode ? `/pages/town/index?invite=${inviteCode}` : '')
 
   communityPartners.value = state.partners
   communityRoom.value = state.room
@@ -351,9 +387,7 @@ const applyCommunityState = (state: Awaited<ReturnType<typeof loadTownCommunityS
   communityInviteCode.value = inviteCode
   communityQrCodeFileID.value = state.qrCodeFileID || communityQrCodeFileID.value
 
-  if (inviteCode && typeof uni.setStorageSync === 'function') {
-    uni.setStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY, inviteCode)
-  }
+  persistPanelInviteCode(inviteCode)
 }
 
 const loadCommunityState = async () => {
@@ -476,9 +510,11 @@ const createCommunityInvite = async () => {
 
   communityLoading.value = true
   try {
-    applyCommunityState(await createTownInvite(communityPayload()))
+    ensurePanelInviteCode()
     communityMessage.value = communityCopy.value.inviteReady
     communityPanelOpen.value = true
+    applyCommunityState(await createTownInvite(communityPayload()))
+    communityMessage.value = communityCopy.value.inviteReady
   } catch (error) {
     communityMessage.value = buildCommunityFailureMessage(error)
   } finally {
@@ -487,8 +523,9 @@ const createCommunityInvite = async () => {
 }
 
 const copyInvite = () => {
-  const text = activeCommunityInviteCode.value
-    ? `${communityCopy.value.title}: ${activeCommunityInvitePath.value || activeCommunityInviteCode.value}`
+  const inviteCode = ensurePanelInviteCode()
+  const text = inviteCode
+    ? `${communityCopy.value.title}: ${activeCommunityInvitePath.value || inviteCode}`
     : communityCopy.value.empty
 
   if (typeof uni.setClipboardData === 'function') {
@@ -501,10 +538,13 @@ const copyInvite = () => {
   }
 }
 
-onShareAppMessage(() => ({
-  title: settings.value.language === 'zh' ? '邀请你加入 Koko 小镇' : 'Join my Koko Town',
-  path: activeCommunityInvitePath.value || '/pages/town/index',
-}))
+onShareAppMessage(() => {
+  ensurePanelInviteCode()
+  return {
+    title: settings.value.language === 'zh' ? '邀请你加入 Koko 小镇' : 'Join my Koko Town',
+    path: activeCommunityInvitePath.value || '/pages/town/index',
+  }
+})
 
 const greetPartner = (partner: TownCommunityPartner) => {
   if (guideVisible.value) return
@@ -816,10 +856,10 @@ onBeforeUnmount(() => {
         </view>
 
         <view class="town-community-panel__share-row">
-          <button class="town-community-panel__share" open-type="share" :disabled="!activeCommunityInviteCode">
+          <button class="town-community-panel__share" open-type="share">
             {{ communityCopy.share }}
           </button>
-          <button class="town-community-panel__share town-community-panel__share--soft" :disabled="!activeCommunityInviteCode" @tap="copyInvite">
+          <button class="town-community-panel__share town-community-panel__share--soft" @tap="copyInvite">
             {{ communityCopy.copy }}
           </button>
         </view>
