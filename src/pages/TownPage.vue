@@ -35,10 +35,10 @@ interface TownGuideStep {
 const MAP_WIDTH = 941
 const MAP_HEIGHT = 1672
 const townMapCandidates = [
-  '/static/town/map.webp',
-  'static/town/map.webp',
   '/static/town/map-fallback.jpg',
   'static/town/map-fallback.jpg',
+  '/static/town/map.webp',
+  'static/town/map.webp',
 ]
 const townMapSrc = ref(townMapCandidates[0])
 let townMapIndex = 0
