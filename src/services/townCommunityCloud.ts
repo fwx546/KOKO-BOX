@@ -105,17 +105,20 @@ const shouldUseLoginFallback = (error: unknown) => {
 
 const callTownCommunityFunction = async <T>(data: Record<string, unknown>, timeout = 20000) => {
   let response: { result: unknown } | null = null
+  const requiresCloud = data.action === 'createInvite' || data.action === 'joinInvite'
 
   try {
     response = await callTownCommunityPrimary(data, timeout)
   } catch (error) {
     if (!shouldUseLoginFallback(error)) {
+      if (requiresCloud) throw error
       return createLocalTownCommunityState(data) as T
     }
 
     try {
       response = await callTownCommunityFallback(data, timeout)
-    } catch {
+    } catch (fallbackError) {
+      if (requiresCloud) throw fallbackError
       return createLocalTownCommunityState(data) as T
     }
   }
@@ -123,16 +126,25 @@ const callTownCommunityFunction = async <T>(data: Record<string, unknown>, timeo
   const state = normalizeTownCommunityState(response?.result)
 
   if (!state.room.ownerOpenid && !state.partners.length) {
+    if (requiresCloud) {
+      throw new Error('Town community cloud returned no room state. Please deploy the latest town-community cloud function.')
+    }
+
     return createLocalTownCommunityState(data) as T
   }
 
   return state as T
 }
 
-const createTownPayload = (action: TownCommunityAction, payload?: Record<string, unknown>) => ({
-  action,
-  ...(payload ?? {}),
-})
+const createTownPayload = (action: TownCommunityAction, payload?: Record<string, unknown>) => {
+  const { action: petAction, ...restPayload } = payload ?? {}
+
+  return {
+    ...restPayload,
+    action,
+    petAction,
+  }
+}
 
 const normalizeText = (value: unknown, fallback = '') =>
   typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -228,7 +240,7 @@ const createLocalTownCommunityState = (data: Record<string, unknown>): TownCommu
     petName: data.petName,
     x: data.x,
     y: data.y,
-    action: data.action === 'offline' ? 'idle' : data.action,
+    action: data.action === 'offline' ? 'idle' : data.petAction,
     online: data.action !== 'offline',
     isSelf: true,
     lastSeenAt: timestamp,

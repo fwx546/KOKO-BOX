@@ -13,6 +13,7 @@ const pets = db.collection('pets')
 const ONLINE_TTL_MS = 90 * 1000
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
 const MAX_ROOM_MEMBERS = 2
+const TOWN_ACTIONS = ['load', 'heartbeat', 'createInvite', 'joinInvite', 'offline']
 
 const nowIso = () => new Date().toISOString()
 
@@ -32,6 +33,17 @@ const createInviteCode = () => Math.random().toString(36).slice(2, 8).toUpperCas
 const normalizeMembers = (members, ownerOpenid) => {
   const values = Array.isArray(members) ? members : []
   return Array.from(new Set([ownerOpenid, ...values].map((item) => normalizeText(item, 80)).filter(Boolean))).slice(0, MAX_ROOM_MEMBERS)
+}
+
+const createJoinMembers = (ownerOpenid, joiningOpenid) =>
+  normalizeMembers(joiningOpenid === ownerOpenid ? [] : [joiningOpenid], ownerOpenid)
+
+const normalizePresenceAction = (event) => {
+  const currentAction = normalizeText(event.petAction, 20)
+  if (currentAction) return currentAction
+
+  const legacyAction = normalizeText(event.action, 20)
+  return legacyAction && !TOWN_ACTIONS.includes(legacyAction) ? legacyAction : 'idle'
 }
 
 const publicRoom = (ownerDoc, memberOpenids) => ({
@@ -187,7 +199,7 @@ const savePresence = async (openid, event, ownerOpenid) => {
     petName: normalizeText(event.petName, 24) || 'Koko',
     x: clampNumber(event.x, 8, 92, 52),
     y: clampNumber(event.y, 24, 92, 76),
-    action: normalizeText(event.action, 20) || 'idle',
+    action: normalizePresenceAction(event),
     online: event.online !== false,
     lastSeenAt: timestamp,
     updatedAt: timestamp,
@@ -256,7 +268,7 @@ const joinInvite = async (openid, inviteCode, event) => {
     throw new Error('Invite has expired.')
   }
 
-  const memberOpenids = normalizeMembers([...(ownerDoc.townMemberOpenids || []), openid], ownerDoc._openid)
+  const memberOpenids = createJoinMembers(ownerDoc._openid, openid)
   const updatedOwner = await updateUserByOpenid(ownerDoc._openid, {
     townMemberOpenids: memberOpenids,
     townUpdatedAt: nowIso(),
@@ -272,7 +284,7 @@ exports.main = async (event = {}) => {
     throw new Error('Unable to identify the current WeChat user.')
   }
 
-  const action = ['load', 'heartbeat', 'createInvite', 'joinInvite', 'offline'].includes(event.action)
+  const action = TOWN_ACTIONS.includes(event.action)
     ? event.action
     : 'load'
 

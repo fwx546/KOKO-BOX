@@ -12,6 +12,7 @@ const userSettings = db.collection('user_settings')
 const TOWN_ONLINE_TTL_MS = 90 * 1000
 const TOWN_INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000
 const TOWN_MAX_ROOM_MEMBERS = 2
+const TOWN_ACTIONS = ['load', 'heartbeat', 'createInvite', 'joinInvite', 'offline']
 
 const now = () => db.serverDate()
 const townNowIso = () => new Date().toISOString()
@@ -114,6 +115,17 @@ const townNormalizeMembers = (members, ownerOpenid) => {
   return Array.from(new Set([ownerOpenid].concat(values).map((item) => townNormalizeText(item, 80)).filter(Boolean))).slice(0, TOWN_MAX_ROOM_MEMBERS)
 }
 
+const townCreateJoinMembers = (ownerOpenid, joiningOpenid) =>
+  townNormalizeMembers(joiningOpenid === ownerOpenid ? [] : [joiningOpenid], ownerOpenid)
+
+const townNormalizePresenceAction = (event) => {
+  const currentAction = townNormalizeText(event.petAction, 20)
+  if (currentAction) return currentAction
+
+  const legacyAction = townNormalizeText(event.action, 20)
+  return legacyAction && TOWN_ACTIONS.indexOf(legacyAction) === -1 ? legacyAction : 'idle'
+}
+
 const townFindUserByOpenid = async (openid) => {
   const result = await users.where({ _openid: openid }).limit(1).get()
   return (result.data && result.data[0]) || null
@@ -183,7 +195,7 @@ const townSavePresence = async (openid, event, ownerOpenid) => {
       petName: townNormalizeText(event.petName, 24) || 'Koko',
       x: townClampNumber(event.x, 8, 92, 52),
       y: townClampNumber(event.y, 24, 92, 76),
-      action: townNormalizeText(event.action, 20) || 'idle',
+      action: townNormalizePresenceAction(event),
       online: event.online !== false,
       lastSeenAt: timestamp,
       updatedAt: timestamp,
@@ -243,7 +255,7 @@ const townJoinInvite = async (openid, inviteCode, event) => {
     throw new Error('Invite has expired.')
   }
 
-  const memberOpenids = townNormalizeMembers([].concat(ownerDoc.townMemberOpenids || [], openid), ownerDoc._openid)
+  const memberOpenids = townCreateJoinMembers(ownerDoc._openid, openid)
   const updatedOwner = await townUpdateUserByOpenid(ownerDoc._openid, {
     townMemberOpenids: memberOpenids,
     townUpdatedAt: townNowIso(),
@@ -253,7 +265,7 @@ const townJoinInvite = async (openid, inviteCode, event) => {
 }
 
 const handleTownCommunity = async (openid, event = {}) => {
-  const action = ['load', 'heartbeat', 'createInvite', 'joinInvite', 'offline'].includes(event.action)
+  const action = TOWN_ACTIONS.includes(event.action)
     ? event.action
     : 'load'
 

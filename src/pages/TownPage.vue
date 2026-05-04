@@ -182,40 +182,9 @@ const activeCommunityInvitePath = computed(() => {
   return activeCommunityInviteCode.value ? `/pages/town/index?invite=${activeCommunityInviteCode.value}` : ''
 })
 
-const createPanelInviteCode = () =>
-  Math.random().toString(36).slice(2, 8).toUpperCase()
-
 const persistPanelInviteCode = (inviteCode: string) => {
   if (!inviteCode || typeof uni.setStorageSync !== 'function') return
   uni.setStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY, inviteCode)
-}
-
-const ensurePanelInviteCode = () => {
-  let inviteCode = activeCommunityInviteCode.value
-
-  if (!inviteCode && typeof uni.getStorageSync === 'function') {
-    inviteCode = decodeInviteCode(String(uni.getStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY) || ''))
-  }
-
-  if (!inviteCode) {
-    inviteCode = createPanelInviteCode()
-  }
-
-  const invitePath = activeCommunityInvitePath.value || `/pages/town/index?invite=${inviteCode}`
-  communityInviteCode.value = inviteCode
-  communityInvitePath.value = invitePath
-  communityRoom.value = {
-    ...(communityRoom.value ?? {
-      id: `local-town-${inviteCode}`,
-      ownerOpenid: `local-town-${inviteCode}`,
-      memberCount: 1,
-      updatedAt: new Date().toISOString(),
-    }),
-    inviteCode,
-    inviteExpiresAt: communityRoom.value?.inviteExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-  }
-  persistPanelInviteCode(inviteCode)
-  return inviteCode
 }
 
 const townPendingTasks = computed(() => todayTasks.value.slice(0, 3))
@@ -269,6 +238,16 @@ const buildCommunityFailureMessage = (error: unknown) => {
   return settings.value.language === 'zh'
     ? `${communityCopy.value.loadFailed} 原因：${reason}`
     : `${communityCopy.value.loadFailed} Reason: ${reason}`
+}
+
+const ensureCommunitySession = async () => {
+  if (authMode.value === 'guest') return false
+
+  if (authMode.value !== 'wechat' || !user.value) {
+    await login('wechat')
+  }
+
+  return communityAvailable.value
 }
 
 const guideSteps = computed<TownGuideStep[]>(() => {
@@ -460,16 +439,14 @@ const joinPendingInviteIfNeeded = async () => {
 }
 
 const startCommunity = async () => {
-  if (!communityAvailable.value) {
-    communityMessage.value = communityCopy.value.unavailable
-    return
-  }
-
   communityLoading.value = true
   try {
-    if (!user.value) {
-      await login('wechat')
+    const canUseCommunity = await ensureCommunitySession()
+    if (!canUseCommunity) {
+      communityMessage.value = communityCopy.value.unavailable
+      return
     }
+
     const joined = await joinPendingInviteIfNeeded()
     if (!joined) {
       await heartbeatCommunity()
@@ -503,15 +480,14 @@ const closeCommunityPanel = () => {
 }
 
 const createCommunityInvite = async () => {
-  if (!communityAvailable.value) {
-    communityMessage.value = communityCopy.value.unavailable
-    return
-  }
-
   communityLoading.value = true
   try {
-    ensurePanelInviteCode()
-    communityMessage.value = communityCopy.value.inviteReady
+    const canUseCommunity = await ensureCommunitySession()
+    if (!canUseCommunity) {
+      communityMessage.value = communityCopy.value.unavailable
+      return
+    }
+
     communityPanelOpen.value = true
     applyCommunityState(await createTownInvite(communityPayload()))
     communityMessage.value = communityCopy.value.inviteReady
@@ -523,7 +499,12 @@ const createCommunityInvite = async () => {
 }
 
 const copyInvite = () => {
-  const inviteCode = ensurePanelInviteCode()
+  const inviteCode = activeCommunityInviteCode.value
+  if (!inviteCode) {
+    uni.showToast({ title: communityCopy.value.empty, icon: 'none' })
+    return
+  }
+
   const text = inviteCode
     ? `${communityCopy.value.title}: ${activeCommunityInvitePath.value || inviteCode}`
     : communityCopy.value.empty
@@ -539,7 +520,6 @@ const copyInvite = () => {
 }
 
 onShareAppMessage(() => {
-  ensurePanelInviteCode()
   return {
     title: settings.value.language === 'zh' ? '邀请你加入 Koko 小镇' : 'Join my Koko Town',
     path: activeCommunityInvitePath.value || '/pages/town/index',
@@ -856,10 +836,10 @@ onBeforeUnmount(() => {
         </view>
 
         <view class="town-community-panel__share-row">
-          <button class="town-community-panel__share" open-type="share">
+          <button class="town-community-panel__share" open-type="share" :disabled="communityLoading || !communityAvailable || !activeCommunityInviteCode">
             {{ communityCopy.share }}
           </button>
-          <button class="town-community-panel__share town-community-panel__share--soft" @tap="copyInvite">
+          <button class="town-community-panel__share town-community-panel__share--soft" :disabled="communityLoading || !communityAvailable || !activeCommunityInviteCode" @tap="copyInvite">
             {{ communityCopy.copy }}
           </button>
         </view>
