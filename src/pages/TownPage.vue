@@ -175,6 +175,7 @@ const petStyle = computed(() => ({
 const communityAvailable = computed(() => authMode.value === 'wechat' && !isMockSession.value)
 const communityOtherPartners = computed(() => communityPartners.value.filter((partner) => !partner.isSelf))
 const communityOnlinePartners = computed(() => communityOtherPartners.value.filter((partner) => partner.online))
+const communityPartnerCapacity = computed(() => Math.max((communityRoom.value?.memberCount ?? 1) - 1, 1))
 
 const townPendingTasks = computed(() => todayTasks.value.slice(0, 3))
 const townCompletedTasks = computed(() => completedTasks.value.slice(0, 3))
@@ -758,7 +759,7 @@ onBeforeUnmount(() => {
             <view class="town-community-panel__eyebrow">KOKO LINK</view>
             <view class="town-community-panel__title">{{ communityCopy.title }}</view>
           </view>
-          <view class="town-community-panel__count">{{ communityOnlinePartners.length }}/{{ Math.max(communityRoom?.memberCount || 1, 1) }}</view>
+          <view class="town-community-panel__count">{{ communityOnlinePartners.length }}/{{ communityPartnerCapacity }}</view>
         </view>
         <view class="town-community-panel__subtitle">{{ communityCopy.subtitle }}</view>
 
