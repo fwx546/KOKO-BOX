@@ -26,8 +26,10 @@ let recordStartedAt = 0
 let pendingStopAfterStart = false
 let talkPressing = false
 let tapRecordingMode = false
-let lastTouchEndedAt = 0
+let touchStartedAt = 0
+let suppressNextTapUntil = 0
 let startGuardTimer: ReturnType<typeof setTimeout> | undefined
+let holdStartTimer: ReturnType<typeof setTimeout> | undefined
 
 const isRecorderBusyError = (message = '') =>
   message.includes('is recording or paused') ||
@@ -56,6 +58,11 @@ const stopTimer = () => {
 const clearStartGuard = () => {
   if (startGuardTimer) clearTimeout(startGuardTimer)
   startGuardTimer = undefined
+}
+
+const clearHoldStartTimer = () => {
+  if (holdStartTimer) clearTimeout(holdStartTimer)
+  holdStartTimer = undefined
 }
 
 const getErrorText = (error: unknown) => {
@@ -300,18 +307,29 @@ const stopRecord = () => {
 const beginTalk = () => {
   if (tapRecordingMode) return
   talkPressing = true
-  void startRecord()
+  touchStartedAt = Date.now()
+  clearHoldStartTimer()
+  holdStartTimer = setTimeout(() => {
+    if (!talkPressing || tapRecordingMode) return
+    void startRecord()
+  }, 180)
 }
 
 const endTalk = () => {
-  lastTouchEndedAt = Date.now()
+  const touchDurationMs = touchStartedAt ? Date.now() - touchStartedAt : 0
+  touchStartedAt = 0
+  clearHoldStartTimer()
+
   if (tapRecordingMode) return
+  if (touchDurationMs >= 180) {
+    suppressNextTapUntil = Date.now() + 420
+  }
   talkPressing = false
   stopRecord()
 }
 
 const toggleTapRecord = () => {
-  if (Date.now() - lastTouchEndedAt < 320) return
+  if (Date.now() < suppressNextTapUntil) return
 
   if (phase.value === 'recording' || recorderState === 'starting' || recorderState === 'recording') {
     tapRecordingMode = false
@@ -356,6 +374,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopTimer()
   clearStartGuard()
+  clearHoldStartTimer()
   if (phase.value === 'recording') stopRecord()
   audio?.destroy?.()
 })
