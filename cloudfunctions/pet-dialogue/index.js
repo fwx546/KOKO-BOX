@@ -1,5 +1,5 @@
-const https = require('node:https')
-const http = require('node:http')
+const https = require('https')
+const http = require('http')
 const cloud = require('wx-server-sdk')
 
 cloud.init({
@@ -63,11 +63,14 @@ const safeIsoDate = (value) => {
   return /^\d{4}-\d{2}-\d{2}T/.test(stamp) ? stamp : new Date().toISOString()
 }
 
-const sanitizeStoredHistoryItem = (value) => ({
-  role: sanitizeRole(value?.role),
-  content: limitText(value?.content, MAX_STORED_MESSAGE_CONTENT),
-  createdAt: safeIsoDate(value?.createdAt),
-})
+const sanitizeStoredHistoryItem = (value) => {
+  const item = value || {}
+  return {
+    role: sanitizeRole(item.role),
+    content: limitText(item.content, MAX_STORED_MESSAGE_CONTENT),
+    createdAt: safeIsoDate(item.createdAt),
+  }
+}
 
 const sanitizeStoredHistory = (value) => {
   if (!Array.isArray(value)) {
@@ -86,10 +89,13 @@ const sanitizeMessages = (value) => {
   }
 
   return value
-    .map((item) => ({
-      role: sanitizeRole(item?.role),
-      content: limitText(item?.content, MAX_STORED_MESSAGE_CONTENT),
-    }))
+    .map((value) => {
+      const item = value || {}
+      return {
+        role: sanitizeRole(item.role),
+        content: limitText(item.content, MAX_STORED_MESSAGE_CONTENT),
+      }
+    })
     .filter((item) => item.content.length > 0)
     .slice(-MAX_CHAT_MESSAGES)
 }
@@ -159,27 +165,28 @@ const sanitizeWeekday = (value) => {
   return numberValue >= 1 && numberValue <= 7 ? numberValue : 1
 }
 
-const deriveCourseFields = (item) => {
+const deriveCourseFields = (value) => {
+  const item = value || {}
   const rawLines = [
-    ...splitRawLines(item?.rawText),
-    ...splitRawLines(item?.text),
-    ...splitRawLines(item?.content),
+    ...splitRawLines(item.rawText),
+    ...splitRawLines(item.text),
+    ...splitRawLines(item.content),
   ]
   const rawText = rawLines.join('\n')
   const rawTimeRange = extractTimeRange(
-    `${item?.timeRange || ''} ${item?.time || ''} ${item?.startTime || ''} ${item?.endTime || ''} ${rawText}`,
+    `${item.timeRange || ''} ${item.time || ''} ${item.startTime || ''} ${item.endTime || ''} ${rawText}`,
   )
-  const weekLine = rawLines.find((line) => /week/i.test(line)) || (typeof item?.weeks === 'string' ? item.weeks : '')
+  const weekLine = rawLines.find((line) => /week/i.test(line)) || (typeof item.weeks === 'string' ? item.weeks : '')
   const locationLine =
     rawLines.find((line) => /^[A-Z]{1,4}-[A-Z]-?\d+/i.test(line) || /^TC-/i.test(line) || /^[A-Z]{1,4}-\d{4}/i.test(line)) ||
-    item?.location ||
+    item.location ||
     ''
   const filteredNameLines = rawLines.filter(
     (line) => !/week/i.test(line) && !/^\d{1,2}[:：.]\d{2}/.test(line) && !/^[A-Z]{1,4}-[A-Z]-?\d+/i.test(line) && !/^TC-/i.test(line),
   )
-  const name = typeof item?.name === 'string' && item.name.trim() ? item.name : filteredNameLines.slice(0, 2).join(' ')
+  const name = typeof item.name === 'string' && item.name.trim() ? item.name : filteredNameLines.slice(0, 2).join(' ')
   const teacher =
-    typeof item?.teacher === 'string' && item.teacher.trim()
+    typeof item.teacher === 'string' && item.teacher.trim()
       ? item.teacher
       : filteredNameLines.length > 2
         ? filteredNameLines.slice(2).join(', ')
@@ -190,8 +197,8 @@ const deriveCourseFields = (item) => {
     teacher,
     location: locationLine,
     weeks: weekLine,
-    startTime: normalizeTime(item?.startTime) || rawTimeRange.startTime,
-    endTime: normalizeTime(item?.endTime) || rawTimeRange.endTime,
+    startTime: normalizeTime(item.startTime) || rawTimeRange.startTime,
+    endTime: normalizeTime(item.endTime) || rawTimeRange.endTime,
   }
 }
 
@@ -201,13 +208,14 @@ const sanitizeScheduleCourses = (value) => {
   }
 
   return value
-    .map((item, index) => {
+    .map((value, index) => {
+      const item = value || {}
       const derived = deriveCourseFields(item)
 
       return {
-        id: limitText(item?.id, 40) || `course-${index + 1}`,
+        id: limitText(item.id, 40) || `course-${index + 1}`,
         name: limitText(derived.name, 60),
-        weekday: sanitizeWeekday(item?.weekday || item?.day || item?.weekdayLabel),
+        weekday: sanitizeWeekday(item.weekday || item.day || item.weekdayLabel),
         startTime: derived.startTime,
         endTime: derived.endTime,
         location: limitText(derived.location, 40),
@@ -271,7 +279,7 @@ const repairJsonText = (value) => {
 const parseJsonObject = (raw) => {
   const text = normalizeText(raw)
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
-  const candidate = fenced?.[1] || text
+  const candidate = (fenced && fenced[1]) || text
   const start = candidate.indexOf('{')
 
   if (start < 0) {
@@ -350,7 +358,8 @@ const requestJson = async ({ hostname, path, method = 'GET', headers = {}, body,
             return
           }
 
-          reject(new Error(data?.message || data?.error?.message || `Remote service failed with status ${response.statusCode}`))
+          const apiError = (data && data.message) || (data && data.error && data.error.message) || `Remote service failed with status ${response.statusCode}`
+          reject(new Error(apiError))
         })
       },
     )
@@ -453,18 +462,18 @@ const getTempImageUrl = async (fileID) => {
   const result = await cloud.getTempFileURL({
     fileList: [normalizedFileID],
   })
-  const file = result?.fileList?.[0]
-  const tempFileURL = normalizeText(file?.tempFileURL)
+  const file = result && Array.isArray(result.fileList) ? result.fileList[0] : null
+  const tempFileURL = normalizeText(file && file.tempFileURL)
 
   if (!tempFileURL) {
-    throw new Error(file?.errMsg || 'Unable to get schedule image URL.')
+    throw new Error((file && file.errMsg) || 'Unable to get schedule image URL.')
   }
 
   return tempFileURL
 }
 
 const isMissingCollectionError = (error) => {
-  const message = normalizeText(error?.message || error?.errMsg || '')
+  const message = normalizeText((error && error.message) || (error && error.errMsg) || '')
   return message.includes('collection') && (message.includes('not exists') || message.includes('does not exist') || message.includes('不存在'))
 }
 
@@ -478,7 +487,7 @@ const loadUserChatHistoryRecord = async (openid) => {
       .limit(1)
       .get()
 
-    const record = result?.data?.[0]
+    const record = result && Array.isArray(result.data) ? result.data[0] : null
     if (!record) {
       return null
     }
@@ -602,13 +611,15 @@ const requestQwenCompletion = async (messages, maxTokens, apiKey, options = {}) 
             return
           }
 
-          const content = data?.choices?.[0]?.message?.content?.trim()
+          const choice = data && Array.isArray(data.choices) ? data.choices[0] : null
+          const message = choice && choice.message ? choice.message : null
+          const content = typeof (message && message.content) === 'string' ? message.content.trim() : ''
           if (response.statusCode >= 200 && response.statusCode < 300 && content) {
             resolve(content)
             return
           }
 
-          const apiError = data?.error?.message || data?.message || `DashScope request failed with status ${response.statusCode}`
+          const apiError = (data && data.error && data.error.message) || (data && data.message) || `DashScope request failed with status ${response.statusCode}`
           reject(new Error(apiError))
         })
       },
@@ -675,7 +686,7 @@ const recognizeScheduleFromImage = async (fileID, apiKey) => {
     },
   )
   const parsed = parseJsonObject(reply)
-  const courses = sanitizeScheduleCourses(parsed?.courses)
+  const courses = sanitizeScheduleCourses(parsed && parsed.courses)
 
   if (!courses.length) {
     throw new Error(`Schedule recognition raw reply: ${limitText(reply, 240)}`)
@@ -701,7 +712,7 @@ const submitAsrTask = async (audioUrl, apiKey) => {
     },
   })
 
-  const taskId = normalizeText(result?.output?.task_id || result?.task_id)
+  const taskId = normalizeText((result && result.output && result.output.task_id) || (result && result.task_id))
   if (!taskId) {
     throw new Error('DashScope ASR returned no task_id.')
   }
@@ -719,14 +730,14 @@ const pollDashScopeTask = async (taskId, apiKey) => {
         Authorization: `Bearer ${apiKey}`,
       },
     })
-    const status = normalizeText(result?.output?.task_status || result?.task_status || result?.status).toUpperCase()
+    const status = normalizeText((result && result.output && result.output.task_status) || (result && result.task_status) || (result && result.status)).toUpperCase()
 
     if (status === 'SUCCEEDED' || status === 'SUCCESS') {
       return result
     }
 
     if (status === 'FAILED' || status === 'CANCELED' || status === 'UNKNOWN') {
-      throw new Error(result?.output?.message || result?.message || `DashScope task ${taskId} failed.`)
+      throw new Error((result && result.output && result.output.message) || (result && result.message) || `DashScope task ${taskId} failed.`)
     }
 
     await delay(DASHSCOPE_POLL_INTERVAL_MS)
@@ -736,18 +747,20 @@ const pollDashScopeTask = async (taskId, apiKey) => {
 }
 
 const extractTranscript = async (taskResult) => {
+  const output = (taskResult && taskResult.output) || {}
+  const firstResult = Array.isArray(output.results) ? output.results[0] || {} : {}
   const directText = normalizeText(
-    taskResult?.output?.text ||
-    taskResult?.output?.sentence?.text ||
-    taskResult?.output?.results?.[0]?.text ||
-    taskResult?.output?.results?.[0]?.transcript,
+    output.text ||
+    (output.sentence && output.sentence.text) ||
+    firstResult.text ||
+    firstResult.transcript,
   )
   if (directText) return directText
 
   const transcriptionUrl = normalizeText(
-    taskResult?.output?.results?.[0]?.transcription_url ||
-    taskResult?.output?.results?.[0]?.url ||
-    taskResult?.output?.transcription_url,
+    firstResult.transcription_url ||
+    firstResult.url ||
+    output.transcription_url,
   )
   if (!transcriptionUrl) {
     throw new Error('DashScope ASR returned no transcript.')
@@ -755,17 +768,20 @@ const extractTranscript = async (taskResult) => {
 
   const raw = (await requestBuffer(transcriptionUrl)).toString('utf8')
   const data = parseJsonText(raw, 'ASR transcript URL returned invalid JSON.')
-  const sentences = Array.isArray(data?.transcripts)
+  const sentences = Array.isArray(data && data.transcripts)
     ? data.transcripts
-    : Array.isArray(data?.sentences)
+    : Array.isArray(data && data.sentences)
       ? data.sentences
       : Array.isArray(data)
         ? data
         : []
   const text = normalizeText(
-    data?.text ||
-    data?.transcript ||
-    sentences.map((item) => normalizeText(item?.text || item?.transcript)).filter(Boolean).join(' '),
+    (data && data.text) ||
+    (data && data.transcript) ||
+    sentences.map((value) => {
+      const item = value || {}
+      return normalizeText(item.text || item.transcript)
+    }).filter(Boolean).join(' '),
   )
 
   if (!text) {
@@ -804,12 +820,14 @@ const synthesizeSpeech = async (text, apiKey) => {
       },
     },
   })
+  const output = (result && result.output) || {}
+  const audioOutput = output.audio || {}
 
   const audioUrl = normalizeText(
-    result?.output?.audio?.url ||
-    result?.output?.audio_url ||
-    result?.output?.url ||
-    result?.audio_url,
+    audioOutput.url ||
+    output.audio_url ||
+    output.url ||
+    (result && result.audio_url),
   )
   if (!audioUrl) {
     throw new Error('DashScope TTS returned no audio url.')
@@ -821,7 +839,7 @@ const synthesizeSpeech = async (text, apiKey) => {
     cloudPath,
     fileContent,
   })
-  const audioFileID = normalizeText(upload?.fileID)
+  const audioFileID = normalizeText(upload && upload.fileID)
   if (!audioFileID) {
     throw new Error('Voice reply upload returned no fileID.')
   }
@@ -829,7 +847,8 @@ const synthesizeSpeech = async (text, apiKey) => {
   const tempUrlResult = await cloud.getTempFileURL({
     fileList: [audioFileID],
   })
-  const audioTempUrl = normalizeText(tempUrlResult?.fileList?.[0]?.tempFileURL)
+  const audioTempFile = tempUrlResult && Array.isArray(tempUrlResult.fileList) ? tempUrlResult.fileList[0] : null
+  const audioTempUrl = normalizeText(audioTempFile && audioTempFile.tempFileURL)
 
   return {
     audioFileID,
@@ -844,9 +863,9 @@ const appendChatReply = async ({ openid, finalUserMessage, contextMessages, syst
     content: item.content,
     createdAt: new Date().toISOString(),
   }))
-  const baseHistory = historyRecord?.messages?.length ? historyRecord.messages : contextHistorySeed
+  const baseHistory = historyRecord && historyRecord.messages && historyRecord.messages.length ? historyRecord.messages : contextHistorySeed
   const lastBaseMessage = baseHistory[baseHistory.length - 1]
-  const shouldAppendUserMessage = !(lastBaseMessage?.role === 'user' && lastBaseMessage?.content === finalUserMessage)
+  const shouldAppendUserMessage = !(lastBaseMessage && lastBaseMessage.role === 'user' && lastBaseMessage.content === finalUserMessage)
   const nextHistory = [
     ...baseHistory,
     ...(shouldAppendUserMessage
@@ -907,7 +926,7 @@ exports.main = async (event = {}) => {
   if (action === 'loadHistory') {
     const record = await loadUserChatHistoryRecord(OPENID)
     return {
-      history: record?.messages ?? [],
+      history: record && record.messages ? record.messages : [],
     }
   }
 
@@ -981,8 +1000,8 @@ exports.main = async (event = {}) => {
   const userMessage = limitText(event.userMessage, MAX_USER_MESSAGE_CONTENT)
   const messageFromContext = sanitizeMessages(event.messages)
     .reverse()
-    .find((item) => item.role === 'user')?.content
-  const finalUserMessage = userMessage || messageFromContext
+    .find((item) => item.role === 'user')
+  const finalUserMessage = userMessage || (messageFromContext && messageFromContext.content)
 
   if (!finalUserMessage) {
     throw new Error('chatReply requires userMessage or messages context.')
