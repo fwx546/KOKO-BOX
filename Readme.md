@@ -2,6 +2,16 @@
 
 This workspace contains a uni-app Vue prototype that is now standardized for WeChat Mini Program development only.
 
+## Team contribution
+
+This project was developed collaboratively by our team.
+
+I was mainly responsible for:
+- AI interaction design
+- Mini-program frontend/backend development
+- Hardware communication module
+- Cloud synchronization logic
+
 ## Run locally
 
 1. Install dependencies: `npm install`
