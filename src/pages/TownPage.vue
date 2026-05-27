@@ -52,6 +52,7 @@ const TOWN_HOME_ACTION_STORAGE_KEY = 'koko-town-home-action'
 const TOWN_GUIDE_STORAGE_KEY = 'hasSeenTownGuideCommunityV1'
 const TOWN_INVITE_SHARE_STORAGE_KEY = 'koko-town-share-invite'
 const TOWN_PENDING_INVITE_STORAGE_KEY = 'koko-town-pending-invite'
+const VIRTUAL_FRIEND_OPENID = 'virtual-town-friend-device'
 
 const { pet, economy, shopItems, todayTasks, completedTasks, settings, purchaseShopItem, syncEconomyFromCloud } = useKokoState()
 const { user, authMode, isMockSession, login } = useAuth()
@@ -84,12 +85,16 @@ const communityInvitePath = ref('')
 const communityInviteCode = ref('')
 const communityQrCodeFileID = ref('')
 const pendingInviteCode = ref('')
+const virtualFriendConnected = ref(false)
+const virtualFriendPosition = ref({ x: 66, y: 72 })
+const virtualFriendAction = ref<PetActionType>('idle')
 
 let moveTimer: ReturnType<typeof setTimeout> | undefined
 let roamTimer: ReturnType<typeof setInterval> | undefined
 let communityHeartbeatTimer: ReturnType<typeof setInterval> | undefined
 let communityRefreshTimer: ReturnType<typeof setInterval> | undefined
 let communityMoveTimer: ReturnType<typeof setTimeout> | undefined
+let virtualFriendTimer: ReturnType<typeof setInterval> | undefined
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
@@ -175,47 +180,17 @@ const petStyle = computed(() => ({
 const communityAvailable = computed(() => authMode.value === 'wechat' && !isMockSession.value)
 const communityOtherPartners = computed(() => communityPartners.value.filter((partner) => !partner.isSelf))
 const communityOnlinePartners = computed(() => communityOtherPartners.value.filter((partner) => partner.online))
-const communityPartnerCapacity = computed(() => Math.max((communityRoom.value?.memberCount ?? 1) - 1, 1))
+const communityPartnerCapacity = computed(() => Math.max(communityOtherPartners.value.length, (communityRoom.value?.memberCount ?? 1) - 1, 1))
+const communityHudOnline = computed(() => communityAvailable.value || virtualFriendConnected.value)
 const activeCommunityInviteCode = computed(() => communityInviteCode.value || communityRoom.value?.inviteCode || '')
 const activeCommunityInvitePath = computed(() => {
   if (communityInvitePath.value) return communityInvitePath.value
   return activeCommunityInviteCode.value ? `/pages/town/index?invite=${activeCommunityInviteCode.value}` : ''
 })
 
-const createPanelInviteCode = () =>
-  Math.random().toString(36).slice(2, 8).toUpperCase()
-
 const persistPanelInviteCode = (inviteCode: string) => {
   if (!inviteCode || typeof uni.setStorageSync !== 'function') return
   uni.setStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY, inviteCode)
-}
-
-const ensurePanelInviteCode = () => {
-  let inviteCode = activeCommunityInviteCode.value
-
-  if (!inviteCode && typeof uni.getStorageSync === 'function') {
-    inviteCode = decodeInviteCode(String(uni.getStorageSync(TOWN_INVITE_SHARE_STORAGE_KEY) || ''))
-  }
-
-  if (!inviteCode) {
-    inviteCode = createPanelInviteCode()
-  }
-
-  const invitePath = activeCommunityInvitePath.value || `/pages/town/index?invite=${inviteCode}`
-  communityInviteCode.value = inviteCode
-  communityInvitePath.value = invitePath
-  communityRoom.value = {
-    ...(communityRoom.value ?? {
-      id: `local-town-${inviteCode}`,
-      ownerOpenid: `local-town-${inviteCode}`,
-      memberCount: 1,
-      updatedAt: new Date().toISOString(),
-    }),
-    inviteCode,
-    inviteExpiresAt: communityRoom.value?.inviteExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-  }
-  persistPanelInviteCode(inviteCode)
-  return inviteCode
 }
 
 const townPendingTasks = computed(() => todayTasks.value.slice(0, 3))
@@ -253,6 +228,23 @@ const communityCopy = computed(() => {
   }
 })
 
+const virtualFriendCopy = computed(() => {
+  const isZh = settings.value.language === 'zh'
+  return {
+    title: isZh ? '虚拟好友设备' : 'Virtual friend device',
+    body: isZh
+      ? '不用第二台手机也可以测试联机。连接后，虚拟好友的 Koko 会进入小镇，自动散步并靠近你的 Koko 互动。'
+      : 'Test co-op without a second phone. A virtual friend Koko joins town, wanders around, and reacts to your Koko.',
+    connect: isZh ? '连接虚拟好友' : 'Connect',
+    disconnect: isZh ? '断开虚拟好友' : 'Disconnect',
+    connected: isZh ? '虚拟好友已连接，会在小镇里陪 Koko 散步。' : 'Virtual friend connected and walking around town.',
+    disconnected: isZh ? '虚拟好友已断开。' : 'Virtual friend disconnected.',
+    toast: isZh ? '虚拟好友已进入小镇' : 'Virtual friend joined town',
+    name: isZh ? '虚拟好友设备' : 'Virtual Device',
+    petName: isZh ? '好友 Koko' : 'Friend Koko',
+  }
+})
+
 const getCommunityErrorText = (error: unknown) => {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
@@ -269,6 +261,16 @@ const buildCommunityFailureMessage = (error: unknown) => {
   return settings.value.language === 'zh'
     ? `${communityCopy.value.loadFailed} 原因：${reason}`
     : `${communityCopy.value.loadFailed} Reason: ${reason}`
+}
+
+const ensureCommunitySession = async () => {
+  if (authMode.value === 'guest') return false
+
+  if (authMode.value !== 'wechat' || !user.value) {
+    await login('wechat')
+  }
+
+  return communityAvailable.value
 }
 
 const guideSteps = computed<TownGuideStep[]>(() => {
@@ -368,6 +370,28 @@ const partnerLastSeenLabel = (partner: TownCommunityPartner) => {
   })}`
 }
 
+const buildVirtualFriendPartner = (): TownCommunityPartner => ({
+  openid: VIRTUAL_FRIEND_OPENID,
+  nickName: virtualFriendCopy.value.name,
+  avatarUrl: '',
+  petName: virtualFriendCopy.value.petName,
+  x: virtualFriendPosition.value.x,
+  y: virtualFriendPosition.value.y,
+  action: virtualFriendAction.value,
+  online: true,
+  isSelf: false,
+  lastSeenAt: new Date().toISOString(),
+})
+
+const mergeVirtualFriendPartner = (partners: TownCommunityPartner[]) => {
+  const realPartners = partners.filter((partner) => partner.openid !== VIRTUAL_FRIEND_OPENID)
+  return virtualFriendConnected.value ? [...realPartners, buildVirtualFriendPartner()] : realPartners
+}
+
+const syncVirtualFriendPartner = () => {
+  communityPartners.value = mergeVirtualFriendPartner(communityPartners.value)
+}
+
 const communityPayload = () => ({
   nickName: user.value?.nickName,
   avatarUrl: user.value?.avatarUrl,
@@ -381,7 +405,7 @@ const applyCommunityState = (state: Awaited<ReturnType<typeof loadTownCommunityS
   const inviteCode = state.inviteCode || state.room.inviteCode || communityInviteCode.value
   const invitePath = state.invitePath || communityInvitePath.value || (inviteCode ? `/pages/town/index?invite=${inviteCode}` : '')
 
-  communityPartners.value = state.partners
+  communityPartners.value = mergeVirtualFriendPartner(state.partners)
   communityRoom.value = state.room
   communityInvitePath.value = invitePath
   communityInviteCode.value = inviteCode
@@ -438,6 +462,76 @@ const startCommunityTimers = () => {
   }, 5200)
 }
 
+const stopVirtualFriendTimer = () => {
+  if (virtualFriendTimer) clearInterval(virtualFriendTimer)
+  virtualFriendTimer = undefined
+}
+
+const moveVirtualFriendTo = (nextX: number, nextY: number, forcedAction?: PetActionType) => {
+  const x = clamp(nextX, PET_MIN_X, PET_MAX_X)
+  const y = clamp(nextY, PET_MIN_Y, PET_MAX_Y)
+  const dx = x - virtualFriendPosition.value.x
+  const dy = y - virtualFriendPosition.value.y
+  const distance = Math.sqrt(dx * dx + dy * dy)
+
+  virtualFriendAction.value = forcedAction ?? (distance > 12 ? 'chase' : 'nuzzle')
+  virtualFriendPosition.value = { x, y }
+  syncVirtualFriendPartner()
+
+  if (Math.abs(x - petPosition.value.x) < 10 && Math.abs(y - petPosition.value.y) < 10) {
+    virtualFriendAction.value = 'sparkle'
+    petAction.value = 'sparkle'
+    syncVirtualFriendPartner()
+    queueIdle(1800)
+  }
+}
+
+const roamVirtualFriend = () => {
+  if (!virtualFriendConnected.value || guideVisible.value || activeBuilding.value) return
+
+  const followKoko = Math.random() > 0.38
+  const baseX = followKoko ? petPosition.value.x : virtualFriendPosition.value.x
+  const baseY = followKoko ? petPosition.value.y : virtualFriendPosition.value.y
+  moveVirtualFriendTo(
+    baseX + randomBetween(-14, 14),
+    baseY + randomBetween(-10, 8),
+  )
+}
+
+const startVirtualFriendTimer = () => {
+  stopVirtualFriendTimer()
+  virtualFriendTimer = setInterval(roamVirtualFriend, 3600)
+}
+
+const connectVirtualFriend = () => {
+  virtualFriendConnected.value = true
+  moveVirtualFriendTo(
+    petPosition.value.x + randomBetween(9, 16),
+    petPosition.value.y + randomBetween(-8, 3),
+    'sparkle',
+  )
+  startVirtualFriendTimer()
+  communityMessage.value = virtualFriendCopy.value.connected
+  communityPanelOpen.value = false
+  uni.showToast({ title: virtualFriendCopy.value.toast, icon: 'none' })
+}
+
+const disconnectVirtualFriend = () => {
+  virtualFriendConnected.value = false
+  stopVirtualFriendTimer()
+  syncVirtualFriendPartner()
+  communityMessage.value = virtualFriendCopy.value.disconnected
+}
+
+const toggleVirtualFriend = () => {
+  if (virtualFriendConnected.value) {
+    disconnectVirtualFriend()
+    return
+  }
+
+  connectVirtualFriend()
+}
+
 const joinPendingInviteIfNeeded = async () => {
   if (!pendingInviteCode.value || !communityAvailable.value) return false
 
@@ -460,16 +554,14 @@ const joinPendingInviteIfNeeded = async () => {
 }
 
 const startCommunity = async () => {
-  if (!communityAvailable.value) {
-    communityMessage.value = communityCopy.value.unavailable
-    return
-  }
-
   communityLoading.value = true
   try {
-    if (!user.value) {
-      await login('wechat')
+    const canUseCommunity = await ensureCommunitySession()
+    if (!canUseCommunity) {
+      communityMessage.value = communityCopy.value.unavailable
+      return
     }
+
     const joined = await joinPendingInviteIfNeeded()
     if (!joined) {
       await heartbeatCommunity()
@@ -503,15 +595,14 @@ const closeCommunityPanel = () => {
 }
 
 const createCommunityInvite = async () => {
-  if (!communityAvailable.value) {
-    communityMessage.value = communityCopy.value.unavailable
-    return
-  }
-
   communityLoading.value = true
   try {
-    ensurePanelInviteCode()
-    communityMessage.value = communityCopy.value.inviteReady
+    const canUseCommunity = await ensureCommunitySession()
+    if (!canUseCommunity) {
+      communityMessage.value = communityCopy.value.unavailable
+      return
+    }
+
     communityPanelOpen.value = true
     applyCommunityState(await createTownInvite(communityPayload()))
     communityMessage.value = communityCopy.value.inviteReady
@@ -523,7 +614,12 @@ const createCommunityInvite = async () => {
 }
 
 const copyInvite = () => {
-  const inviteCode = ensurePanelInviteCode()
+  const inviteCode = activeCommunityInviteCode.value
+  if (!inviteCode) {
+    uni.showToast({ title: communityCopy.value.empty, icon: 'none' })
+    return
+  }
+
   const text = inviteCode
     ? `${communityCopy.value.title}: ${activeCommunityInvitePath.value || inviteCode}`
     : communityCopy.value.empty
@@ -539,7 +635,6 @@ const copyInvite = () => {
 }
 
 onShareAppMessage(() => {
-  ensurePanelInviteCode()
   return {
     title: settings.value.language === 'zh' ? '邀请你加入 Koko 小镇' : 'Join my Koko Town',
     path: activeCommunityInvitePath.value || '/pages/town/index',
@@ -558,6 +653,13 @@ const greetPartner = (partner: TownCommunityPartner) => {
     title: communityCopy.value.greet,
     icon: 'none',
   })
+  if (partner.openid === VIRTUAL_FRIEND_OPENID) {
+    moveVirtualFriendTo(
+      petPosition.value.x + randomBetween(-6, 6),
+      petPosition.value.y + randomBetween(-8, 4),
+      'sparkle',
+    )
+  }
   queueIdle(2200)
   queueCommunityHeartbeat(300)
 }
@@ -721,6 +823,15 @@ watch(
   },
 )
 
+watch(
+  () => settings.value.language,
+  () => {
+    if (virtualFriendConnected.value) {
+      syncVirtualFriendPartner()
+    }
+  },
+)
+
 onMounted(() => {
   void ensureTownMap()
   void syncEconomyFromCloud()
@@ -742,17 +853,23 @@ onLoad((options = {}) => {
 
 onShow(() => {
   restorePendingInvite()
+  if (virtualFriendConnected.value) {
+    startVirtualFriendTimer()
+    syncVirtualFriendPartner()
+  }
   void startCommunity()
 })
 
 onHide(() => {
   stopCommunityTimers()
+  stopVirtualFriendTimer()
   markCommunityOfflineNow()
 })
 
 onBeforeUnmount(() => {
   stopMoveTimer()
   stopCommunityTimers()
+  stopVirtualFriendTimer()
   markCommunityOfflineNow()
   if (roamTimer) clearInterval(roamTimer)
   roamTimer = undefined
@@ -814,7 +931,7 @@ onBeforeUnmount(() => {
 
     <view class="town-community-hud">
       <button class="town-community-hud__button" hover-class="town-community-hud__button--pressed" @tap.stop="openCommunityPanel">
-        <view class="town-community-hud__pulse" :class="{ 'town-community-hud__pulse--offline': !communityAvailable }" />
+        <view class="town-community-hud__pulse" :class="{ 'town-community-hud__pulse--offline': !communityHudOnline }" />
         <view>
           <view class="town-community-hud__title">{{ communityCopy.openPanel }}</view>
           <view class="town-community-hud__meta">{{ communityOnlinePartners.length }} {{ communityCopy.online }}</view>
@@ -837,6 +954,21 @@ onBeforeUnmount(() => {
         <view v-if="communityMessage" class="town-community-panel__message">{{ communityMessage }}</view>
         <view v-else-if="!communityAvailable" class="town-community-panel__message">{{ communityCopy.unavailable }}</view>
 
+        <view class="town-virtual-device">
+          <view class="town-virtual-device__icon">V</view>
+          <view class="town-virtual-device__main">
+            <view class="town-virtual-device__title">{{ virtualFriendCopy.title }}</view>
+            <view class="town-virtual-device__body">{{ virtualFriendCopy.body }}</view>
+          </view>
+          <button
+            class="town-virtual-device__button"
+            :class="{ 'town-virtual-device__button--connected': virtualFriendConnected }"
+            @tap="toggleVirtualFriend"
+          >
+            {{ virtualFriendConnected ? virtualFriendCopy.disconnect : virtualFriendCopy.connect }}
+          </button>
+        </view>
+
         <view class="town-community-panel__actions">
           <button class="town-community-panel__primary" :disabled="communityLoading || !communityAvailable" @tap="createCommunityInvite">
             {{ communityLoading ? '...' : communityCopy.invite }}
@@ -856,10 +988,10 @@ onBeforeUnmount(() => {
         </view>
 
         <view class="town-community-panel__share-row">
-          <button class="town-community-panel__share" open-type="share">
+          <button class="town-community-panel__share" open-type="share" :disabled="communityLoading || !communityAvailable || !activeCommunityInviteCode">
             {{ communityCopy.share }}
           </button>
-          <button class="town-community-panel__share town-community-panel__share--soft" @tap="copyInvite">
+          <button class="town-community-panel__share town-community-panel__share--soft" :disabled="communityLoading || !communityAvailable || !activeCommunityInviteCode" @tap="copyInvite">
             {{ communityCopy.copy }}
           </button>
         </view>
@@ -1194,7 +1326,8 @@ onBeforeUnmount(() => {
 .town-community-panel__close::after,
 .town-community-panel__primary::after,
 .town-community-panel__ghost::after,
-.town-community-panel__share::after {
+.town-community-panel__share::after,
+.town-virtual-device__button::after {
   border: none;
 }
 
@@ -1320,6 +1453,70 @@ onBeforeUnmount(() => {
   color: #7d644f;
   font-weight: 800;
   padding: 14rpx 16rpx;
+}
+
+.town-virtual-device {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.78);
+  border: 2rpx solid rgba(95, 199, 168, 0.18);
+  border-radius: 22rpx;
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding: 16rpx;
+}
+
+.town-virtual-device__icon {
+  align-items: center;
+  background: linear-gradient(135deg, #ffe08a, #8adfb0);
+  border-radius: 18rpx;
+  color: #173f38;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 28rpx;
+  font-weight: 900;
+  height: 68rpx;
+  justify-content: center;
+  width: 68rpx;
+}
+
+.town-virtual-device__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.town-virtual-device__title {
+  color: #253047;
+  font-size: 26rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.town-virtual-device__body {
+  color: #7d8a74;
+  font-size: 21rpx;
+  font-weight: 700;
+  line-height: 1.38;
+  margin-top: 6rpx;
+}
+
+.town-virtual-device__button {
+  background: rgba(255, 240, 202, 0.96);
+  border-radius: 999rpx;
+  color: #735420;
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 900;
+  height: 64rpx;
+  line-height: 64rpx;
+  margin: 0;
+  max-width: 190rpx;
+  padding: 0 18rpx;
+}
+
+.town-virtual-device__button--connected {
+  background: rgba(232, 249, 241, 0.96);
+  color: #365f56;
 }
 
 .town-community-panel__actions,

@@ -49,7 +49,7 @@
   "compileType": "miniprogram",
   "libVersion": "3.15.2",
   "appid": "wx90ec72eb27dedd5b",
-  "miniprogramRoot": "dist/build/mp-weixin/",
+  "miniprogramRoot": "unpackage/dist/build/mp-weixin/",
   "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "koko-box-ui-prototype",
   "condition": {},

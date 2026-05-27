@@ -318,6 +318,20 @@ const activeDefinition = computed(() => miniGameDefinitions[activeGame.value] ??
 const selectorGames = computed(() => miniGameOrder.map((gameId) => miniGameDefinitions[gameId]))
 const activeHideSceneConfig = computed(() => hideScenes.find((scene) => scene.id === activeHideScene.value) ?? hideScenes[0])
 const activeHideSpots = computed(() => activeHideSceneConfig.value.spots)
+const foundHideSpot = computed(() => {
+  if (!foundSpot.value) return null
+  return activeHideSpots.value.find((spot) => spot.id === foundSpot.value) ?? null
+})
+const foundPeekPetStyle = computed(() => {
+  const spot = foundHideSpot.value
+  if (!spot) return {}
+
+  return {
+    left: `${spot.left}%`,
+    top: `${spot.top}%`,
+    transform: 'translate(-50%, -108rpx)',
+  }
+})
 const targetLabel = computed(() => `${score.value}/${activeDefinition.value.targetScore}`)
 const primaryActionLabel = computed(() => {
   if (gameCompleted.value) return ui.value.restart
@@ -1306,11 +1320,11 @@ onBeforeUnmount(() => {
             @click="seekSpot(spot.id)"
           >
             <view class="hide-spot__prop" />
-            <view v-if="foundSpot === spot.id && !showGameRules" class="mini-game-peek-pet">
-              <PetLottieAvatar :size-rpx="86" />
-            </view>
             <view class="hide-spot__label">{{ localize(spot.label) }}</view>
           </button>
+          <view v-if="foundHideSpot && !showGameRules" class="mini-game-peek-pet mini-game-peek-pet--stage" :style="foundPeekPetStyle">
+            <PetLottieAvatar :size-rpx="86" />
+          </view>
         </template>
       </view>
 
@@ -2865,6 +2879,7 @@ onBeforeUnmount(() => {
 .hide-spot {
   background: transparent;
   height: 170rpx;
+  overflow: visible;
   position: absolute;
   transform: translate(-50%, -50%);
   width: 174rpx;
@@ -3144,7 +3159,10 @@ onBeforeUnmount(() => {
 }
 
 .mini-game-peek-pet {
+  align-items: flex-start;
+  display: flex;
   height: 96rpx;
+  justify-content: center;
   left: 50%;
   overflow: visible;
   pointer-events: none;
@@ -3153,6 +3171,13 @@ onBeforeUnmount(() => {
   transform: translateX(-50%);
   width: 96rpx;
   z-index: 5;
+}
+
+.mini-game-peek-pet--stage {
+  height: 112rpx;
+  top: 0;
+  width: 112rpx;
+  z-index: 10;
 }
 
 .mini-game-peek-pet__ear {

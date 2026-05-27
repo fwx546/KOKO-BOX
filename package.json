@@ -4,11 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run dev:mp-weixin",
+    "dev": "npm run dev:mp-weixin:local",
     "prepare:mp-weixin-assets": "node scripts/copy-tab-icons.mjs",
     "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni dev -p mp-weixin",
     "dev:mp-weixin:local": "powershell -ExecutionPolicy Bypass -File scripts/dev-mp-weixin.ps1",
-    "build": "npm run build:mp-weixin",
+    "build": "npm run build:mp-weixin:local",
+    "fix:uni-cli-shared-alias": "node scripts/fix-uni-cli-shared-alias.cjs",
     "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin && npm run prepare:mp-weixin-assets",
     "build:mp-weixin:local": "powershell -ExecutionPolicy Bypass -File scripts/build-mp-weixin.ps1"
   },
