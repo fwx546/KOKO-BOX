@@ -56,5 +56,6 @@
     "backgroundColor": "#fff8ec"
   },
   "style": "v2",
+  "cloud": true,
   "sitemapLocation": "sitemap.json"
 }
